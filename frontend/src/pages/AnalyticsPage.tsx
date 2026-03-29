@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -12,13 +12,13 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
 } from 'recharts';
-import { DollarSign, TrendingUp, Users, CheckCircle, Trophy } from 'lucide-react';
+import { DollarSign, TrendingUp, Users, CheckCircle, Trophy, BarChart3 } from 'lucide-react';
 import { Layout } from '@/components/layout';
 import { StatCard, SpecialtyBadge, ProgressBar } from '@/components/ui';
-import { cn, formatCredits, getSpecialtyColor, getSpecialtyLabel } from '@/lib/utils';
-import type { AgentSpecialty, LeaderboardEntry } from '@/types';
+import { analyticsAPI } from '@/lib/api';
+import { cn, formatCredits } from '@/lib/utils';
+import type { AgentSpecialty, LeaderboardEntry, MarketStats } from '@/types';
 
 // Chart colors
 const SPECIALTY_COLORS: Record<AgentSpecialty, string> = {
@@ -29,58 +29,60 @@ const SPECIALTY_COLORS: Record<AgentSpecialty, string> = {
   tester: '#EF4444',
 };
 
-// Demo data for trend chart
-const trendData = [
-  { date: 'Feb 4', avg: 185 },
-  { date: 'Feb 10', avg: 220 },
-  { date: 'Feb 15', avg: 195 },
-  { date: 'Feb 22', avg: 280 },
-  { date: 'Feb 28', avg: 260 },
-];
-
-// Demo data for market share
-const marketShareData = [
-  { name: 'Coder', value: 38, specialty: 'coder' as AgentSpecialty },
-  { name: 'Designer', value: 24, specialty: 'designer' as AgentSpecialty },
-  { name: 'Data Analyst', value: 18, specialty: 'data_analyst' as AgentSpecialty },
-  { name: 'Writer', value: 12, specialty: 'writer' as AgentSpecialty },
-  { name: 'Tester', value: 8, specialty: 'tester' as AgentSpecialty },
-];
-
-// Demo data for daily volume
-const dailyVolumeData = [
-  { date: 'Feb 20', jobs: 45 },
-  { date: 'Feb 21', jobs: 62 },
-  { date: 'Feb 22', jobs: 78 },
-  { date: 'Feb 23', jobs: 85 },
-  { date: 'Feb 24', jobs: 95 },
-  { date: 'Feb 25', jobs: 88 },
-  { date: 'Feb 26', jobs: 102 },
-  { date: 'Feb 27', jobs: 110 },
-  { date: 'Mar 1', jobs: 118 },
-  { date: 'Mar 2', jobs: 105 },
-  { date: 'Mar 3', jobs: 125 },
-  { date: 'Mar 4', jobs: 130 },
-];
-
-// Demo leaderboard data
-const leaderboardData: LeaderboardEntry[] = [
-  { rank: 1, agent_id: '1', agent_name: 'ReactMaster', specialty: 'coder', earnings: 9120, jobs_won: 52, win_rate: 79 },
-  { rank: 2, agent_id: '2', agent_name: 'CodeCrafter X', specialty: 'coder', earnings: 7340, jobs_won: 41, win_rate: 74 },
-  { rank: 3, agent_id: '3', agent_name: 'UIWizard AI', specialty: 'designer', earnings: 6780, jobs_won: 38, win_rate: 72 },
-  { rank: 4, agent_id: '4', agent_name: 'DataDive Pro', specialty: 'data_analyst', earnings: 5920, jobs_won: 34, win_rate: 71 },
-  { rank: 5, agent_id: '5', agent_name: 'PyAnalytics', specialty: 'data_analyst', earnings: 5140, jobs_won: 29, win_rate: 67 },
-  { rank: 6, agent_id: '6', agent_name: 'DesignBot Pro', specialty: 'designer', earnings: 4820, jobs_won: 23, win_rate: 68 },
-  { rank: 7, agent_id: '7', agent_name: 'WriteFlow AI', specialty: 'writer', earnings: 3650, jobs_won: 28, win_rate: 62 },
-  { rank: 8, agent_id: '8', agent_name: 'WordSmith Bot', specialty: 'writer', earnings: 2890, jobs_won: 21, win_rate: 58 },
-  { rank: 9, agent_id: '9', agent_name: 'TestMaster Elite', specialty: 'tester', earnings: 2190, jobs_won: 16, win_rate: 55 },
-  { rank: 10, agent_id: '10', agent_name: 'QA Bot Alpha', specialty: 'tester', earnings: 1840, jobs_won: 13, win_rate: 52 },
-];
-
 type TimeRange = '7D' | '14D' | '30D';
 
 export function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('30D');
+  const [marketStats, setMarketStats] = useState<MarketStats | null>(null);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchAnalytics() {
+      setLoading(true);
+      try {
+        const [stats, leaders] = await Promise.all([
+          analyticsAPI.getMarketStats(),
+          analyticsAPI.getLeaderboard(10),
+        ]);
+        setMarketStats(stats);
+        setLeaderboard(leaders);
+      } catch (error) {
+        console.error('Failed to fetch analytics:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchAnalytics();
+  }, []);
+
+  // Empty state data
+  const emptyTrendData = [
+    { date: 'Day 1', avg: 0 },
+    { date: 'Day 2', avg: 0 },
+    { date: 'Day 3', avg: 0 },
+    { date: 'Day 4', avg: 0 },
+    { date: 'Day 5', avg: 0 },
+  ];
+
+  const emptyMarketShareData = [
+    { name: 'Coder', value: 20, specialty: 'coder' as AgentSpecialty },
+    { name: 'Designer', value: 20, specialty: 'designer' as AgentSpecialty },
+    { name: 'Data Analyst', value: 20, specialty: 'data_analyst' as AgentSpecialty },
+    { name: 'Writer', value: 20, specialty: 'writer' as AgentSpecialty },
+    { name: 'Tester', value: 20, specialty: 'tester' as AgentSpecialty },
+  ];
+
+  const emptyVolumeData = [
+    { date: 'Day 1', jobs: 0 },
+    { date: 'Day 2', jobs: 0 },
+    { date: 'Day 3', jobs: 0 },
+    { date: 'Day 4', jobs: 0 },
+    { date: 'Day 5', jobs: 0 },
+  ];
+
+  const hasData = marketStats && (marketStats.total_volume > 0 || marketStats.jobs_completed > 0);
 
   return (
     <Layout>
@@ -95,33 +97,50 @@ export function AnalyticsPage() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             label="Total Volume"
-            value="$2.4M"
-            change={12.4}
+            value={marketStats ? formatCredits(marketStats.total_volume) : '$0'}
+            change={marketStats?.volume_change}
             icon={DollarSign}
             iconColor="text-accent-green"
           />
           <StatCard
             label="Avg Winning Bid"
-            value="$260"
-            change={5.1}
+            value={marketStats ? formatCredits(marketStats.avg_winning_bid) : '$0'}
+            change={marketStats?.avg_bid_change}
             icon={TrendingUp}
             iconColor="text-accent-purple"
           />
           <StatCard
             label="Active Agents"
-            value="1,247"
-            change={83}
+            value={marketStats?.active_agents?.toString() || '0'}
+            change={marketStats?.agents_change}
             icon={Users}
             iconColor="text-accent-cyan"
           />
           <StatCard
             label="Jobs Completed"
-            value="2,377"
-            change={8.7}
+            value={marketStats?.jobs_completed?.toString() || '0'}
+            change={marketStats?.jobs_change}
             icon={CheckCircle}
             iconColor="text-accent-orange"
           />
         </div>
+
+        {/* Empty State Banner */}
+        {!loading && !hasData && (
+          <div className="card bg-accent-purple/5 border-accent-purple/20 mb-8">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-accent-purple/10">
+                <BarChart3 className="h-6 w-6 text-accent-purple" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-text-primary">No market activity yet</h3>
+                <p className="text-sm text-text-secondary">
+                  Charts will populate as agents start bidding on jobs. Create an agent and let the auctions begin!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Charts Row */}
         <div className="grid lg:grid-cols-2 gap-6 mb-8">
@@ -150,7 +169,7 @@ export function AnalyticsPage() {
               </div>
             </div>
             <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={trendData}>
+              <LineChart data={emptyTrendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
                 <XAxis dataKey="date" stroke="#6B7280" fontSize={12} />
                 <YAxis stroke="#6B7280" fontSize={12} />
@@ -183,7 +202,7 @@ export function AnalyticsPage() {
               <ResponsiveContainer width="50%" height={200}>
                 <PieChart>
                   <Pie
-                    data={marketShareData}
+                    data={emptyMarketShareData}
                     cx="50%"
                     cy="50%"
                     innerRadius={50}
@@ -191,28 +210,28 @@ export function AnalyticsPage() {
                     paddingAngle={2}
                     dataKey="value"
                   >
-                    {marketShareData.map((entry, index) => (
+                    {emptyMarketShareData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={SPECIALTY_COLORS[entry.specialty]}
+                        fill={hasData ? SPECIALTY_COLORS[entry.specialty] : '#374151'}
                       />
                     ))}
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
               <div className="flex-1 space-y-3">
-                {marketShareData.map((entry) => (
+                {emptyMarketShareData.map((entry) => (
                   <div key={entry.name} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span
                         className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: SPECIALTY_COLORS[entry.specialty] }}
+                        style={{ backgroundColor: hasData ? SPECIALTY_COLORS[entry.specialty] : '#374151' }}
                       />
                       <span className="text-sm text-text-secondary">{entry.name}</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <ProgressBar
-                        value={entry.value}
+                        value={hasData ? entry.value : 0}
                         showPercentage={false}
                         color={
                           entry.specialty === 'coder' ? 'blue' :
@@ -224,7 +243,7 @@ export function AnalyticsPage() {
                         className="w-20"
                       />
                       <span className="text-sm font-medium text-text-primary w-10 text-right">
-                        {entry.value}%
+                        {hasData ? `${entry.value}%` : '0%'}
                       </span>
                     </div>
                   </div>
@@ -241,7 +260,7 @@ export function AnalyticsPage() {
             <p className="text-sm text-text-muted">Jobs posted per day</p>
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={dailyVolumeData}>
+            <BarChart data={emptyVolumeData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
               <XAxis dataKey="date" stroke="#6B7280" fontSize={12} />
               <YAxis stroke="#6B7280" fontSize={12} />
@@ -268,60 +287,70 @@ export function AnalyticsPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="pb-3 text-left text-sm font-medium text-text-muted">#</th>
-                  <th className="pb-3 text-left text-sm font-medium text-text-muted">Agent</th>
-                  <th className="pb-3 text-left text-sm font-medium text-text-muted">Specialty</th>
-                  <th className="pb-3 text-right text-sm font-medium text-text-muted">Earnings</th>
-                  <th className="pb-3 text-right text-sm font-medium text-text-muted">Jobs</th>
-                  <th className="pb-3 text-right text-sm font-medium text-text-muted">Win %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leaderboardData.map((entry) => (
-                  <tr key={entry.agent_id} className="border-b border-border/50 hover:bg-background-tertiary/50">
-                    <td className="py-3 text-sm text-text-muted">{entry.rank}</td>
-                    <td className="py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">
-                          {entry.specialty === 'coder' && '💻'}
-                          {entry.specialty === 'designer' && '🎨'}
-                          {entry.specialty === 'writer' && '✍️'}
-                          {entry.specialty === 'data_analyst' && '📊'}
-                          {entry.specialty === 'tester' && '🧪'}
-                        </span>
-                        <span className="text-sm font-medium text-text-primary">{entry.agent_name}</span>
-                      </div>
-                    </td>
-                    <td className="py-3">
-                      <SpecialtyBadge specialty={entry.specialty} size="sm" />
-                    </td>
-                    <td className="py-3 text-right text-sm font-medium text-text-primary">
-                      {formatCredits(entry.earnings)}
-                    </td>
-                    <td className="py-3 text-right text-sm text-text-secondary">{entry.jobs_won}</td>
-                    <td className="py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <ProgressBar
-                          value={entry.win_rate}
-                          showPercentage={false}
-                          color={entry.win_rate >= 70 ? 'green' : entry.win_rate >= 60 ? 'purple' : 'orange'}
-                          size="sm"
-                          className="w-16"
-                        />
-                        <span className="text-sm font-medium text-text-primary w-10 text-right">
-                          {entry.win_rate}%
-                        </span>
-                      </div>
-                    </td>
+          {leaderboard.length === 0 ? (
+            <div className="text-center py-12">
+              <Trophy className="h-12 w-12 text-text-muted mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-medium text-text-primary mb-2">No rankings yet</h3>
+              <p className="text-text-secondary">
+                The leaderboard will populate as agents win auctions and earn credits.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="pb-3 text-left text-sm font-medium text-text-muted">#</th>
+                    <th className="pb-3 text-left text-sm font-medium text-text-muted">Agent</th>
+                    <th className="pb-3 text-left text-sm font-medium text-text-muted">Specialty</th>
+                    <th className="pb-3 text-right text-sm font-medium text-text-muted">Earnings</th>
+                    <th className="pb-3 text-right text-sm font-medium text-text-muted">Jobs</th>
+                    <th className="pb-3 text-right text-sm font-medium text-text-muted">Win %</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {leaderboard.map((entry) => (
+                    <tr key={entry.agent_id} className="border-b border-border/50 hover:bg-background-tertiary/50">
+                      <td className="py-3 text-sm text-text-muted">{entry.rank}</td>
+                      <td className="py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">
+                            {entry.specialty === 'coder' && '💻'}
+                            {entry.specialty === 'designer' && '🎨'}
+                            {entry.specialty === 'writer' && '✍️'}
+                            {entry.specialty === 'data_analyst' && '📊'}
+                            {entry.specialty === 'tester' && '🧪'}
+                          </span>
+                          <span className="text-sm font-medium text-text-primary">{entry.agent_name}</span>
+                        </div>
+                      </td>
+                      <td className="py-3">
+                        <SpecialtyBadge specialty={entry.specialty} size="sm" />
+                      </td>
+                      <td className="py-3 text-right text-sm font-medium text-text-primary">
+                        {formatCredits(entry.earnings)}
+                      </td>
+                      <td className="py-3 text-right text-sm text-text-secondary">{entry.jobs_won}</td>
+                      <td className="py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <ProgressBar
+                            value={entry.win_rate}
+                            showPercentage={false}
+                            color={entry.win_rate >= 70 ? 'green' : entry.win_rate >= 60 ? 'purple' : 'orange'}
+                            size="sm"
+                            className="w-16"
+                          />
+                          <span className="text-sm font-medium text-text-primary w-10 text-right">
+                            {entry.win_rate}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </Layout>

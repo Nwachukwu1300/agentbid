@@ -1,144 +1,21 @@
 import { useState, useEffect } from 'react';
-import { Plus, ArrowLeftRight, Filter } from 'lucide-react';
+import { ArrowLeftRight, Filter, Users } from 'lucide-react';
 import { Layout } from '@/components/layout';
 import { TradeOfferCard, TradeCard } from '@/components/barter';
 import { SpecialtyBadge } from '@/components/ui';
 import { barterAPI } from '@/lib/api';
-import { cn, getSpecialtyLabel } from '@/lib/utils';
-import type { TradeOfferWithAgent, TradeWithDetails, AgentSpecialty, TradeStatus } from '@/types';
+import { cn } from '@/lib/utils';
+import type { TradeOfferWithAgent, TradeWithDetails, AgentSpecialty } from '@/types';
 
 type TabType = 'offers' | 'active' | 'completed';
 
-// Demo data
-const demoOffers: TradeOfferWithAgent[] = [
-  {
-    id: '1',
-    agent_id: 'a1',
-    offer_specialty: 'coder',
-    want_specialty: 'designer',
-    status: 'open',
-    matched_with_offer_id: null,
-    trade_id: null,
-    created_at: new Date(Date.now() - 300000).toISOString(),
-    expires_at: null,
-    agent_name: 'CodeCrafter X',
-    agent_credits: 3800,
-    agent_current_jobs: 2,
-  },
-  {
-    id: '2',
-    agent_id: 'a2',
-    offer_specialty: 'designer',
-    want_specialty: 'writer',
-    status: 'open',
-    matched_with_offer_id: null,
-    trade_id: null,
-    created_at: new Date(Date.now() - 600000).toISOString(),
-    expires_at: null,
-    agent_name: 'DesignBot Pro',
-    agent_credits: 2400,
-    agent_current_jobs: 1,
-  },
-  {
-    id: '3',
-    agent_id: 'a3',
-    offer_specialty: 'data_analyst',
-    want_specialty: 'coder',
-    status: 'open',
-    matched_with_offer_id: null,
-    trade_id: null,
-    created_at: new Date(Date.now() - 900000).toISOString(),
-    expires_at: null,
-    agent_name: 'DataDive Pro',
-    agent_credits: 2800,
-    agent_current_jobs: 3,
-  },
-  {
-    id: '4',
-    agent_id: 'a4',
-    offer_specialty: 'tester',
-    want_specialty: 'data_analyst',
-    status: 'open',
-    matched_with_offer_id: null,
-    trade_id: null,
-    created_at: new Date(Date.now() - 1200000).toISOString(),
-    expires_at: null,
-    agent_name: 'TestMaster Elite',
-    agent_credits: 1200,
-    agent_current_jobs: 1,
-  },
-];
-
-const demoActiveTrades: TradeWithDetails[] = [
-  {
-    id: 't1',
-    offer_a_id: 'o1',
-    offer_b_id: 'o2',
-    agent_a_id: 'a1',
-    agent_b_id: 'a5',
-    status: 'in_progress',
-    job_a_specialty: 'writer',
-    job_b_specialty: 'coder',
-    job_a_completed: true,
-    job_b_completed: false,
-    created_at: new Date(Date.now() - 1800000).toISOString(),
-    started_at: new Date(Date.now() - 1500000).toISOString(),
-    completed_at: null,
-    agent_a_name: 'WriteFlow AI',
-    agent_b_name: 'CodeCrafter X',
-    job_a_description: 'Technical documentation for API',
-    job_b_description: 'Backend integration module',
-  },
-  {
-    id: 't2',
-    offer_a_id: 'o3',
-    offer_b_id: 'o4',
-    agent_a_id: 'a2',
-    agent_b_id: 'a3',
-    status: 'in_progress',
-    job_a_specialty: 'designer',
-    job_b_specialty: 'tester',
-    job_a_completed: false,
-    job_b_completed: false,
-    created_at: new Date(Date.now() - 2400000).toISOString(),
-    started_at: new Date(Date.now() - 2100000).toISOString(),
-    completed_at: null,
-    agent_a_name: 'DesignBot Pro',
-    agent_b_name: 'TestMaster Elite',
-    job_a_description: 'UI mockups for mobile app',
-    job_b_description: 'Automated test suite',
-  },
-];
-
-const demoCompletedTrades: TradeWithDetails[] = [
-  {
-    id: 't3',
-    offer_a_id: 'o5',
-    offer_b_id: 'o6',
-    agent_a_id: 'a4',
-    agent_b_id: 'a1',
-    status: 'completed',
-    job_a_specialty: 'data_analyst',
-    job_b_specialty: 'writer',
-    job_a_completed: true,
-    job_b_completed: true,
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-    started_at: new Date(Date.now() - 6900000).toISOString(),
-    completed_at: new Date(Date.now() - 3600000).toISOString(),
-    agent_a_name: 'DataDive Pro',
-    agent_b_name: 'WriteFlow AI',
-    job_a_description: 'Sales analytics report',
-    job_b_description: 'Executive summary document',
-  },
-];
-
 export function BarterBoardPage() {
   const [activeTab, setActiveTab] = useState<TabType>('offers');
-  const [offers, setOffers] = useState<TradeOfferWithAgent[]>(demoOffers);
-  const [activeTrades, setActiveTrades] = useState<TradeWithDetails[]>(demoActiveTrades);
-  const [completedTrades, setCompletedTrades] = useState<TradeWithDetails[]>(demoCompletedTrades);
+  const [offers, setOffers] = useState<TradeOfferWithAgent[]>([]);
+  const [activeTrades, setActiveTrades] = useState<TradeWithDetails[]>([]);
+  const [completedTrades, setCompletedTrades] = useState<TradeWithDetails[]>([]);
   const [filterSpecialty, setFilterSpecialty] = useState<AgentSpecialty | 'all'>('all');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Fetch data from API
   useEffect(() => {
@@ -150,15 +27,27 @@ export function BarterBoardPage() {
           barterAPI.listTrades(),
         ]);
 
-        if (offersData.length > 0) {
-          setOffers(offersData);
+        setOffers(offersData);
+
+        // Separate trades by status
+        const activeTradesList: TradeWithDetails[] = [];
+        const completedTradesList: TradeWithDetails[] = [];
+
+        for (const trade of tradesData) {
+          try {
+            const tradeDetails = await barterAPI.getTrade(trade.id);
+            if (trade.status === 'in_progress' || trade.status === 'pending') {
+              activeTradesList.push(tradeDetails);
+            } else if (trade.status === 'completed') {
+              completedTradesList.push(tradeDetails);
+            }
+          } catch {
+            // Skip trades we can't fetch details for
+          }
         }
 
-        if (tradesData.length > 0) {
-          const active = tradesData.filter((t) => t.status === 'in_progress' || t.status === 'pending');
-          const completed = tradesData.filter((t) => t.status === 'completed');
-          // Would need to fetch full details for each trade
-        }
+        setActiveTrades(activeTradesList);
+        setCompletedTrades(completedTradesList);
       } catch (error) {
         console.error('Failed to fetch barter data:', error);
       } finally {
@@ -196,10 +85,6 @@ export function BarterBoardPage() {
             </div>
             <p className="text-text-secondary">Direct service exchanges between agents</p>
           </div>
-          <button className="btn-primary">
-            <Plus className="mr-2 h-4 w-4" />
-            Post Trade Offer
-          </button>
         </div>
 
         {/* Tabs */}
@@ -229,7 +114,7 @@ export function BarterBoardPage() {
         </div>
 
         {/* Filters (for offers tab) */}
-        {activeTab === 'offers' && (
+        {activeTab === 'offers' && offers.length > 0 && (
           <div className="flex items-center gap-3 mb-6">
             <div className="flex items-center gap-2 text-sm text-text-muted">
               <Filter className="h-4 w-4" />
@@ -283,48 +168,81 @@ export function BarterBoardPage() {
         ) : (
           <>
             {activeTab === 'offers' && (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <>
                 {filteredOffers.length === 0 ? (
-                  <div className="col-span-full card text-center py-12">
-                    <ArrowLeftRight className="h-12 w-12 text-text-muted mx-auto mb-4" />
-                    <p className="text-text-muted">No open trade offers</p>
+                  <div className="card text-center py-16">
+                    <div className="flex justify-center mb-4">
+                      <div className="rounded-full bg-accent-purple/10 p-4">
+                        <Users className="h-8 w-8 text-accent-purple" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-text-primary mb-2">
+                      No open trade offers
+                    </h3>
+                    <p className="text-text-secondary max-w-sm mx-auto">
+                      Agents will post trade offers here when they want to exchange services with other specialties.
+                    </p>
                   </div>
                 ) : (
-                  filteredOffers.map((offer) => (
-                    <TradeOfferCard
-                      key={offer.id}
-                      offer={offer}
-                      onAccept={() => console.log('Accept offer:', offer.id)}
-                    />
-                  ))
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredOffers.map((offer) => (
+                      <TradeOfferCard
+                        key={offer.id}
+                        offer={offer}
+                        onAccept={() => console.log('Accept offer:', offer.id)}
+                      />
+                    ))}
+                  </div>
                 )}
-              </div>
+              </>
             )}
 
             {activeTab === 'active' && (
-              <div className="grid sm:grid-cols-2 gap-4">
+              <>
                 {activeTrades.length === 0 ? (
-                  <div className="col-span-full card text-center py-12">
-                    <ArrowLeftRight className="h-12 w-12 text-text-muted mx-auto mb-4" />
-                    <p className="text-text-muted">No active trades</p>
+                  <div className="card text-center py-16">
+                    <div className="flex justify-center mb-4">
+                      <div className="rounded-full bg-accent-cyan/10 p-4">
+                        <ArrowLeftRight className="h-8 w-8 text-accent-cyan" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-text-primary mb-2">
+                      No active trades
+                    </h3>
+                    <p className="text-text-secondary max-w-sm mx-auto">
+                      When agents match and start exchanging services, their trades will appear here.
+                    </p>
                   </div>
                 ) : (
-                  activeTrades.map((trade) => <TradeCard key={trade.id} trade={trade} />)
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {activeTrades.map((trade) => <TradeCard key={trade.id} trade={trade} />)}
+                  </div>
                 )}
-              </div>
+              </>
             )}
 
             {activeTab === 'completed' && (
-              <div className="grid sm:grid-cols-2 gap-4">
+              <>
                 {completedTrades.length === 0 ? (
-                  <div className="col-span-full card text-center py-12">
-                    <ArrowLeftRight className="h-12 w-12 text-text-muted mx-auto mb-4" />
-                    <p className="text-text-muted">No completed trades yet</p>
+                  <div className="card text-center py-16">
+                    <div className="flex justify-center mb-4">
+                      <div className="rounded-full bg-accent-green/10 p-4">
+                        <Users className="h-8 w-8 text-accent-green" />
+                      </div>
+                    </div>
+                    <h3 className="text-lg font-semibold text-text-primary mb-2">
+                      No completed trades yet
+                    </h3>
+                    <p className="text-text-secondary max-w-sm mx-auto">
+                      Successfully completed trades between agents will be recorded here.
+                    </p>
                   </div>
                 ) : (
-                  completedTrades.map((trade) => <TradeCard key={trade.id} trade={trade} />)
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {completedTrades.map((trade) => <TradeCard key={trade.id} trade={trade} />)}
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </>
         )}
