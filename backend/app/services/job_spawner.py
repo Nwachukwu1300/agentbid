@@ -7,6 +7,7 @@ from app.services.database import get_database_service
 from app.services.job_service import JobService
 from app.services.auction_service import AuctionService
 from app.services.agent_service import AgentService
+from app.services.agent_intelligence import AgentIntelligenceService
 from app.services.job_templates import generate_job
 from app.models.job import JobCreate
 from app.models.auction import AuctionCreate
@@ -24,6 +25,7 @@ class JobSpawner:
         self._spawn_task: asyncio.Task | None = None
         self._close_task: asyncio.Task | None = None
         self._complete_task: asyncio.Task | None = None
+        self._bidding_task: asyncio.Task | None = None
 
     async def start(self):
         """Start all background tasks."""
@@ -36,13 +38,14 @@ class JobSpawner:
         self._spawn_task = asyncio.create_task(self._job_spawn_loop())
         self._close_task = asyncio.create_task(self._auction_close_loop())
         self._complete_task = asyncio.create_task(self._job_completion_loop())
+        self._bidding_task = asyncio.create_task(self._agent_bidding_loop())
 
     async def stop(self):
         """Stop all background tasks."""
         self._running = False
         logger.info("Stopping JobSpawner background tasks")
 
-        tasks = [self._spawn_task, self._close_task, self._complete_task]
+        tasks = [self._spawn_task, self._close_task, self._complete_task, self._bidding_task]
         for task in tasks:
             if task:
                 task.cancel()
@@ -144,7 +147,6 @@ class JobSpawner:
             # We use created_at + duration since we don't track when job started
             job_created = job.created_at
             if hasattr(job_created, 'tzinfo') and job_created.tzinfo is None:
-                from datetime import timezone
                 job_created = job_created.replace(tzinfo=timezone.utc)
 
             elapsed = (now - job_created).total_seconds()
@@ -166,6 +168,46 @@ class JobSpawner:
                         )
                 except Exception as e:
                     logger.error(f"Error completing job {job.id}: {e}")
+
+
+    async def _agent_bidding_loop(self):
+        """Trigger agents to bid on active auctions every 10 seconds."""
+        while self._running:
+            try:
+                await self._trigger_agent_bids()
+            except Exception as e:
+                logger.error(f"Error in agent bidding loop: {e}")
+
+            await asyncio.sleep(10)  # Check every 10 seconds
+
+    async def _trigger_agent_bids(self):
+        """Trigger all eligible agents to bid on all active auctions."""
+        db = get_database_service()
+        auction_service = AuctionService(db)
+        intelligence_service = AgentIntelligenceService(db)
+
+        # Get all active auctions
+        active_auctions = await auction_service.get_active_auctions(limit=20)
+
+        for auction in active_auctions:
+            # Only trigger bidding if auction has more than 15 seconds remaining
+            if auction.time_remaining_seconds < 15:
+                continue
+
+            try:
+                # Trigger agents matching the job specialty to make decisions
+                decisions = await intelligence_service.trigger_all_agents_for_auction(
+                    auction.id,
+                    specialty_match_only=True,
+                )
+                bid_count = sum(1 for d in decisions if d.decision_type.value == "BID")
+                if bid_count > 0:
+                    logger.info(
+                        f"Auction {auction.id} ({auction.job_title}): "
+                        f"{bid_count}/{len(decisions)} agents placed bids"
+                    )
+            except Exception as e:
+                logger.error(f"Error triggering bids for auction {auction.id}: {e}")
 
 
 # Global spawner instance

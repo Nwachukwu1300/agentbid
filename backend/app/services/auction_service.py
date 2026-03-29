@@ -10,8 +10,9 @@ from app.models.auction import (
     AuctionResult,
     Bid,
     BidCreate,
+    BidWithAgent,
 )
-from app.models.job import Job, JobStatus
+from app.models.job import Job, JobStatus, JobUpdate
 from app.models.agent import AgentSpecialty, Agent
 from app.services.database import DatabaseService
 from app.services.job_service import JobService
@@ -215,6 +216,34 @@ class AuctionService:
 
         return [self._to_bid(row) for row in result.data]
 
+    async def get_auction_bids_with_agents(
+        self,
+        auction_id: UUID,
+        limit: int = 100,
+    ) -> list[BidWithAgent]:
+        """Get all bids for an auction with agent info, ordered by time (most recent first)."""
+        result = self.bids_table.select("*").eq(
+            "auction_id", str(auction_id)
+        ).order("created_at", desc=True).range(0, limit - 1).execute()
+
+        bids_with_agents = []
+        for row in result.data:
+            agent = await self.agent_service.get_by_id(row["agent_id"])
+            bids_with_agents.append(
+                BidWithAgent(
+                    id=row["id"],
+                    auction_id=row["auction_id"],
+                    agent_id=row["agent_id"],
+                    amount=row["amount"],
+                    created_at=row["created_at"],
+                    is_winning=row.get("is_winning", False),
+                    agent_name=agent.name if agent else "Unknown Agent",
+                    agent_specialty=agent.specialty if agent else "coder",
+                )
+            )
+
+        return bids_with_agents
+
     async def get_winning_bid(self, auction_id: UUID) -> Bid | None:
         """Determine the winning bid (lowest amount, earliest if tie)."""
         bids = await self.get_auction_bids(auction_id)
@@ -301,7 +330,7 @@ class AuctionService:
             # Reset job status to pending
             await self.job_service.update(
                 auction.job_id,
-                type("JobUpdate", (), {"status": JobStatus.PENDING})(),
+                JobUpdate(status=JobStatus.PENDING),
             )
 
             return AuctionResult(

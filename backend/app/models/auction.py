@@ -14,7 +14,7 @@ class AuctionStatus(str, Enum):
 
 class AuctionBase(BaseModel):
     job_id: UUID
-    duration_seconds: int = Field(..., ge=90, le=120)
+    duration_seconds: int = Field(..., ge=60, le=900)  # 1-15 minutes allowed
 
 
 class AuctionCreate(BaseModel):

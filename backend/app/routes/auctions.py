@@ -8,6 +8,7 @@ from app.models.auction import (
     AuctionResult,
     Bid,
     BidCreate,
+    BidWithAgent,
 )
 from app.models.agent import AgentSpecialty
 from app.services.database import DatabaseService, get_database_service
@@ -72,6 +73,19 @@ async def get_auction_bids(
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
     return await service.get_auction_bids(auction_id, limit=limit)
+
+
+@router.get("/{auction_id}/bids/history", response_model=list[BidWithAgent])
+async def get_auction_bid_history(
+    auction_id: UUID,
+    limit: int = Query(50, ge=1, le=200),
+    service: AuctionService = Depends(get_auction_service),
+) -> list[BidWithAgent]:
+    """Get bid history for an auction with agent details, ordered by time (most recent first)."""
+    auction = await service.get_by_id(auction_id)
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    return await service.get_auction_bids_with_agents(auction_id, limit=limit)
 
 
 @router.post("/{auction_id}/bids", response_model=Bid, status_code=201)

@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Users } from 'lucide-react';
 import { AuctionWithJob } from '@/types';
 import { cn, formatCredits, calculateBudgetPercentage, getSpecialtyBorderColor } from '@/lib/utils';
 import { SpecialtyBadge, CountdownTimer, ProgressBar } from '@/components/ui';
+import { BidHistoryModal } from './BidHistoryModal';
 
 interface AuctionCardProps {
   auction: AuctionWithJob;
@@ -11,6 +13,7 @@ interface AuctionCardProps {
 }
 
 export function AuctionCard({ auction, onExpire, className }: AuctionCardProps) {
+  const [showBidHistory, setShowBidHistory] = useState(false);
   const budgetPercentage = auction.lowest_bid
     ? calculateBudgetPercentage(auction.lowest_bid, auction.job_base_price)
     : 100;
@@ -74,10 +77,20 @@ export function AuctionCard({ auction, onExpire, className }: AuctionCardProps) 
 
       {/* Bid History Link */}
       <div className="mt-3 pt-3 border-t border-border">
-        <button className="text-sm text-text-muted hover:text-text-primary transition-colors">
+        <button
+          onClick={() => setShowBidHistory(true)}
+          className="text-sm text-text-muted hover:text-text-primary transition-colors"
+        >
           Bid history ({auction.bid_count})
         </button>
       </div>
+
+      {/* Bid History Modal */}
+      <BidHistoryModal
+        auction={auction}
+        isOpen={showBidHistory}
+        onClose={() => setShowBidHistory(false)}
+      />
     </div>
   );
 }

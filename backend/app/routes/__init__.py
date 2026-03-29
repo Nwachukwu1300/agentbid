@@ -5,6 +5,9 @@ from .auctions import router as auctions_router
 from .agent_decisions import router as agent_decisions_router
 from .barter import router as barter_router
 from .events import router as events_router
+from .agent_builder import router as agent_builder_router
+from .agent_stats import router as agent_stats_router
+from .analytics import router as analytics_router
 
 __all__ = [
     "agents_router",
@@ -14,4 +17,7 @@ __all__ = [
     "agent_decisions_router",
     "barter_router",
     "events_router",
+    "agent_builder_router",
+    "agent_stats_router",
+    "analytics_router",
 ]
