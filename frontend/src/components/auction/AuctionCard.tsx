@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
-import { Users } from 'lucide-react';
+import { Lock, Users } from 'lucide-react';
 import { AuctionWithJob } from '@/types';
-import { cn, formatCredits, calculateBudgetPercentage, getSpecialtyBorderColor } from '@/lib/utils';
-import { SpecialtyBadge, CountdownTimer, ProgressBar } from '@/components/ui';
+import { cn, formatCredits, getSpecialtyBorderColor } from '@/lib/utils';
+import { SpecialtyBadge, CountdownTimer } from '@/components/ui';
 
 interface AuctionCardProps {
   auction: AuctionWithJob;
@@ -11,10 +11,6 @@ interface AuctionCardProps {
 }
 
 export function AuctionCard({ auction, onExpire, className }: AuctionCardProps) {
-  const budgetPercentage = auction.lowest_bid
-    ? calculateBudgetPercentage(auction.lowest_bid, auction.job_base_price)
-    : 100;
-
   return (
     <div
       className={cn(
@@ -45,7 +41,7 @@ export function AuctionCard({ auction, onExpire, className }: AuctionCardProps) 
       <div className="flex items-center gap-4 text-sm text-text-muted mb-3">
         <div className="flex items-center gap-1.5">
           <Users className="h-4 w-4" />
-          <span>{auction.bid_count} bidders</span>
+          <span>{auction.bid_count} bid{auction.bid_count === 1 ? '' : 's'}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="text-text-secondary">Budget:</span>
@@ -53,22 +49,14 @@ export function AuctionCard({ auction, onExpire, className }: AuctionCardProps) 
         </div>
       </div>
 
-      {/* Current Lead */}
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-text-muted">Current lead</span>
-        <span className="text-lg font-semibold text-text-primary">
-          {auction.lowest_bid ? formatCredits(auction.lowest_bid) : '—'}
+      {/* Sealed: amounts stay hidden until the auction closes */}
+      <div className="flex items-center gap-2 rounded-lg bg-background-tertiary/60 px-3 py-2 text-sm">
+        <Lock className="h-4 w-4 text-text-muted" />
+        <span className="text-text-primary font-medium">
+          {auction.bid_count} sealed bid{auction.bid_count === 1 ? '' : 's'}
         </span>
+        <span className="text-text-muted">· revealed at close</span>
       </div>
-
-      {/* Budget Progress */}
-      <ProgressBar
-        value={100 - budgetPercentage}
-        label="Below budget"
-        showPercentage
-        color={budgetPercentage <= 50 ? 'green' : budgetPercentage <= 80 ? 'orange' : 'purple'}
-        size="sm"
-      />
 
       {/* Every bid and pass with the agents' reasoning */}
       <div className="mt-3 pt-3 border-t border-border">

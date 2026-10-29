@@ -85,10 +85,12 @@ class JobService:
         job_id: UUID,
         agent_id: UUID,
         winning_bid: int,
+        work_cost: int | None = None,
     ) -> Job | None:
         result = self.table.update({
             "assigned_agent_id": str(agent_id),
             "winning_bid": winning_bid,
+            "work_cost": work_cost,
             # Work starts as soon as the job is won; the completion timer runs from auction close
             "status": JobStatus.IN_PROGRESS.value,
         }).eq("id", str(job_id)).execute()
@@ -143,6 +145,7 @@ class JobService:
             status=JobStatus(data["status"]),
             assigned_agent_id=data.get("assigned_agent_id"),
             winning_bid=data.get("winning_bid"),
+            work_cost=data.get("work_cost"),
             created_at=data["created_at"],
             completed_at=data.get("completed_at"),
         )

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Trophy, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Trophy, MessageSquare, Lock } from 'lucide-react';
 import { Layout } from '@/components/layout';
 import { CountdownTimer, LiveIndicator, SpecialtyBadge } from '@/components/ui';
 import { auctionsAPI } from '@/lib/api';
@@ -10,9 +10,8 @@ import type { AgentOutcomeKind, AuctionBreakdown } from '@/types';
 
 const OUTCOME_STYLES: Record<AgentOutcomeKind, { label: string; className: string }> = {
   won: { label: 'Won', className: 'bg-accent-green/20 text-accent-green' },
-  leading: { label: 'Leading', className: 'bg-accent-green/20 text-accent-green' },
   lost: { label: 'Lost', className: 'bg-accent-red/20 text-accent-red' },
-  behind: { label: 'Behind', className: 'bg-accent-orange/20 text-accent-orange' },
+  sealed: { label: 'Sealed bid', className: 'bg-accent-purple/20 text-accent-purple' },
   passed: { label: 'Passed', className: 'bg-background-tertiary text-text-muted' },
   no_winner: { label: 'No winner', className: 'bg-background-tertiary text-text-muted' },
 };
@@ -96,7 +95,7 @@ export function AuctionDetailPage() {
           <p className="text-text-secondary mb-4">{auction.job_description}</p>
           <div className="flex flex-wrap gap-6 text-sm">
             <div><span className="text-text-muted">Budget </span><span className="font-medium text-text-primary">{auction.job_base_price}</span></div>
-            <div><span className="text-text-muted">Work cost </span><span className="font-medium text-text-primary">{work_cost}</span></div>
+            <div><span className="text-text-muted">Work cost </span><span className="font-medium text-text-primary">{work_cost} idle, +10% per running job</span></div>
             <div><span className="text-text-muted">Bids </span><span className="font-medium text-text-primary">{auction.bid_count}</span></div>
             {auction.winning_agent_name && auction.winning_agent_id && (
               <div className="flex items-center gap-1">
@@ -111,9 +110,18 @@ export function AuctionDetailPage() {
           </div>
         </div>
 
+        {isLive && (
+          <div className="card mb-6 flex items-center gap-3 border-accent-purple/40">
+            <Lock className="h-5 w-5 text-accent-purple" />
+            <p className="text-sm text-text-secondary">
+              Sealed auction: each agent gets one bid and can't see the others. Amounts and reasoning are revealed when the auction closes.
+            </p>
+          </div>
+        )}
+
         {/* Why each agent won or lost */}
         <div className="card mb-6">
-          <h2 className="font-semibold text-text-primary mb-4">{isLive ? 'Where each agent stands' : 'Why each agent won or lost'}</h2>
+          <h2 className="font-semibold text-text-primary mb-4">{isLive ? 'Who has made their move' : 'Why each agent won or lost'}</h2>
           {agents.length === 0 ? (
             <p className="text-sm text-text-muted">No agent has made a move yet.</p>
           ) : (
@@ -127,7 +135,8 @@ export function AuctionDetailPage() {
                     <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', OUTCOME_STYLES[a.outcome].className)}>
                       {OUTCOME_STYLES[a.outcome].label}
                     </span>
-                    {a.best_bid !== null && <span className="text-sm text-text-muted">best bid {a.best_bid}</span>}
+                    {a.best_bid !== null && <span className="text-sm text-text-muted">bid {a.best_bid}</span>}
+                    {a.work_cost !== null && <span className="text-sm text-text-muted">· cost {a.work_cost}</span>}
                   </div>
                   <p className="text-sm text-text-primary">{a.explanation}</p>
                   {a.last_reasoning && (
@@ -154,7 +163,7 @@ export function AuctionDetailPage() {
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <span className="font-medium text-text-primary">{d.agent_name}</span>
                     <span className={d.decision_type === 'bid' ? 'text-accent-purple font-medium' : 'text-text-muted'}>
-                      {d.decision_type === 'bid' ? `bid ${d.bid_amount}` : 'passed'}
+                      {d.decision_type === 'bid' ? (d.bid_amount === null ? 'sealed bid' : `bid ${d.bid_amount}`) : 'passed'}
                     </span>
                     <span className="text-xs text-text-muted">{new Date(d.created_at).toLocaleTimeString()}</span>
                   </div>

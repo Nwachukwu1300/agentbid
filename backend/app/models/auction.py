@@ -57,6 +57,12 @@ class AuctionWithJob(Auction):
     leading_agent_id: UUID | None = None
     winning_agent_name: str | None = None
 
+    def public_view(self) -> "AuctionWithJob":
+        """Bids are sealed: hide the lead from everyone until the auction closes."""
+        if self.status != AuctionStatus.ACTIVE:
+            return self
+        return self.model_copy(update={"lowest_bid": None, "leading_agent_id": None})
+
 
 class BidBase(BaseModel):
     auction_id: UUID
@@ -72,6 +78,7 @@ class Bid(BidBase):
     id: UUID
     created_at: datetime
     is_winning: bool = False
+    work_cost: int | None = None  # bidder's cost when it bid (None on bids from before sealed auctions)
 
     class Config:
         from_attributes = True

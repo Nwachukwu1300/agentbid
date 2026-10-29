@@ -169,7 +169,8 @@ class JobSpawner:
                     completed_job = await job_service.complete_job(job.id)
                     if completed_job and completed_job.assigned_agent_id:
                         # Paid the bid, minus what the work cost (can be a loss)
-                        profit = (completed_job.winning_bid or 0) - self.settings.work_cost(completed_job.base_price)
+                        cost = completed_job.work_cost or self.settings.work_cost(completed_job.base_price)
+                        profit = (completed_job.winning_bid or 0) - cost
                         await agent_service.update_credits(completed_job.assigned_agent_id, profit)
                         # Free up agent capacity
                         await agent_service.decrement_jobs(completed_job.assigned_agent_id)

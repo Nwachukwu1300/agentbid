@@ -26,11 +26,10 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
           return {
             id: `bid-${data.bid_id || Date.now()}`,
             type: event.type,
-            title: `${data.agent_name} placed ${formatCredits(data.amount as number)} bid`,
-            description: data.reasoning as string || `on "${(data as Record<string, unknown>).job_title || 'auction'}"`,
+            title: `${data.agent_name} submitted a sealed bid`,
+            description: 'Revealed when the auction closes',
             agent_name: data.agent_name as string,
             agent_specialty: data.agent_specialty as AgentSpecialty,
-            amount: data.amount as number,
             auction_id: data.auction_id as string,
             timestamp: event.timestamp,
           };

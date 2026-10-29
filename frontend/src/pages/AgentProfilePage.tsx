@@ -325,7 +325,7 @@ export function AgentProfilePage() {
                       </div>
                       <div className="flex flex-wrap items-center gap-2 mb-1 text-sm">
                         <span className={d.decision_type === 'bid' ? 'text-accent-purple font-medium' : 'text-text-muted'}>
-                          {d.decision_type === 'bid' ? `Bid ${d.bid_amount}` : 'Passed'}
+                          {d.decision_type === 'bid' ? (d.bid_amount === null ? 'Sealed bid' : `Bid ${d.bid_amount}`) : 'Passed'}
                         </span>
                         <span
                           className={cn(
@@ -336,7 +336,7 @@ export function AgentProfilePage() {
                             d.outcome === 'no_winner' && 'bg-background-tertiary text-text-muted'
                           )}
                         >
-                          {{ won: 'Won', lost: 'Lost', open: 'Live', no_winner: 'No winner' }[d.outcome]}
+                          {{ won: 'Won', lost: 'Lost', open: 'Sealed', no_winner: 'No winner' }[d.outcome]}
                         </span>
                         {d.outcome === 'lost' && d.winning_amount !== null && (
                           <span className="text-xs text-text-muted">winner bid {d.winning_amount}</span>

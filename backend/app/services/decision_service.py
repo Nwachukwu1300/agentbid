@@ -8,35 +8,44 @@ from app.services.auction_service import AuctionService
 from app.services.database import DatabaseService
 
 
+SEALED = "Sealed until the auction closes."
+
+
 def explain(
     status: AuctionStatus,
     is_winner: bool,
-    is_leader: bool,
     best_bid: int | None,
     winning_amount: int | None,
-    lead: int | None,
-    work_cost: int,
+    cost: str | None,
+    winner_cost: str | None,
+    cost_value: int | None = None,
 ) -> tuple[str, str]:
-    """(outcome, one-line explanation) for one agent in one auction."""
+    """(outcome, one-line explanation) for one agent in one auction.
+
+    cost / winner_cost are labels like "86 (2 jobs running)"; None for bids from before sealed auctions.
+    """
+    if status == AuctionStatus.ACTIVE:
+        return ("sealed", "Bid submitted. Revealed when the auction closes.") if best_bid is not None \
+            else ("passed", "Passed.")
     if best_bid is None:
         return "passed", "Never bid."
+    yours = f" with a work cost of {cost}" if cost else ""
+    theirs = f" with a work cost of {winner_cost}" if winner_cost else ""
     if status == AuctionStatus.CANCELLED:
         return "no_winner", f"Bid {best_bid}, but the auction closed without a winner."
-    if status == AuctionStatus.ACTIVE:
-        if is_leader or lead is None:
-            return "leading", f"Leading at {best_bid}."
-        if best_bid == lead:
-            return "behind", f"Bid {lead}, same as the lead but later. Ties go to the earlier bid."
-        return "behind", f"Best bid {best_bid}, {best_bid - lead} above the current lead of {lead}."
     if is_winner:
-        profit = best_bid - work_cost
-        if profit < 0:
-            return "won", f"Won at {best_bid}, below the work cost of {work_cost}: a loss of {-profit}."
-        return "won", f"Won at {best_bid}. Profit after work cost: {profit}."
+        if cost_value is None:
+            return "won", f"Won at {best_bid}."
+        profit = best_bid - cost_value
+        result = f"profit {profit}" if profit >= 0 else f"a loss of {-profit}"
+        return "won", f"Won at {best_bid}{yours}: {result}."
     if winning_amount is None:
-        return "lost", f"Best bid {best_bid}."
+        return "lost", f"Bid {best_bid}{yours}."
     if best_bid > winning_amount:
-        return "lost", f"Best bid {best_bid}, {best_bid - winning_amount} above the winning {winning_amount}."
+        return "lost", (
+            f"Bid {best_bid}{yours}. The winner bid {winning_amount}, "
+            f"{best_bid - winning_amount} lower{theirs}."
+        )
     if best_bid == winning_amount:
         return "lost", f"Bid {winning_amount}, same as the winner but later. Ties go to the earlier bid."
     return "lost", (
@@ -51,6 +60,14 @@ class DecisionService:
         self.decisions = db.table("agent_decisions")
         self.auction_service = AuctionService(db)
         self.settings = get_settings()
+
+    def _cost_label(self, cost: int | None, base_price: int) -> str | None:
+        """e.g. "86 (2 jobs running)", worked back from the cost formula; None for old bids."""
+        if cost is None:
+            return None
+        idle = base_price * self.settings.work_cost_ratio
+        jobs = round((cost / idle - 1) / self.settings.workload_cost_step) if idle else 0
+        return f"{cost} (idle)" if jobs <= 0 else f"{cost} ({jobs} job{'s' if jobs > 1 else ''} running)"
 
     def _agents_by_id(self, agent_ids: set[str]) -> dict[str, dict]:
         if not agent_ids:
@@ -76,32 +93,40 @@ class DecisionService:
         auction: AuctionWithJob | None = await self.auction_service.get_auction_with_job(auction_id)
         if not auction:
             return None
-        work_cost = self.settings.work_cost(auction.job_base_price)
+        base_price = auction.job_base_price
+        sealed = auction.status == AuctionStatus.ACTIVE
         decisions = await self.for_auction(auction_id)
+        if sealed:
+            decisions = [{**d, "bid_amount": None, "reasoning": SEALED} for d in decisions]
 
-        # Best bid per agent from the bids table (decisions can include failed bids)
+        # Each agent's bid and the work cost it faced (bids are sorted lowest first)
         best: dict[str, int] = {}
+        costs: dict[str, int | None] = {}
         for bid in await self.auction_service.get_auction_bids(auction_id):
-            best.setdefault(str(bid.agent_id), bid.amount)  # bids are sorted lowest first
+            agent_id = str(bid.agent_id)
+            if agent_id not in best:
+                best[agent_id] = bid.amount
+                costs[agent_id] = bid.work_cost
 
         last_reasoning = {d["agent_id"]: d["reasoning"] for d in decisions}  # oldest first, so last wins
         agent_ids = set(best) | set(last_reasoning)
         agents = self._agents_by_id(agent_ids)
         winner_id = str(auction.winning_agent_id) if auction.winning_agent_id else None
-        leader_id = str(auction.leading_agent_id) if auction.leading_agent_id else None
+        label = {agent_id: self._cost_label(cost, base_price) for agent_id, cost in costs.items()}
 
         summaries = []
         for agent_id in agent_ids:
             outcome, explanation = explain(
-                auction.status, agent_id == winner_id, agent_id == leader_id, best.get(agent_id),
-                auction.winning_amount, auction.lowest_bid, work_cost,
+                auction.status, agent_id == winner_id, best.get(agent_id), auction.winning_amount,
+                label.get(agent_id), label.get(winner_id) if winner_id else None, costs.get(agent_id),
             )
             summaries.append({
                 "agent_id": agent_id,
                 "agent_name": agents.get(agent_id, {}).get("name", "Unknown agent"),
                 "specialty": agents.get(agent_id, {}).get("specialty"),
-                "best_bid": best.get(agent_id),
-                "last_reasoning": last_reasoning.get(agent_id),
+                "best_bid": None if sealed else best.get(agent_id),
+                "work_cost": None if sealed else costs.get(agent_id),
+                "last_reasoning": None if sealed else last_reasoning.get(agent_id),
                 "outcome": outcome,
                 "explanation": explanation,
             })
@@ -109,8 +134,8 @@ class DecisionService:
         summaries.sort(key=lambda s: (s["outcome"] != "won", s["best_bid"] is None, s["best_bid"] or 0))
 
         return {
-            "auction": auction.model_dump(mode="json"),
-            "work_cost": work_cost,
+            "auction": auction.public_view().model_dump(mode="json"),
+            "work_cost": self.settings.work_cost(base_price),  # an idle agent's cost
             "decisions": decisions,
             "agents": summaries,
         }
@@ -144,6 +169,7 @@ class DecisionService:
             status = auction.get("status")
             if status == AuctionStatus.ACTIVE.value:
                 outcome = "open"
+                row = {**row, "bid_amount": None, "reasoning": SEALED}
             elif status == AuctionStatus.CLOSED.value:
                 outcome = "won" if auction.get("winning_agent_id") == str(agent_id) else "lost"
             else:

@@ -55,7 +55,7 @@ class AuctionContext(BaseModel):
     job_description: str
     job_specialty: str
     market_average_price: int  # Base price for the job type
-    current_leading_bid: int | None  # None if no bids yet
+    rival_count: int  # other active agents of this specialty (bids are sealed)
     time_remaining_seconds: float
     total_bids: int
 

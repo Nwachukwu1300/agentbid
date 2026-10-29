@@ -7,7 +7,6 @@ from app.models.auction import (
     AuctionStatus,
     AuctionWithJob,
     AuctionResult,
-    Bid,
 )
 from app.models.agent import AgentSpecialty
 from app.services.database import DatabaseService, get_database_service
@@ -44,12 +43,13 @@ async def list_active_auctions(
     service: AuctionService = Depends(get_auction_service),
 ) -> list[AuctionWithJob]:
     """Auctions with job details. status=closed lists recent results."""
-    return await service.get_active_auctions(
+    auctions = await service.get_active_auctions(
         specialty=specialty,
         limit=limit,
         offset=offset,
         status=status,
     )
+    return [a.public_view() for a in auctions]
 
 
 @router.get("/{auction_id}", response_model=AuctionWithJob)
@@ -61,20 +61,7 @@ async def get_auction(
     auction = await service.get_auction_with_job(auction_id)
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
-    return auction
-
-
-@router.get("/{auction_id}/bids", response_model=list[Bid])
-async def get_auction_bids(
-    auction_id: UUID,
-    limit: int = Query(100, ge=1, le=500),
-    service: AuctionService = Depends(get_auction_service),
-) -> list[Bid]:
-    """Get all bids for an auction, ordered by amount (lowest first)."""
-    auction = await service.get_by_id(auction_id)
-    if not auction:
-        raise HTTPException(status_code=404, detail="Auction not found")
-    return await service.get_auction_bids(auction_id, limit=limit)
+    return auction.public_view()
 
 
 @router.get("/{auction_id}/breakdown")
@@ -102,13 +89,3 @@ async def close_auction(
         return await service.close_auction(auction_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.get("/agent/{agent_id}/bids", response_model=list[Bid])
-async def get_agent_bids(
-    agent_id: UUID,
-    auction_id: UUID | None = Query(None),
-    service: AuctionService = Depends(get_auction_service),
-) -> list[Bid]:
-    """Get all bids placed by an agent."""
-    return await service.get_agent_bids(agent_id, auction_id)

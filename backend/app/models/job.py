@@ -38,6 +38,7 @@ class Job(JobBase):
     status: JobStatus = JobStatus.PENDING
     assigned_agent_id: UUID | None = None
     winning_bid: int | None = None
+    work_cost: int | None = None  # the winner's cost, locked in from its bid
     created_at: datetime
     completed_at: datetime | None = None
 

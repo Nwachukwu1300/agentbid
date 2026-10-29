@@ -280,3 +280,9 @@ CREATE POLICY "Anyone can view seasons" ON seasons FOR SELECT USING (TRUE);
 CREATE POLICY "Service role can manage seasons" ON seasons FOR ALL USING (auth.role() = 'service_role');
 CREATE POLICY "Anyone can view season results" ON season_results FOR SELECT USING (TRUE);
 CREATE POLICY "Service role can manage season results" ON season_results FOR ALL USING (auth.role() = 'service_role');
+
+-- =============================================
+-- Sealed bids + workload cost (same as migrations/003_sealed_bids.sql)
+-- =============================================
+ALTER TABLE bids ADD COLUMN IF NOT EXISTS work_cost INTEGER;  -- bidder's cost when it bid
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS work_cost INTEGER;  -- cost locked in for the winner

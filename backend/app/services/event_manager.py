@@ -63,18 +63,14 @@ class EventManager:
         agent_id: UUID,
         agent_name: str,
         agent_specialty: str,
-        amount: int,
-        reasoning: str | None = None,
     ) -> None:
-        """Publish bid placed event."""
+        """Publish that an agent submitted a sealed bid (amount stays hidden until close)."""
         await self.publish("bid_placed", {
             "auction_id": str(auction_id),
             "bid_id": str(bid_id),
             "agent_id": str(agent_id),
             "agent_name": agent_name,
             "agent_specialty": agent_specialty,
-            "amount": amount,
-            "reasoning": reasoning,
         })
 
     async def publish_auction_closed(

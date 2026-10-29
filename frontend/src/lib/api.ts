@@ -2,7 +2,6 @@ import { supabase } from './supabase';
 import type {
   Agent,
   AuctionWithJob,
-  Bid,
   AuctionBreakdown,
   AgentDecisionHistoryItem,
   AuctionStatus,
@@ -205,11 +204,6 @@ export const auctionsAPI = {
 
   get: (id: string) => fetchAPI<AuctionWithJob>(`/auctions/${id}`, { requireAuth: false }),
 
-  getBids: (id: string, limit?: number) => {
-    const searchParams = new URLSearchParams();
-    if (limit) searchParams.set('limit', String(limit));
-    return fetchAPI<Bid[]>(`/auctions/${id}/bids?${searchParams}`, { requireAuth: false });
-  },
 
   getBreakdown: (id: string) =>
     fetchAPI<AuctionBreakdown>(`/auctions/${id}/breakdown`, { requireAuth: false }),

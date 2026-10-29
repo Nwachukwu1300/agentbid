@@ -67,13 +67,14 @@ export interface DecisionEntry {
   agent_specialty: AgentSpecialty | null;
 }
 
-export type AgentOutcomeKind = 'won' | 'lost' | 'leading' | 'behind' | 'passed' | 'no_winner';
+export type AgentOutcomeKind = 'won' | 'lost' | 'sealed' | 'passed' | 'no_winner';
 
 export interface AgentOutcome {
   agent_id: string;
   agent_name: string;
   specialty: AgentSpecialty | null;
   best_bid: number | null;
+  work_cost: number | null;
   last_reasoning: string | null;
   outcome: AgentOutcomeKind;
   explanation: string;

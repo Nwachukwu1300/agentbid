@@ -39,18 +39,18 @@ Job available:
 {job_description}
 Type: {job_specialty}
 Budget (maximum bid): {market_average}
-Work cost: {work_cost} credits
+Your work cost: {work_cost} credits (base {base_cost}, +10% for each job you are already running)
 Minimum profitable bid: {min_profitable_bid} (any lower bid loses you credits if you win)
-Current leading bid (another agent's): {leading_bid}
-{profit_check}
+Rivals: {rival_count} other {job_specialty} agent(s) may bid. Their work cost is between {base_cost} (idle) and {max_rival_cost} (4 jobs running); you do not know how busy they are.
 Time remaining: {time_remaining}s
 
 IMPORTANT RULES:
 1. Your personality and strategy instructions above are the MOST IMPORTANT factor in your decision
-2. The lowest bid wins and ties go to the earlier bid, so to take the lead you must bid LESS than the current leading bid. You can bid any positive amount up to the budget
-3. If you win, delivering the job costs you the work cost and you are paid your bid. Profit = your bid - work cost, so a bid below {work_cost} LOSES you credits
-4. Agents at 0 credits are bankrupt and out until the next season. The agent with the most credits when the season ends wins
-5. Consider your workload, credits, and competitive position
+2. SEALED AUCTION: you get exactly ONE bid (or pass) on this job and you cannot see anyone else's bids. All bids are revealed when the auction closes
+3. The lowest bid wins (ties go to the earlier bid). You can bid any positive amount up to the budget
+4. If you win, delivering the job costs you your work cost and you are paid your bid. Profit = your bid - your work cost, so a bid below {min_profitable_bid} LOSES you credits. Bidding higher earns more per job but risks losing to a cheaper rival
+5. Agents at 0 credits are bankrupt and out until the next season. The agent with the most credits when the season ends wins
+6. Consider your workload, credits, and how cheap your rivals could be
 
 Respond with ONLY a valid JSON object in one of these formats:
 
@@ -76,20 +76,9 @@ Do not include any other text, markdown formatting, or explanation outside the J
         auction_context: AuctionContext,
     ) -> str:
         """Build the system prompt with agent and auction context."""
-        lead = auction_context.current_leading_bid
-        leading_bid_display = f"{lead} credits" if lead else "No bids yet"
-        work_cost = self.settings.work_cost(auction_context.market_average_price)
-
-        # Do the arithmetic for the model: agents misjudged profit when only given the cost
-        if lead:
-            undercut = lead - 1
-            profit = undercut - work_cost
-            outcome = f"a PROFIT of {profit}" if profit > 0 else (
-                "zero profit" if profit == 0 else f"a LOSS of {-profit}"
-            )
-            profit_check = f"Profit check: taking the lead by bidding {undercut} would give you {outcome}."
-        else:
-            profit_check = "Profit check: no bids yet, so any bid between the minimum profitable bid and the budget makes money."
+        budget = auction_context.market_average_price
+        work_cost = self.settings.work_cost(budget, agent_state.current_jobs)
+        base_cost = self.settings.work_cost(budget)
 
         return self.SYSTEM_PROMPT_TEMPLATE.format(
             agent_name=agent_state.agent_name,
@@ -101,9 +90,10 @@ Do not include any other text, markdown formatting, or explanation outside the J
             job_specialty=auction_context.job_specialty,
             market_average=auction_context.market_average_price,
             work_cost=work_cost,
+            base_cost=base_cost,
+            max_rival_cost=self.settings.work_cost(budget, agent_state.max_capacity - 1),
             min_profitable_bid=work_cost + 1,
-            profit_check=profit_check,
-            leading_bid=leading_bid_display,
+            rival_count=auction_context.rival_count,
             time_remaining=int(auction_context.time_remaining_seconds),
         )
 
@@ -176,13 +166,14 @@ Do not include any other text, markdown formatting, or explanation outside the J
                 created_at=datetime.now(timezone.utc),
             )
 
-        # Automatic PASS without asking the model: bankrupt, or already holding the lowest bid
-        # (bidding again would only undercut itself)
+        # Automatic PASS without asking the model: bankrupt, or already made its one sealed decision
         auto_pass = None
         if agent.is_bankrupt:
             auto_pass = "Bankrupt. Out until the next season."
-        elif auction.leading_agent_id == agent_id:
-            auto_pass = f"Already leading at {auction.lowest_bid} credits."
+        elif self.decisions_table.select("id").eq("agent_id", str(agent_id)).eq(
+            "auction_id", str(auction_id)
+        ).execute().data:
+            auto_pass = "Already made its one sealed decision on this auction."
         if auto_pass:
             return AgentDecisionResponse(
                 agent_id=agent_id,
@@ -209,7 +200,7 @@ Do not include any other text, markdown formatting, or explanation outside the J
             job_description=auction.job_description,
             job_specialty=auction.job_specialty.value,
             market_average_price=auction.job_base_price,
-            current_leading_bid=auction.lowest_bid,
+            rival_count=len(await self.agent_service.get_all(specialty=auction.job_specialty, is_active=True)) - 1,
             time_remaining_seconds=auction.time_remaining_seconds,
             total_bids=auction.bid_count,
         )
@@ -299,7 +290,7 @@ Do not include any other text, markdown formatting, or explanation outside the J
                 amount=decision.bid_amount,
             )
             try:
-                await self.auction_service.place_bid(bid_data, reasoning=decision.reasoning)
+                await self.auction_service.place_bid(bid_data)
                 logger.info(
                     f"Agent {decision.agent_name} placed bid of {decision.bid_amount} "
                     f"on auction {auction_id}"
@@ -310,7 +301,7 @@ Do not include any other text, markdown formatting, or explanation outside the J
                 decision.reasoning = f"{decision.reasoning} [Bid failed: {e}]"
 
         # Store after the bid attempt so failed bids are recorded as failed.
-        # Automatic passes (full, bankrupt, already leading) are not stored: they repeat every round.
+        # Automatic passes (full, bankrupt, already decided) are not stored: they repeat every round.
         if decision.from_model:
             await self._store_decision(decision)
         return decision

@@ -136,13 +136,21 @@ async def main():
     except ValueError:
         pass
 
-    await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=cheap, amount=90), "lowest")
+    await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=cheap, amount=90))
     await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=early, amount=150))
     await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=late, amount=150))
 
-    # The current leader is not asked to bid again (it would only undercut itself)
-    decision = await AgentIntelligenceService(db).get_agent_decision(cheap, auction.id)
-    assert decision.decision_type == DecisionType.PASS and "leading" in decision.reasoning
+    # Sealed: one bid per agent per auction, and nobody can see the lead while it is live
+    try:
+        await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=early, amount=140))
+        raise AssertionError("second bid from the same agent must be rejected")
+    except ValueError as e:
+        assert "one bid per agent" in str(e)
+    live = await auctions.get_auction_with_job(auction.id)
+    assert live and live.lowest_bid == 90 and live.public_view().lowest_bid is None
+    assert live.public_view().leading_agent_id is None
+    costs = {b["agent_id"]: b["work_cost"] for b in fake.tables["bids"]}
+    assert costs[str(cheap)] == 140 and costs[str(early)] == 100, "cost = 100 base +10% per running job (Cheap had 4)"
 
     # Cheap fills up before the auction closes, so it can't take the job
     await agents.increment_jobs(cheap)
@@ -158,7 +166,7 @@ async def main():
 
     seen = [events.get_nowait() for _ in range(events.qsize())]
     assert [e["type"] for e in seen] == ["auction_created", "bid_placed", "bid_placed", "bid_placed", "auction_closed"]
-    assert seen[1]["data"]["reasoning"] == "lowest"
+    assert "amount" not in seen[1]["data"] and "reasoning" not in seen[1]["data"], "bid events stay sealed"
 
     spawner = JobSpawner()
     with patch("app.services.job_spawner.get_database_service", return_value=db):
@@ -176,6 +184,7 @@ async def main():
     print("auction lifecycle: all checks passed")
 
     await why_did_i_lose(db, fake, auction.id, cheap, early, late)
+    await workload_cost(db, fake, spawner)
     await losses_and_bankruptcy(db, fake, spawner)
     await season_rollover(db, fake, spawner)
 
@@ -200,24 +209,25 @@ async def why_did_i_lose(db, fake, auction_id, cheap, early, late):
     assert [d["reasoning"] for d in breakdown["decisions"]] == ["undercut hard", "fair price", "too complex", "match the lead"]
     by_name = {a["agent_name"]: a for a in breakdown["agents"]}
     assert breakdown["agents"][0]["agent_name"] == "Early", "winner listed first"
-    assert by_name["Early"]["outcome"] == "won" and "Profit after work cost: 50" in by_name["Early"]["explanation"]
+    assert by_name["Early"]["explanation"] == "Won at 150 with a work cost of 100 (idle): profit 50."
+    assert by_name["Early"]["work_cost"] == 100 and by_name["Cheap"]["work_cost"] == 140
     assert "same as the winner but later" in by_name["Late"]["explanation"]
     assert by_name["Late"]["last_reasoning"] == "match the lead"
     assert "lowest bid (90) but was full" in by_name["Cheap"]["explanation"]
 
-    assert explain(AuctionStatus.CLOSED, True, False, 70, 70, 70, 78)[1] == "Won at 70, below the work cost of 78: a loss of 8."
-    assert explain(AuctionStatus.ACTIVE, False, False, 120, None, 120, 60)[1].startswith("Bid 120, same as the lead but later")
+    assert explain(AuctionStatus.CLOSED, True, 70, 70, "78 (idle)", "78 (idle)", 78)[1] == "Won at 70 with a work cost of 78 (idle): a loss of 8."
+    assert explain(AuctionStatus.CLOSED, False, 92, 84, "86 (1 job running)", "78 (idle)")[1] == \
+        "Bid 92 with a work cost of 86 (1 job running). The winner bid 84, 8 lower with a work cost of 78 (idle)."
+    assert explain(AuctionStatus.ACTIVE, False, 120, None, None, None)[0] == "sealed"
 
-    # The prompt spells out the profit or loss of taking the lead (work cost of a 157 job is 78)
-    state = AgentState(agent_name="A", specialty="designer", auction_instructions="x", current_jobs=0, credits=1000)
-    def prompt(lead):
-        return AgentIntelligenceService(db)._build_system_prompt(state, AuctionContext(
-            job_title="t", job_description="d", job_specialty="designer", market_average_price=157,
-            current_leading_bid=lead, time_remaining_seconds=60, total_bids=1))
-    assert "Minimum profitable bid: 79" in prompt(66)
-    assert "bidding 65 would give you a LOSS of 13" in prompt(66)
-    assert "bidding 99 would give you a PROFIT of 21" in prompt(100)
-    assert "no bids yet" in prompt(None)
+    # Sealed prompt: own cost at current workload (157 job, 2 jobs running), rival cost range, no lead
+    state = AgentState(agent_name="A", specialty="designer", auction_instructions="x", current_jobs=2, credits=1000)
+    prompt = AgentIntelligenceService(db)._build_system_prompt(state, AuctionContext(
+        job_title="t", job_description="d", job_specialty="designer", market_average_price=157,
+        rival_count=1, time_remaining_seconds=60, total_bids=1))
+    assert "Your work cost: 94 credits" in prompt and "Minimum profitable bid: 95" in prompt
+    assert "between 78 (idle) and 110 (4 jobs running)" in prompt and "SEALED AUCTION" in prompt
+    assert "leading" not in prompt.lower()
 
     history = await DecisionService(db).for_agent(early)
     assert history[0]["outcome"] == "won" and history[0]["job_title"] == "Build API"
@@ -238,6 +248,9 @@ async def why_did_i_lose(db, fake, auction_id, cheap, early, late):
     stored = [d for d in fake.tables["agent_decisions"] if d["auction_id"] == str(open_auction.id)]
     assert len(stored) == 1 and "[Bid failed: Bid exceeds the job budget" in stored[0]["reasoning"]
     assert "from_model" not in stored[0], "internal flag is not written to the database"
+    again = await AgentIntelligenceService(db).get_agent_decision(late, open_auction.id)
+    assert again.decision_type == DecisionType.PASS and "one sealed decision" in again.reasoning
+    assert (await DecisionService(db).for_agent(late))[0]["bid_amount"] is None, "open auctions stay sealed"
     await auctions.close_auction(open_auction.id)
     print("why did I lose: all checks passed")
 
@@ -250,6 +263,23 @@ async def win_job(db, fake, agent_id, bid, base_price=200):
     await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=agent_id, amount=bid))
     await auctions.close_auction(auction.id)
     return job.id
+
+
+async def workload_cost(db, fake, spawner):
+    agents = AgentService(db)
+    busy = (await agents.get_all())[-1].id
+    for row in fake.tables["agents"]:
+        if row["id"] == str(busy):
+            row["current_jobs"], row["credits"] = 2, 1000
+    job_id = await win_job(db, fake, busy, bid=150)  # 200 job, 2 jobs running: cost 120
+    assert getattr(await JobService(db).get_by_id(job_id), "work_cost", None) == 120
+    with patch("app.services.job_spawner.get_database_service", return_value=db):
+        await spawner._complete_expired_jobs(settle_all=True)
+    after = await agents.get_by_id(busy)
+    assert after and after.credits == 1030, "paid 150 minus the 120 cost locked in when it bid"
+    for row in fake.tables["agents"]:
+        row["current_jobs"] = 0
+    print("workload cost: all checks passed")
 
 
 async def losses_and_bankruptcy(db, fake, spawner):

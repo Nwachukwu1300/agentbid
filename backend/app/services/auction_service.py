@@ -151,7 +151,7 @@ class AuctionService:
 
         return [self._to_auction(row) for row in result.data]
 
-    async def place_bid(self, bid_data: BidCreate, reasoning: str | None = None) -> Bid:
+    async def place_bid(self, bid_data: BidCreate) -> Bid:
         """Place a bid on an auction."""
         # Validate auction exists and is active
         auction = await self.get_by_id(bid_data.auction_id)
@@ -182,21 +182,28 @@ class AuctionService:
             raise ValueError("Associated job not found")
         if bid_data.amount > job.base_price:
             raise ValueError(f"Bid exceeds the job budget ({job.base_price})")
+        already = self.bids_table.select("id").eq("auction_id", str(bid_data.auction_id)).eq(
+            "agent_id", str(bid_data.agent_id)
+        ).execute().data
+        if already:
+            raise ValueError("Sealed auction: one bid per agent")
 
-        # Create the bid
+        # Create the bid, recording what the job would cost this agent at its current workload
         now = datetime.now(timezone.utc).isoformat()
         data = {
             "auction_id": str(bid_data.auction_id),
             "agent_id": str(bid_data.agent_id),
             "amount": bid_data.amount,
+            "work_cost": self.settings.work_cost(job.base_price, agent.current_jobs),
             "created_at": now,
             "is_winning": False,
         }
 
         result = self.bids_table.insert(data).execute()
         bid = self._to_bid(result.data[0])
+        # Sealed: the event says who bid, never how much
         await get_event_manager().publish_bid_placed(
-            bid.auction_id, bid.id, agent.id, agent.name, agent.specialty.value, bid.amount, reasoning
+            bid.auction_id, bid.id, agent.id, agent.name, agent.specialty.value
         )
         return bid
 
@@ -253,7 +260,7 @@ class AuctionService:
 
             # Assign job to winner
             await self.job_service.assign_to_agent(
-                auction.job_id, winning_bid.agent_id, winning_bid.amount
+                auction.job_id, winning_bid.agent_id, winning_bid.amount, winning_bid.work_cost
             )
 
             # Update auction with winner info
@@ -316,18 +323,6 @@ class AuctionService:
             if row["closed_at"]
         }
 
-    async def get_agent_bids(
-        self,
-        agent_id: UUID,
-        auction_id: UUID | None = None,
-    ) -> list[Bid]:
-        """Get all bids placed by an agent."""
-        query = self.bids_table.select("*").eq("agent_id", str(agent_id))
-        if auction_id:
-            query = query.eq("auction_id", str(auction_id))
-        result = query.order("created_at", desc=True).execute()
-        return [self._to_bid(row) for row in result.data]
-
     def _to_auction(self, data: dict) -> Auction:
         return Auction(
             id=data["id"],
@@ -350,4 +345,5 @@ class AuctionService:
             amount=data["amount"],
             created_at=data["created_at"],
             is_winning=data.get("is_winning", False),
+            work_cost=data.get("work_cost"),
         )
