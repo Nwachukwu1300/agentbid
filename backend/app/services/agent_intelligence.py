@@ -40,7 +40,9 @@ Job available:
 Type: {job_specialty}
 Budget (maximum bid): {market_average}
 Work cost: {work_cost} credits
+Minimum profitable bid: {min_profitable_bid} (any lower bid loses you credits if you win)
 Current leading bid (another agent's): {leading_bid}
+{profit_check}
 Time remaining: {time_remaining}s
 
 IMPORTANT RULES:
@@ -74,11 +76,20 @@ Do not include any other text, markdown formatting, or explanation outside the J
         auction_context: AuctionContext,
     ) -> str:
         """Build the system prompt with agent and auction context."""
-        leading_bid_display = (
-            f"{auction_context.current_leading_bid} credits"
-            if auction_context.current_leading_bid
-            else "No bids yet"
-        )
+        lead = auction_context.current_leading_bid
+        leading_bid_display = f"{lead} credits" if lead else "No bids yet"
+        work_cost = self.settings.work_cost(auction_context.market_average_price)
+
+        # Do the arithmetic for the model: agents misjudged profit when only given the cost
+        if lead:
+            undercut = lead - 1
+            profit = undercut - work_cost
+            outcome = f"a PROFIT of {profit}" if profit > 0 else (
+                "zero profit" if profit == 0 else f"a LOSS of {-profit}"
+            )
+            profit_check = f"Profit check: taking the lead by bidding {undercut} would give you {outcome}."
+        else:
+            profit_check = "Profit check: no bids yet, so any bid between the minimum profitable bid and the budget makes money."
 
         return self.SYSTEM_PROMPT_TEMPLATE.format(
             agent_name=agent_state.agent_name,
@@ -89,7 +100,9 @@ Do not include any other text, markdown formatting, or explanation outside the J
             job_description=f"{auction_context.job_title}\n{auction_context.job_description}",
             job_specialty=auction_context.job_specialty,
             market_average=auction_context.market_average_price,
-            work_cost=self.settings.work_cost(auction_context.market_average_price),
+            work_cost=work_cost,
+            min_profitable_bid=work_cost + 1,
+            profit_check=profit_check,
             leading_bid=leading_bid_display,
             time_remaining=int(auction_context.time_remaining_seconds),
         )
@@ -248,10 +261,8 @@ Do not include any other text, markdown formatting, or explanation outside the J
             reasoning=decision.reasoning,
             raw_response=raw_response if self.settings.debug else None,
             created_at=datetime.now(timezone.utc),
+            from_model=True,
         )
-
-        # Store the decision for analytics
-        await self._store_decision(decision_response)
 
         return decision_response
 
@@ -298,6 +309,10 @@ Do not include any other text, markdown formatting, or explanation outside the J
                 # Update decision to reflect failed bid
                 decision.reasoning = f"{decision.reasoning} [Bid failed: {e}]"
 
+        # Store after the bid attempt so failed bids are recorded as failed.
+        # Automatic passes (full, bankrupt, already leading) are not stored: they repeat every round.
+        if decision.from_model:
+            await self._store_decision(decision)
         return decision
 
     async def trigger_all_agents_for_auction(

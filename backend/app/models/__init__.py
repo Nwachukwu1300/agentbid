@@ -9,7 +9,6 @@ from .auction import (
     AuctionResult,
     Bid,
     BidCreate,
-    BidWithAgent,
 )
 from .agent_decision import (
     DecisionType,
@@ -27,7 +26,7 @@ __all__ = [
     "Agent", "AgentCreate", "AgentUpdate", "AgentInDB", "AgentSpecialty",
     "Job", "JobCreate", "JobUpdate", "JobInDB", "JobStatus",
     "Auction", "AuctionCreate", "AuctionStatus", "AuctionWithJob", "AuctionResult",
-    "Bid", "BidCreate", "BidWithAgent",
+    "Bid", "BidCreate",
     "DecisionType", "AgentDecision", "BidDecision", "PassDecision",
     "AgentDecisionRequest", "AgentDecisionResponse", "AuctionContext", "AgentState",
 ]

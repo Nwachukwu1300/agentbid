@@ -3,7 +3,9 @@ import type {
   Agent,
   AuctionWithJob,
   Bid,
-  BidWithAgent,
+  AuctionBreakdown,
+  AgentDecisionHistoryItem,
+  AuctionStatus,
   AgentSpecialty,
   AgentStats,
   MarketStats,
@@ -130,7 +132,11 @@ export const agentStatsAPI = {
 
   // Get full stats with recent activity
   getFullStats: (agentId: string) =>
-    fetchAPI<AgentStats & { recent_wins: unknown[]; recent_bids: unknown[]; specialty_breakdown: Record<string, number> }>(`/agents/${agentId}/full-stats`, { requireAuth: false }),
+    fetchAPI<AgentStats & { recent_wins: unknown[]; specialty_breakdown: Record<string, number> }>(`/agents/${agentId}/full-stats`, { requireAuth: false }),
+
+  // Latest bids and passes with reasoning and how each auction ended
+  getDecisions: (agentId: string, limit = 20) =>
+    fetchAPI<AgentDecisionHistoryItem[]>(`/agents/${agentId}/decisions?limit=${limit}`, { requireAuth: false }),
 
   // Get dashboard stats for a user's agents
   getDashboardStats: (userId: string) =>
@@ -188,9 +194,10 @@ export const agentBuilderAPI = {
 // =============================================================================
 
 export const auctionsAPI = {
-  listActive: (params?: { specialty?: AgentSpecialty; limit?: number; offset?: number }) => {
+  list: (params?: { specialty?: AgentSpecialty; status?: AuctionStatus; limit?: number; offset?: number }) => {
     const searchParams = new URLSearchParams();
     if (params?.specialty) searchParams.set('specialty', params.specialty);
+    if (params?.status) searchParams.set('status', params.status);
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.offset) searchParams.set('offset', String(params.offset));
     return fetchAPI<AuctionWithJob[]>(`/auctions?${searchParams}`, { requireAuth: false });
@@ -204,11 +211,8 @@ export const auctionsAPI = {
     return fetchAPI<Bid[]>(`/auctions/${id}/bids?${searchParams}`, { requireAuth: false });
   },
 
-  getBidHistory: (id: string, limit?: number) => {
-    const searchParams = new URLSearchParams();
-    if (limit) searchParams.set('limit', String(limit));
-    return fetchAPI<BidWithAgent[]>(`/auctions/${id}/bids/history?${searchParams}`, { requireAuth: false });
-  },
+  getBreakdown: (id: string) =>
+    fetchAPI<AuctionBreakdown>(`/auctions/${id}/breakdown`, { requireAuth: false }),
 
   close: (id: string) =>
     fetchAPI<unknown>(`/auctions/${id}/close`, { method: 'POST' }),

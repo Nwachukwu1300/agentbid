@@ -24,8 +24,11 @@ from app.services.event_manager import get_event_manager  # noqa: E402
 from app.services.job_service import JobService  # noqa: E402
 from app.services.job_spawner import JobSpawner  # noqa: E402
 from app.services.agent_intelligence import AgentIntelligenceService  # noqa: E402
-from app.models.agent_decision import DecisionType  # noqa: E402
+from app.models.agent_decision import DecisionType, AgentState, AuctionContext  # noqa: E402
 from app.services.season_service import SeasonService  # noqa: E402
+from app.services.decision_service import DecisionService, explain  # noqa: E402
+from app.models.auction import AuctionStatus  # noqa: E402
+from app.models.agent_decision import AgentDecisionResponse  # noqa: E402
 
 
 class FakeQuery:
@@ -172,8 +175,71 @@ async def main():
     assert winner.current_jobs == 0
     print("auction lifecycle: all checks passed")
 
+    await why_did_i_lose(db, fake, auction.id, cheap, early, late)
     await losses_and_bankruptcy(db, fake, spawner)
     await season_rollover(db, fake, spawner)
+
+
+async def why_did_i_lose(db, fake, auction_id, cheap, early, late):
+    """Breakdown of the first auction: Cheap had the lowest bid but filled up, Early won, Late tied later."""
+    start = datetime.now(timezone.utc) - timedelta(minutes=5)
+    for i, (agent, kind, amount, why) in enumerate([
+        (cheap, "bid", 90, "undercut hard"),
+        (early, "bid", 150, "fair price"),
+        (late, "pass", None, "too complex"),
+        (late, "bid", 150, "match the lead"),
+    ]):
+        fake.tables.setdefault("agent_decisions", []).append({
+            "id": str(uuid.uuid4()), "agent_id": str(agent), "auction_id": str(auction_id),
+            "decision_type": kind, "bid_amount": amount, "reasoning": why,
+            "created_at": (start + timedelta(seconds=i)).isoformat(),
+        })
+
+    breakdown = await DecisionService(db).auction_breakdown(auction_id)
+    assert breakdown and breakdown["work_cost"] == 100
+    assert [d["reasoning"] for d in breakdown["decisions"]] == ["undercut hard", "fair price", "too complex", "match the lead"]
+    by_name = {a["agent_name"]: a for a in breakdown["agents"]}
+    assert breakdown["agents"][0]["agent_name"] == "Early", "winner listed first"
+    assert by_name["Early"]["outcome"] == "won" and "Profit after work cost: 50" in by_name["Early"]["explanation"]
+    assert "same as the winner but later" in by_name["Late"]["explanation"]
+    assert by_name["Late"]["last_reasoning"] == "match the lead"
+    assert "lowest bid (90) but was full" in by_name["Cheap"]["explanation"]
+
+    assert explain(AuctionStatus.CLOSED, True, False, 70, 70, 70, 78)[1] == "Won at 70, below the work cost of 78: a loss of 8."
+    assert explain(AuctionStatus.ACTIVE, False, False, 120, None, 120, 60)[1].startswith("Bid 120, same as the lead but later")
+
+    # The prompt spells out the profit or loss of taking the lead (work cost of a 157 job is 78)
+    state = AgentState(agent_name="A", specialty="designer", auction_instructions="x", current_jobs=0, credits=1000)
+    def prompt(lead):
+        return AgentIntelligenceService(db)._build_system_prompt(state, AuctionContext(
+            job_title="t", job_description="d", job_specialty="designer", market_average_price=157,
+            current_leading_bid=lead, time_remaining_seconds=60, total_bids=1))
+    assert "Minimum profitable bid: 79" in prompt(66)
+    assert "bidding 65 would give you a LOSS of 13" in prompt(66)
+    assert "bidding 99 would give you a PROFIT of 21" in prompt(100)
+    assert "no bids yet" in prompt(None)
+
+    history = await DecisionService(db).for_agent(early)
+    assert history[0]["outcome"] == "won" and history[0]["job_title"] == "Build API"
+    assert (await DecisionService(db).for_agent(late))[0]["outcome"] == "lost"
+
+    # A bid the model chose but that failed is stored with its failure note
+    intelligence = AgentIntelligenceService(db)
+
+    async def model_bids_too_high(agent_id, auction_id):
+        return AgentDecisionResponse(agent_id=agent_id, agent_name="Late", auction_id=auction_id,
+                                     decision_type=DecisionType.BID, bid_amount=999, reasoning="go big",
+                                     created_at=datetime.now(timezone.utc), from_model=True)
+    intelligence.get_agent_decision = model_bids_too_high
+    jobs, auctions = JobService(db), AuctionService(db)
+    job = await jobs.create(JobCreate(title="J", description="d", specialty=AgentSpecialty.CODER, base_price=200))
+    open_auction = await auctions.create_auction(AuctionCreate(job_id=job.id))
+    await intelligence.execute_decision(late, open_auction.id)
+    stored = [d for d in fake.tables["agent_decisions"] if d["auction_id"] == str(open_auction.id)]
+    assert len(stored) == 1 and "[Bid failed: Bid exceeds the job budget" in stored[0]["reasoning"]
+    assert "from_model" not in stored[0], "internal flag is not written to the database"
+    await auctions.close_auction(open_auction.id)
+    print("why did I lose: all checks passed")
 
 
 async def win_job(db, fake, agent_id, bid, base_price=200):

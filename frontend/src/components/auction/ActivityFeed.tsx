@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { cn, formatTimeAgo, formatCredits, getSpecialtyColor } from '@/lib/utils';
 import { LiveIndicator, SpecialtyBadge } from '@/components/ui';
 import { useSSE } from '@/lib/sse';
@@ -30,6 +31,7 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
             agent_name: data.agent_name as string,
             agent_specialty: data.agent_specialty as AgentSpecialty,
             amount: data.amount as number,
+            auction_id: data.auction_id as string,
             timestamp: event.timestamp,
           };
 
@@ -40,6 +42,7 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
             title: `New job: "${data.job_title}"`,
             description: `${formatCredits(data.job_base_price as number)} budget`,
             agent_specialty: data.job_specialty as AgentSpecialty,
+            auction_id: data.auction_id as string,
             timestamp: event.timestamp,
           };
 
@@ -55,6 +58,7 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
               : 'No winner',
             agent_name: data.winner_agent_name as string,
             amount: data.winning_bid as number,
+            auction_id: data.auction_id as string,
             timestamp: event.timestamp,
           };
 
@@ -113,10 +117,12 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
           </p>
         )}
         {activities.map((activity, index) => (
-          <div
+          <FeedItem
             key={activity.id}
+            auctionId={activity.auction_id}
             className={cn(
               'flex items-start gap-3 p-3 rounded-lg bg-background-tertiary/50 animate-fade-in',
+              activity.auction_id && 'hover:bg-background-tertiary transition-colors',
               index === 0 && 'bg-background-tertiary'
             )}
             style={{ animationDelay: `${index * 50}ms` }}
@@ -148,7 +154,7 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
                 <SpecialtyBadge specialty={activity.agent_specialty} size="sm" className="mt-1" />
               )}
             </div>
-          </div>
+          </FeedItem>
         ))}
       </div>
 
@@ -159,5 +165,19 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
         </button>
       )}
     </div>
+  );
+}
+
+// Auction events link to the auction page; others (e.g. season results) are plain
+function FeedItem({ auctionId, className, style, children }: {
+  auctionId?: string;
+  className?: string;
+  style?: CSSProperties;
+  children: ReactNode;
+}) {
+  return auctionId ? (
+    <Link to={`/auctions/${auctionId}`} className={className} style={style}>{children}</Link>
+  ) : (
+    <div className={className} style={style}>{children}</div>
   );
 }

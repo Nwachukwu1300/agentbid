@@ -55,6 +55,7 @@ class AuctionWithJob(Auction):
     bid_count: int = 0
     lowest_bid: int | None = None
     leading_agent_id: UUID | None = None
+    winning_agent_name: str | None = None
 
 
 class BidBase(BaseModel):
@@ -74,11 +75,6 @@ class Bid(BidBase):
 
     class Config:
         from_attributes = True
-
-
-class BidWithAgent(Bid):
-    agent_name: str
-    agent_specialty: AgentSpecialty
 
 
 class AuctionResult(BaseModel):

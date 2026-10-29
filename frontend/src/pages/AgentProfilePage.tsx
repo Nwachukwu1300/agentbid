@@ -20,7 +20,7 @@ import { Layout } from '@/components/layout';
 import { SpecialtyBadge, StatCard, ProgressBar } from '@/components/ui';
 import { agentsAPI, agentStatsAPI } from '@/lib/api';
 import { cn, formatCredits, formatTimeAgo, getSpecialtyIcon } from '@/lib/utils';
-import type { Agent, AgentStats } from '@/types';
+import type { Agent, AgentDecisionHistoryItem, AgentStats } from '@/types';
 
 export function AgentProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +28,7 @@ export function AgentProfilePage() {
   const [agent, setAgent] = useState<Agent | null>(null);
   const [stats, setStats] = useState<AgentStats | null>(null);
   const [fullStats, setFullStats] = useState<any>(null);
+  const [history, setHistory] = useState<AgentDecisionHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,15 +50,17 @@ export function AgentProfilePage() {
       setError(null);
 
       try {
-        const [agentData, statsData, fullStatsData] = await Promise.all([
+        const [agentData, statsData, fullStatsData, historyData] = await Promise.all([
           agentsAPI.get(agentId),
           agentStatsAPI.getStats(agentId).catch(() => null),
           agentStatsAPI.getFullStats(agentId).catch(() => null),
+          agentStatsAPI.getDecisions(agentId, 15).catch(() => []),
         ]);
 
         setAgent(agentData);
         setStats(statsData);
         setFullStats(fullStatsData);
+        setHistory(historyData);
         setEditName(agentData.name);
         setEditAuctionInstructions(agentData.auction_instructions);
       } catch (err) {
@@ -302,42 +305,51 @@ export function AgentProfilePage() {
               )}
             </div>
 
-            {/* Recent Activity */}
-            {fullStats && (
-              <div className="card p-6">
-                <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
-                  <Clock className="h-5 w-5 text-text-muted" />
-                  Recent Activity
-                </h3>
-                {fullStats.recent_bids?.length > 0 ? (
-                  <div className="space-y-3">
-                    {fullStats.recent_bids.slice(0, 5).map((bid: any) => (
-                      <div
-                        key={bid.bid_id}
-                        className="flex items-center justify-between py-2 border-b border-border last:border-0"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={cn(
-                              'w-2 h-2 rounded-full',
-                              bid.is_winning ? 'bg-accent-green' : 'bg-text-muted'
-                            )}
-                          />
-                          <span className="text-text-secondary">
-                            Bid {formatCredits(bid.amount)}
-                          </span>
-                        </div>
-                        <span className="text-sm text-text-muted">
-                          {formatTimeAgo(bid.created_at)}
-                        </span>
+            {/* Decision History: every bid and pass with the agent's reasoning */}
+            <div className="card p-6">
+              <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
+                <Clock className="h-5 w-5 text-text-muted" />
+                Decision History
+              </h3>
+              {history.length > 0 ? (
+                <div className="space-y-3">
+                  {history.map((d) => (
+                    <Link
+                      key={d.id}
+                      to={`/auctions/${d.auction_id}`}
+                      className="block p-3 rounded-lg bg-background-tertiary/50 hover:bg-background-tertiary transition-colors"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                        <span className="text-sm font-medium text-text-primary truncate">{d.job_title}</span>
+                        <span className="text-xs text-text-muted">{formatTimeAgo(d.created_at)}</span>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-text-muted text-center py-8">No recent activity</p>
-                )}
-              </div>
-            )}
+                      <div className="flex flex-wrap items-center gap-2 mb-1 text-sm">
+                        <span className={d.decision_type === 'bid' ? 'text-accent-purple font-medium' : 'text-text-muted'}>
+                          {d.decision_type === 'bid' ? `Bid ${d.bid_amount}` : 'Passed'}
+                        </span>
+                        <span
+                          className={cn(
+                            'rounded px-1.5 py-0.5 text-xs font-medium',
+                            d.outcome === 'won' && 'bg-accent-green/20 text-accent-green',
+                            d.outcome === 'lost' && 'bg-accent-red/20 text-accent-red',
+                            d.outcome === 'open' && 'bg-accent-purple/20 text-accent-purple',
+                            d.outcome === 'no_winner' && 'bg-background-tertiary text-text-muted'
+                          )}
+                        >
+                          {{ won: 'Won', lost: 'Lost', open: 'Live', no_winner: 'No winner' }[d.outcome]}
+                        </span>
+                        {d.outcome === 'lost' && d.winning_amount !== null && (
+                          <span className="text-xs text-text-muted">winner bid {d.winning_amount}</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-text-secondary line-clamp-2">{d.reasoning}</p>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-text-muted text-center py-8">No decisions yet</p>
+              )}
+            </div>
           </div>
 
           {/* Right Column - Stats & Info */}

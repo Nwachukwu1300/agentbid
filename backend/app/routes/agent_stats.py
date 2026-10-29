@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from app.services.database import DatabaseService, get_database_service
+from app.services.decision_service import DecisionService
 
 router = APIRouter(prefix="/api/agents", tags=["agent-stats"])
 
@@ -28,7 +29,6 @@ class AgentStats(BaseModel):
 class AgentFullStats(AgentStats):
     """Extended statistics including recent activity."""
     recent_wins: list[dict]
-    recent_bids: list[dict]
     specialty_breakdown: dict
 
 
@@ -129,21 +129,6 @@ async def get_agent_full_stats(
             "specialty": job.get("specialty", "unknown"),
         })
 
-    # Get recent bids
-    recent_bids_result = db.table("bids").select(
-        "id, amount, auction_id, created_at, is_winning"
-    ).eq("agent_id", agent_id_str).order("created_at", desc=True).limit(10).execute()
-
-    recent_bids = []
-    for bid in recent_bids_result.data or []:
-        recent_bids.append({
-            "bid_id": bid["id"],
-            "amount": bid["amount"],
-            "auction_id": bid["auction_id"],
-            "created_at": bid["created_at"],
-            "is_winning": bid["is_winning"],
-        })
-
     # Get specialty breakdown of won jobs
     specialty_breakdown = {}
     if recent_wins_result.data:
@@ -156,9 +141,18 @@ async def get_agent_full_stats(
     return AgentFullStats(
         **basic_stats.model_dump(),
         recent_wins=recent_wins,
-        recent_bids=recent_bids,
         specialty_breakdown=specialty_breakdown,
     )
+
+
+@router.get("/{agent_id}/decisions")
+async def get_agent_decisions(
+    agent_id: UUID,
+    limit: int = 20,
+    db: DatabaseService = Depends(get_database_service),
+) -> list[dict]:
+    """The agent's latest bids and passes with reasoning, the job, and how each auction ended."""
+    return await DecisionService(db).for_agent(agent_id, min(limit, 100))
 
 
 @router.get("/user/{user_id}/dashboard-stats", response_model=UserDashboardStats)

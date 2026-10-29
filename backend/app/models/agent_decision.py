@@ -42,6 +42,8 @@ class AgentDecisionResponse(BaseModel):
     reasoning: str
     raw_response: str | None = None  # For debugging
     created_at: datetime
+    # True when the AI model made this decision (automatic passes are False). Not sent to clients.
+    from_model: bool = Field(default=False, exclude=True)
 
     class Config:
         from_attributes = True

@@ -10,7 +10,6 @@ from app.models.auction import (
     AuctionResult,
     Bid,
     BidCreate,
-    BidWithAgent,
 )
 from app.models.job import Job, JobStatus, JobUpdate
 from app.models.agent import AgentSpecialty, Agent
@@ -90,6 +89,11 @@ class AuctionService:
         if not job:
             return None
 
+        winner = (
+            await self.agent_service.get_by_id(auction.winning_agent_id)
+            if auction.winning_agent_id else None
+        )
+
         # Get bid stats (sorted lowest first, earliest on ties, so bids[0] is leading)
         bids = await self.get_auction_bids(auction_id)
         bid_count = len(bids)
@@ -113,6 +117,7 @@ class AuctionService:
             bid_count=bid_count,
             lowest_bid=lowest_bid,
             leading_agent_id=bids[0].agent_id if bids else None,
+            winning_agent_name=winner.name if winner else None,
         )
 
     async def get_active_auctions(
@@ -120,47 +125,21 @@ class AuctionService:
         specialty: AgentSpecialty | None = None,
         limit: int = 50,
         offset: int = 0,
+        status: AuctionStatus = AuctionStatus.ACTIVE,
     ) -> list[AuctionWithJob]:
-        """Get all active auctions with job details."""
-        query = self.auctions_table.select("*").eq("status", AuctionStatus.ACTIVE.value)
-        result = query.order("ends_at", desc=False).range(offset, offset + limit - 1).execute()
+        """Auctions with job details: active ones ending soonest first, closed ones most recent first."""
+        query = self.auctions_table.select("id").eq("status", status.value)
+        if status == AuctionStatus.ACTIVE:
+            query = query.order("ends_at")
+        else:
+            query = query.order("closed_at", desc=True)
+        result = query.range(offset, offset + limit - 1).execute()
 
         auctions_with_jobs = []
         for row in result.data:
-            auction = self._to_auction(row)
-            job = await self.job_service.get_by_id(auction.job_id)
-            if not job:
-                continue
-
-            # Filter by specialty if specified
-            if specialty and job.specialty != specialty:
-                continue
-
-            bids = await self.get_auction_bids(auction.id)
-            bid_count = len(bids)
-            lowest_bid = min(b.amount for b in bids) if bids else None
-
-            auctions_with_jobs.append(
-                AuctionWithJob(
-                    id=auction.id,
-                    job_id=auction.job_id,
-                    duration_seconds=auction.duration_seconds,
-                    status=auction.status,
-                    winning_bid_id=auction.winning_bid_id,
-                    winning_agent_id=auction.winning_agent_id,
-                    winning_amount=auction.winning_amount,
-                    started_at=auction.started_at,
-                    ends_at=auction.ends_at,
-                    closed_at=auction.closed_at,
-                    job_title=job.title,
-                    job_description=job.description,
-                    job_specialty=job.specialty,
-                    job_base_price=job.base_price,
-                    bid_count=bid_count,
-                    lowest_bid=lowest_bid,
-                )
-            )
-
+            auction = await self.get_auction_with_job(row["id"])
+            if auction and (specialty is None or auction.job_specialty == specialty):
+                auctions_with_jobs.append(auction)
         return auctions_with_jobs
 
     async def get_expired_auctions(self) -> list[Auction]:
@@ -232,34 +211,6 @@ class AuctionService:
         ).order("amount").order("created_at").range(0, limit - 1).execute()
 
         return [self._to_bid(row) for row in result.data]
-
-    async def get_auction_bids_with_agents(
-        self,
-        auction_id: UUID,
-        limit: int = 100,
-    ) -> list[BidWithAgent]:
-        """Get all bids for an auction with agent info, ordered by time (most recent first)."""
-        result = self.bids_table.select("*").eq(
-            "auction_id", str(auction_id)
-        ).order("created_at", desc=True).range(0, limit - 1).execute()
-
-        bids_with_agents = []
-        for row in result.data:
-            agent = await self.agent_service.get_by_id(row["agent_id"])
-            bids_with_agents.append(
-                BidWithAgent(
-                    id=row["id"],
-                    auction_id=row["auction_id"],
-                    agent_id=row["agent_id"],
-                    amount=row["amount"],
-                    created_at=row["created_at"],
-                    is_winning=row.get("is_winning", False),
-                    agent_name=agent.name if agent else "Unknown Agent",
-                    agent_specialty=agent.specialty if agent else "coder",
-                )
-            )
-
-        return bids_with_agents
 
     async def close_auction(self, auction_id: UUID) -> AuctionResult:
         """Close an auction, determine winner, transfer credits, assign job."""

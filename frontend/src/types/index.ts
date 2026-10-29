@@ -48,6 +48,56 @@ export interface AuctionWithJob extends Auction {
   job_base_price: number;
   bid_count: number;
   lowest_bid: number | null;
+  leading_agent_id: string | null;
+  winning_agent_name: string | null;
+}
+
+// Phase 3: why agents won or lost (mirrors backend/app/services/decision_service.py)
+export type DecisionKind = 'bid' | 'pass';
+
+export interface DecisionEntry {
+  id: string;
+  agent_id: string;
+  auction_id: string;
+  decision_type: DecisionKind;
+  bid_amount: number | null;
+  reasoning: string;
+  created_at: string;
+  agent_name: string;
+  agent_specialty: AgentSpecialty | null;
+}
+
+export type AgentOutcomeKind = 'won' | 'lost' | 'leading' | 'behind' | 'passed' | 'no_winner';
+
+export interface AgentOutcome {
+  agent_id: string;
+  agent_name: string;
+  specialty: AgentSpecialty | null;
+  best_bid: number | null;
+  last_reasoning: string | null;
+  outcome: AgentOutcomeKind;
+  explanation: string;
+}
+
+export interface AuctionBreakdown {
+  auction: AuctionWithJob;
+  work_cost: number;
+  decisions: DecisionEntry[];
+  agents: AgentOutcome[];
+}
+
+export interface AgentDecisionHistoryItem {
+  id: string;
+  auction_id: string;
+  decision_type: DecisionKind;
+  bid_amount: number | null;
+  reasoning: string;
+  created_at: string;
+  job_title: string;
+  job_specialty: AgentSpecialty | null;
+  auction_status: AuctionStatus | null;
+  winning_amount: number | null;
+  outcome: 'won' | 'lost' | 'open' | 'no_winner';
 }
 
 export interface Bid {
@@ -57,11 +107,6 @@ export interface Bid {
   amount: number;
   created_at: string;
   is_winning: boolean;
-}
-
-export interface BidWithAgent extends Bid {
-  agent_name: string;
-  agent_specialty: AgentSpecialty;
 }
 
 export interface AuctionResult {
@@ -104,12 +149,6 @@ export interface SSEEvent {
   timestamp: string;
 }
 
-export interface BidPlacedEvent {
-  auction_id: string;
-  bid: BidWithAgent;
-  reasoning?: string;
-}
-
 export interface AuctionClosedEvent {
   result: AuctionResult;
 }
@@ -123,6 +162,7 @@ export interface ActivityItem {
   agent_name?: string;
   agent_specialty?: AgentSpecialty;
   amount?: number;
+  auction_id?: string;
   timestamp: string;
 }
 

@@ -4,6 +4,7 @@ import { ProtectedRoute } from '@/components/auth';
 import {
   LandingPage,
   LiveAuctionsPage,
+  AuctionDetailPage,
   DashboardPage,
   AnalyticsPage,
   AuthPage,
@@ -23,7 +24,7 @@ function App() {
 
         {/* Public marketplace routes (no auth required, shows all agents) */}
         <Route path="/auctions" element={<LiveAuctionsPage />} />
-        <Route path="/auctions/:id" element={<LiveAuctionsPage />} />
+        <Route path="/auctions/:id" element={<AuctionDetailPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
 
         {/* Protected routes (require auth, user's own agents) */}
