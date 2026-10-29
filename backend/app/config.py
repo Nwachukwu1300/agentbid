@@ -41,6 +41,17 @@ class Settings(BaseSettings):
     # Daily caps on paid AI calls
     ai_daily_agent_calls: int = 3000  # whole arena; agents pass once it is reached
     ai_daily_builder_calls_per_user: int = 30
+    ai_daily_negotiation_calls: int = 2000  # whole arena; winners keep their bid once it is reached
+
+    # Negotiation after the auction (all tunables in one place)
+    negotiation_share: float = 0.3  # chance a winning bid goes to a negotiation with the client
+    client_max_low_ratio: float = 0.7  # client's secret top price is drawn between these shares of the budget
+    client_max_high_ratio: float = 1.2
+    agent_max_offer_ratio: float = 2.0  # agents can't ask more than this share of the budget
+    negotiation_max_turns: int = 6  # messages in total, client first
+    negotiation_turn_interval_seconds: int = 4  # pacing, so people can watch live
+    negotiation_max_message_chars: int = 400
+    no_deal_penalty: int = 0  # credits lost when the agent walks away or turns run out
 
     def work_cost(self, base_price: int, jobs_running: int = 0) -> int:
         """Credits it costs this agent to deliver a job. Winner's profit = bid - work cost."""

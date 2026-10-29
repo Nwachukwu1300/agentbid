@@ -12,6 +12,8 @@ class JobStatus(str, Enum):
     ASSIGNED = "assigned"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
+    NEGOTIATING = "negotiating"  # auction won, price being negotiated with the client
+    UNFILLED = "unfilled"  # negotiation ended without a deal
 
 
 class JobBase(BaseModel):
@@ -39,6 +41,8 @@ class Job(JobBase):
     assigned_agent_id: UUID | None = None
     winning_bid: int | None = None
     work_cost: int | None = None  # the winner's cost, locked in from its bid
+    negotiated: bool = False  # went through a negotiation; winning_bid is then the agreed price
+    started_at: datetime | None = None  # when work began (auction close, or the deal)
     created_at: datetime
     completed_at: datetime | None = None
 

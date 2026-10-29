@@ -138,6 +138,8 @@ class JobService:
             assigned_agent_id=data.get("assigned_agent_id"),
             winning_bid=data.get("winning_bid"),
             work_cost=data.get("work_cost"),
+            negotiated=data.get("negotiated") or False,
+            started_at=data.get("started_at"),
             created_at=data["created_at"],
             completed_at=data.get("completed_at"),
         )

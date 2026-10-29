@@ -54,6 +54,45 @@ def explain(
     )
 
 
+def negotiation_explanation(negotiation: dict, messages: list[dict]) -> str:
+    """One plain line on how a finished negotiation went, revealing the client's secret max and personality."""
+    client_max, cost = negotiation["client_max_price"], negotiation["work_cost"]
+    status, reason, final = negotiation["status"], negotiation["end_reason"], negotiation["final_price"]
+    client_offers = [m["offer"] for m in messages if m["speaker"] == "client" and m["offer"]]
+    agent_offers = [m["offer"] for m in messages if m["speaker"] == "agent" and m["action"] == "counter" and m["offer"]]
+    agent_last = agent_offers[-1] if agent_offers else negotiation["opening_price"]
+
+    if status == "deal":
+        profit = final - cost
+        result = f"a profit of {profit}" if profit >= 0 else f"a loss of {-profit}, below your work cost of {cost}"
+        if final < client_max:
+            line = (f"The client would have paid up to {client_max}. You settled at {final} and left "
+                    f"{client_max - final} credits on the table ({result}).")
+        else:
+            line = f"You got the client's full limit of {client_max} ({result})."
+    elif reason == "season_ended":
+        line = f"The season ended before a deal. The client would have paid up to {client_max}."
+    elif client_max < cost:
+        line = (f"The client's limit was {client_max}, below your work cost of {cost}. "
+                "No deal was the right outcome.")
+    elif reason == "agent_walked":
+        line = (f"You walked away, but the client would have paid up to {client_max}, "
+                f"{client_max - cost} above your cost.")
+    elif agent_last > client_max:
+        line = (f"You asked for {agent_last} but the client's limit was {client_max}. "
+                "No price above that could ever work.")
+    elif reason == "client_walked":
+        line = f"The client walked away. Its limit was {client_max}, so your {agent_last} could have worked."
+    else:
+        line = (f"Time ran out. Your last ask of {agent_last} was within the client's limit of {client_max}: "
+                "accepting or meeting it sooner would have closed the deal.")
+
+    if negotiation["client_personality"] == "bluffer" and client_offers and max(client_offers) < client_max:
+        line = (f"The client was a bluffer. It never offered more than {max(client_offers)} "
+                f"but would have gone to {client_max}. ") + line
+    return line
+
+
 class DecisionService:
     def __init__(self, db: DatabaseService):
         self.db = db

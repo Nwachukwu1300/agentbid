@@ -39,6 +39,67 @@ def _openai_client() -> AsyncOpenAI:
     return _openai_clients[loop]
 
 
+NEGOTIATION_PROMPT_TEMPLATE = """You are {agent_name}, a {specialty} agent. You won the auction for this job with a bid of {opening_price}, and the client wants to negotiate the price before work starts.
+
+Your negotiation style:
+{style}
+
+Job: {job_title}
+{job_description}
+Client's posted budget: {budget}
+Your winning bid (your opening price): {opening_price}
+Your work cost: {work_cost} credits. Profit = agreed price - {work_cost}.
+Your credits: {credits}
+Messages left after this one: {turns_left}
+
+{offer_math}
+
+Conversation so far (the client speaks first):
+{history}
+
+IMPORTANT RULES:
+1. Your negotiation style above is the MOST IMPORTANT factor in your decision
+2. Actions: "counter" proposes a new price in "offer"; "accept" agrees to the client's latest offer; "walk_away" ends the talks
+3. No deal earns you 0 credits. Accepting a price below your work cost of {work_cost} LOSES you credits
+4. You may ask for more than your winning bid if you think the client has room, up to {max_offer}
+5. If the last message passes without an accept, there is no deal
+6. The client may bluff about its budget
+
+Respond with ONLY a valid JSON object:
+{{"message": "<what you say to the client, under {max_chars} characters>", "offer": <price, or null>, "action": "counter" | "accept" | "walk_away"}}"""
+
+
+def build_negotiation_prompt(
+    *, agent_name: str, specialty: str, style: str, job_title: str, job_description: str, budget: int,
+    opening_price: int, work_cost: int, credits: int, turns_left: int, client_offer: int | None,
+    max_offer: int, history: list[dict], max_chars: int,
+) -> str:
+    """The agent's side of a negotiation. Never includes the client's secret max or personality."""
+    if client_offer is None:
+        offer_math = "The client has not made an offer yet."
+    else:
+        profit = client_offer - work_cost
+        offer_math = (
+            f"The client's current offer is {client_offer}. If you accept {client_offer}, you earn "
+            f"{client_offer} minus your cost of {work_cost}, which is {profit} credits."
+        )
+        if profit < 0:
+            offer_math += f" WARNING: accepting {client_offer} is BELOW your work cost and LOSES you {-profit} credits."
+    if turns_left == 0:
+        offer_math += " This is the LAST message: if you don't accept now, there is no deal and you earn 0."
+    lines = [f"You opened at {opening_price}."]
+    for m in history:
+        who = "Client" if m["speaker"] == "client" else "You"
+        price = f" ({m['action']}, price {m['offer']})" if m["offer"] else f" ({m['action']})"
+        lines.append(f"{who}: {m['message']}{price}")
+    return NEGOTIATION_PROMPT_TEMPLATE.format(
+        agent_name=agent_name, specialty=specialty, style=style, job_title=job_title,
+        job_description=job_description, budget=budget, opening_price=opening_price, work_cost=work_cost,
+        credits=credits, turns_left=turns_left, offer_math=offer_math, history="\n".join(lines),
+        max_offer=max_offer, max_chars=max_chars,
+    )
+
+
 class AgentIntelligenceService:
     """Service for AI-powered agent decision-making in auctions."""
 
@@ -67,6 +128,7 @@ IMPORTANT RULES:
 4. If you win, delivering the job costs you your work cost and you are paid your bid. Profit = your bid - your work cost, so a bid below {min_profitable_bid} LOSES you credits. Bidding higher earns more per job but risks losing to a cheaper rival
 5. Agents at 0 credits are bankrupt and out until the next season. The agent with the most credits when the season ends wins
 6. Consider your workload, credits, and how cheap your rivals could be
+7. About {negotiation_pct}% of winning bids go to a negotiation with the client, where the final price can end up higher or lower than your bid, or the job can fall through. You won't know which ones in advance
 
 Respond with ONLY a valid JSON object in one of these formats:
 
@@ -111,6 +173,7 @@ Do not include any other text, markdown formatting, or explanation outside the J
             min_profitable_bid=work_cost + 1,
             rival_count=auction_context.rival_count,
             time_remaining=int(auction_context.time_remaining_seconds),
+            negotiation_pct=round(self.settings.negotiation_share * 100),
         )
 
     def _parse_decision(self, response_text: str) -> AgentDecision:
