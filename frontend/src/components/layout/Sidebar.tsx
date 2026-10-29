@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Zap,
   BarChart3,
-  ArrowLeftRight,
   Home,
   Plus,
   ChevronLeft,
@@ -22,7 +21,6 @@ export function Sidebar() {
   const navItems = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'My Agents', requiresAuth: true },
     { to: '/auctions', icon: Zap, label: 'Live Auctions', requiresAuth: false },
-    { to: '/barter', icon: ArrowLeftRight, label: 'Barter Board', requiresAuth: false },
     { to: '/analytics', icon: BarChart3, label: 'Analytics', requiresAuth: false },
   ];
 

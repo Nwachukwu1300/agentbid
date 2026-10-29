@@ -17,6 +17,7 @@ from app.models.agent import AgentSpecialty, Agent
 from app.services.database import DatabaseService
 from app.services.job_service import JobService
 from app.services.agent_service import AgentService
+from app.services.event_manager import get_event_manager
 from app.config import get_settings
 
 
@@ -68,6 +69,9 @@ class AuctionService:
         # Update job status to in_auction
         await self.job_service.start_auction(auction_data.job_id)
 
+        await get_event_manager().publish_auction_created(
+            auction.id, job.title, job.specialty.value, job.base_price, auction.ends_at.isoformat()
+        )
         return auction
 
     async def get_by_id(self, auction_id: UUID) -> Auction | None:
@@ -167,7 +171,7 @@ class AuctionService:
 
         return [self._to_auction(row) for row in result.data]
 
-    async def place_bid(self, bid_data: BidCreate) -> Bid:
+    async def place_bid(self, bid_data: BidCreate, reasoning: str | None = None) -> Bid:
         """Place a bid on an auction."""
         # Validate auction exists and is active
         auction = await self.get_by_id(bid_data.auction_id)
@@ -202,7 +206,11 @@ class AuctionService:
         }
 
         result = self.bids_table.insert(data).execute()
-        return self._to_bid(result.data[0])
+        bid = self._to_bid(result.data[0])
+        await get_event_manager().publish_bid_placed(
+            bid.auction_id, bid.id, agent.id, agent.name, agent.specialty.value, bid.amount, reasoning
+        )
+        return bid
 
     async def get_auction_bids(
         self,
@@ -244,20 +252,6 @@ class AuctionService:
 
         return bids_with_agents
 
-    async def get_winning_bid(self, auction_id: UUID) -> Bid | None:
-        """Determine the winning bid (lowest amount, earliest if tie)."""
-        bids = await self.get_auction_bids(auction_id)
-        if not bids:
-            return None
-
-        # Find the lowest bid
-        lowest_amount = min(b.amount for b in bids)
-        lowest_bids = [b for b in bids if b.amount == lowest_amount]
-
-        # If tie, return the first one (earliest by created_at)
-        # The query already orders by created_at after amount
-        return lowest_bids[0]
-
     async def close_auction(self, auction_id: UUID) -> AuctionResult:
         """Close an auction, determine winner, transfer credits, assign job."""
         auction = await self.get_by_id(auction_id)
@@ -274,8 +268,15 @@ class AuctionService:
         bids = await self.get_auction_bids(auction_id)
         total_bids = len(bids)
 
-        # Determine winner
-        winning_bid = await self.get_winning_bid(auction_id)
+        # Determine winner: bids are sorted lowest first, earliest on ties.
+        # Skip agents that filled up (won other jobs) or were deactivated since bidding.
+        winning_bid = None
+        winner_agent = None
+        for bid in bids:
+            agent = await self.agent_service.get_by_id(bid.agent_id)
+            if agent and agent.is_active and not agent.is_at_capacity:
+                winning_bid, winner_agent = bid, agent
+                break
 
         now = datetime.now(timezone.utc).isoformat()
 
@@ -285,16 +286,9 @@ class AuctionService:
                 "id", str(winning_bid.id)
             ).execute()
 
-            # Get winner agent info
-            winner_agent = await self.agent_service.get_by_id(winning_bid.agent_id)
-            winner_agent_name = winner_agent.name if winner_agent else None
+            winner_agent_name = winner_agent.name
 
-            # Transfer credits: winner pays the bid amount
-            await self.agent_service.update_credits(
-                winning_bid.agent_id, -winning_bid.amount
-            )
-
-            # Increment winner's job count
+            # No credits move here: the winner is paid its bid when the job completes
             await self.agent_service.increment_jobs(winning_bid.agent_id)
 
             # Assign job to winner
@@ -311,7 +305,7 @@ class AuctionService:
                 "closed_at": now,
             }).eq("id", str(auction_id)).execute()
 
-            return AuctionResult(
+            result = AuctionResult(
                 auction_id=auction_id,
                 job_id=auction.job_id,
                 winner_agent_id=winning_bid.agent_id,
@@ -333,15 +327,34 @@ class AuctionService:
                 JobUpdate(status=JobStatus.PENDING),
             )
 
-            return AuctionResult(
+            result = AuctionResult(
                 auction_id=auction_id,
                 job_id=auction.job_id,
                 winner_agent_id=None,
                 winner_agent_name=None,
                 winning_bid=None,
-                total_bids=0,
+                total_bids=total_bids,
                 status=AuctionStatus.CANCELLED,
             )
+
+        await get_event_manager().publish_auction_closed(
+            auction_id, auction.job_id, job.title, result.winner_agent_id,
+            result.winner_agent_name, result.winning_bid, total_bids, result.status.value,
+        )
+        return result
+
+    async def get_close_times(self, job_ids: list[UUID]) -> dict[UUID, datetime]:
+        """When each job's auction closed (= when work on it started)."""
+        if not job_ids:
+            return {}
+        result = self.auctions_table.select("job_id, closed_at").in_(
+            "job_id", [str(j) for j in job_ids]
+        ).eq("status", AuctionStatus.CLOSED.value).execute()
+        return {
+            UUID(row["job_id"]): datetime.fromisoformat(row["closed_at"])
+            for row in result.data
+            if row["closed_at"]
+        }
 
     async def get_agent_bids(
         self,

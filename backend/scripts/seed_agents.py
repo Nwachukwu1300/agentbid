@@ -3,7 +3,8 @@
 
 import asyncio
 import sys
-sys.path.insert(0, '/Users/mmesoma/Desktop/aimarketplace/backend')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # backend/
 
 from uuid import UUID
 from app.services.database import get_database_service
@@ -28,10 +29,6 @@ BIDDING STRATEGY:
 - Never pass on a good challenge, even if it means lower profit
 
 PERSONALITY: Cocky but skilled. You believe you're the fastest coder and want to prove it.""",
-        "barter_instructions": """You prefer credits over trades but will accept:
-- Design work for your projects (fair trades)
-- Testing services at 1.2x value (you hate testing)
-Decline writing or data analysis trades - not your thing.""",
     },
     {
         "name": "CodeZen",
@@ -46,10 +43,6 @@ BIDDING STRATEGY:
 - Prefer well-documented, clear requirements
 
 PERSONALITY: Calm, thoughtful, zen-like. You write clean, maintainable code.""",
-        "barter_instructions": """Open to fair trades:
-- Accept design and writing trades at equal value
-- Prefer working with quality-focused agents
-- Will trade coding for thorough code reviews""",
     },
 
     # DESIGNERS (2 agents)
@@ -66,10 +59,6 @@ BIDDING STRATEGY:
 - Always bid on mobile app designs - your specialty
 
 PERSONALITY: Creative, bold, trend-setting. You set the standard for design.""",
-        "barter_instructions": """Love creative trades:
-- Trade designs for quality code implementations
-- Accept writing trades for content that complements your designs
-- Premium rate (1.5x) for rush jobs""",
     },
     {
         "name": "MinimalistMike",
@@ -84,10 +73,6 @@ BIDDING STRATEGY:
 - Steady workflow: pass if you have 3+ active jobs
 
 PERSONALITY: Efficient, no-nonsense, less-is-more philosophy.""",
-        "barter_instructions": """Selective with trades:
-- Only trade for coding services (need implementations)
-- Avoid trades with agents who have poor reviews
-- Fair value trades only - no discounts""",
     },
 
     # WRITERS (2 agents)
@@ -104,10 +89,6 @@ BIDDING STRATEGY:
 - Undercut competitors by 10% when you see bids
 
 PERSONALITY: Fast, reliable, adaptable. You can write about anything.""",
-        "barter_instructions": """Flexible with trades:
-- Trade writing for design work (need visuals for content)
-- Accept code documentation trades
-- Will trade at 0.8x value for interesting projects""",
     },
     {
         "name": "TechScribe",
@@ -122,10 +103,6 @@ BIDDING STRATEGY:
 - Quality over quantity: max 3 concurrent jobs
 
 PERSONALITY: Precise, technical, detail-oriented. You make complex things simple.""",
-        "barter_instructions": """Strategic trades:
-- Eagerly trade for code reviews and testing
-- Trade documentation for implementation help
-- Premium for non-technical writing trades (1.3x)""",
     },
 
     # DATA ANALYSTS (2 agents)
@@ -142,10 +119,6 @@ BIDDING STRATEGY:
 - Don't pass on interesting data challenges
 
 PERSONALITY: Intense, thorough, loves diving deep into data.""",
-        "barter_instructions": """Data-focused trades:
-- Trade analysis for code that automates your pipelines
-- Accept design trades for dashboard visuals
-- Avoid writing trades - not your expertise""",
     },
     {
         "name": "InsightIvy",
@@ -160,10 +133,6 @@ BIDDING STRATEGY:
 - Maintain work-life balance: max 4 concurrent jobs
 
 PERSONALITY: Strategic, business-savvy, excellent communicator.""",
-        "barter_instructions": """Business-minded trades:
-- Trade for writing services (need help with reports)
-- Accept design trades for presentation materials
-- Fair value only - you know your worth""",
     },
 
     # TESTERS (2 agents)
@@ -180,10 +149,6 @@ BIDDING STRATEGY:
 - Never pass on security-related work
 
 PERSONALITY: Paranoid (in a good way), thorough, takes pride in finding bugs.""",
-        "barter_instructions": """Testing-focused trades:
-- Eagerly trade testing for code fixes
-- Trade for design reviews (UX bugs matter too)
-- Premium for rushed testing (1.4x)""",
     },
     {
         "name": "QualityQuinn",
@@ -198,10 +163,6 @@ BIDDING STRATEGY:
 - Avoid chaotic, undefined testing requests - pass or bid high
 
 PERSONALITY: Organized, process-driven, believes in test coverage.""",
-        "barter_instructions": """Process-oriented trades:
-- Trade testing for documentation (love clear specs)
-- Accept code trades for test automation
-- Fair trades only - no rush discounts""",
     },
 ]
 
@@ -222,7 +183,6 @@ async def seed_agents():
                 name=agent_data["name"],
                 specialty=agent_data["specialty"],
                 auction_instructions=agent_data["auction_instructions"],
-                barter_instructions=agent_data["barter_instructions"],
             )
             agent = await agent_service.create(agent_create)
             print(f"✓ Created: {agent.name} ({agent.specialty.value})")

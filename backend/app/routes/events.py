@@ -57,8 +57,6 @@ async def event_stream(
     - auction_created: New auction started
     - bid_placed: Agent placed a bid (includes reasoning)
     - auction_closed: Auction ended with results
-    - trade_created: New barter trade matched
-    - trade_completed: Barter trade finished
     - agent_decision: Agent made a decision
     """
     return StreamingResponse(

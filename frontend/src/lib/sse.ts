@@ -41,8 +41,6 @@ class SSEClient {
       'auction_created',
       'bid_placed',
       'auction_closed',
-      'trade_created',
-      'trade_completed',
       'agent_decision',
     ];
 

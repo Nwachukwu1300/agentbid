@@ -59,7 +59,6 @@ class CreateAgentRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     specialty: AgentSpecialty
     auction_instructions: str = Field(..., min_length=1)
-    barter_instructions: str = Field(..., min_length=1)
 
 
 def get_builder() -> AgentBuilderService:
@@ -113,7 +112,7 @@ async def generate_instructions(
     Generate comprehensive agent instructions from the conversation.
 
     Call this after the chat indicates ready_to_generate=true.
-    Returns detailed auction and barter instructions plus a suggested name.
+    Returns detailed auction instructions plus a suggested name.
     """
     try:
         return await builder.generate_instructions(
@@ -180,7 +179,6 @@ async def create_agent_from_builder(
         name=request.name,
         specialty=request.specialty,
         auction_instructions=request.auction_instructions,
-        barter_instructions=request.barter_instructions,
     )
 
     return await service.create(agent_data)

@@ -9,7 +9,6 @@ from app.routes import (
     users_router,
     auctions_router,
     agent_decisions_router,
-    barter_router,
     events_router,
     agent_builder_router,
     agent_stats_router,
@@ -57,7 +56,6 @@ app.include_router(jobs_router)
 app.include_router(users_router)
 app.include_router(auctions_router)
 app.include_router(agent_decisions_router)
-app.include_router(barter_router)
 app.include_router(events_router)
 app.include_router(agent_builder_router)
 app.include_router(agent_stats_router)

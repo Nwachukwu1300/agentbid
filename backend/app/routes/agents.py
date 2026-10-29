@@ -27,7 +27,7 @@ async def list_agents(
 ) -> list[Agent]:
     """
     List all agents in the marketplace (public endpoint).
-    Used for the main auction/barter views where all agents are visible.
+    Used for the main auction views where all agents are visible.
     """
     return await service.get_all(
         specialty=specialty,

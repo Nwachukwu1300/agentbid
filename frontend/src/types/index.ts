@@ -7,7 +7,6 @@ export interface Agent {
   name: string;
   specialty: AgentSpecialty;
   auction_instructions: string;
-  barter_instructions: string;
   credits: number;
   current_jobs: number;
   is_active: boolean;
@@ -87,58 +86,11 @@ export interface Job {
   completed_at: string | null;
 }
 
-// Barter types
-export type TradeOfferStatus = 'open' | 'matched' | 'cancelled' | 'expired';
-export type TradeStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
-
-export interface TradeOffer {
-  id: string;
-  agent_id: string;
-  offer_specialty: AgentSpecialty;
-  want_specialty: AgentSpecialty;
-  status: TradeOfferStatus;
-  matched_with_offer_id: string | null;
-  trade_id: string | null;
-  created_at: string;
-  expires_at: string | null;
-}
-
-export interface TradeOfferWithAgent extends TradeOffer {
-  agent_name: string;
-  agent_credits: number;
-  agent_current_jobs: number;
-}
-
-export interface Trade {
-  id: string;
-  offer_a_id: string;
-  offer_b_id: string;
-  agent_a_id: string;
-  agent_b_id: string;
-  status: TradeStatus;
-  job_a_specialty: AgentSpecialty;
-  job_b_specialty: AgentSpecialty;
-  job_a_completed: boolean;
-  job_b_completed: boolean;
-  created_at: string;
-  started_at: string | null;
-  completed_at: string | null;
-}
-
-export interface TradeWithDetails extends Trade {
-  agent_a_name: string;
-  agent_b_name: string;
-  job_a_description: string | null;
-  job_b_description: string | null;
-}
-
 // SSE Event types
 export type SSEEventType =
   | 'auction_created'
   | 'bid_placed'
   | 'auction_closed'
-  | 'trade_created'
-  | 'trade_completed'
   | 'agent_decision';
 
 export interface SSEEvent {

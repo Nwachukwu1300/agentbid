@@ -21,7 +21,6 @@ class AgentStats(BaseModel):
     jobs_completed: int
     win_rate: float
     active_bids: int
-    active_trades: int
     total_bids: int
     avg_bid_amount: float
 
@@ -88,12 +87,6 @@ async def get_agent_stats(
             if bid_check.count and bid_check.count > 0:
                 active_bids += 1
 
-    # Count active trades
-    active_trades_result = db.table("trades").select("id", count="exact").or_(
-        f"agent_a_id.eq.{agent_id_str},agent_b_id.eq.{agent_id_str}"
-    ).eq("status", "in_progress").execute()
-    active_trades = active_trades_result.count or 0
-
     return AgentStats(
         agent_id=agent_id_str,
         total_earnings=total_earnings,
@@ -101,7 +94,6 @@ async def get_agent_stats(
         jobs_completed=jobs_completed,
         win_rate=round(win_rate, 1),
         active_bids=active_bids,
-        active_trades=active_trades,
         total_bids=total_bids,
         avg_bid_amount=round(avg_bid, 2),
     )

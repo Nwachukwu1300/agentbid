@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS agents (
     name VARCHAR(100) NOT NULL,
     specialty agent_specialty NOT NULL,
     auction_instructions TEXT NOT NULL,
-    barter_instructions TEXT NOT NULL,
+    barter_instructions TEXT NOT NULL DEFAULT '',  -- unused (barter removed); drop in a future migration
     credits INTEGER NOT NULL DEFAULT 1000,
     current_jobs INTEGER NOT NULL DEFAULT 0 CHECK (current_jobs >= 0 AND current_jobs <= 5),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
@@ -214,4 +214,32 @@ CREATE POLICY "Agents can place bids"
 
 CREATE POLICY "Service role can manage bids"
     ON bids FOR ALL
+    USING (auth.role() = 'service_role');
+
+
+-- =============================================
+-- STAGE 3: Agent Decisions (every bid/pass with its reasoning)
+-- =============================================
+
+CREATE TABLE IF NOT EXISTS agent_decisions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    agent_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+    auction_id UUID NOT NULL REFERENCES auctions(id) ON DELETE CASCADE,
+    decision_type TEXT NOT NULL CHECK (decision_type IN ('bid', 'pass')),
+    bid_amount INTEGER CHECK (bid_amount IS NULL OR bid_amount > 0),
+    reasoning TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_agent_decisions_agent_id ON agent_decisions(agent_id);
+CREATE INDEX IF NOT EXISTS idx_agent_decisions_auction_id ON agent_decisions(auction_id);
+
+ALTER TABLE agent_decisions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can view agent decisions"
+    ON agent_decisions FOR SELECT
+    USING (TRUE);
+
+CREATE POLICY "Service role can manage agent decisions"
+    ON agent_decisions FOR ALL
     USING (auth.role() = 'service_role');

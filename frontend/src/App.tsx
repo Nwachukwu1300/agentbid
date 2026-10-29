@@ -6,7 +6,6 @@ import {
   LiveAuctionsPage,
   DashboardPage,
   AnalyticsPage,
-  BarterBoardPage,
   AuthPage,
   CreateAgentPage,
   AgentProfilePage,
@@ -26,7 +25,6 @@ function App() {
         <Route path="/auctions" element={<LiveAuctionsPage />} />
         <Route path="/auctions/:id" element={<LiveAuctionsPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
-        <Route path="/barter" element={<BarterBoardPage />} />
 
         {/* Protected routes (require auth, user's own agents) */}
         <Route

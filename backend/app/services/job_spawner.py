@@ -11,6 +11,7 @@ from app.services.agent_intelligence import AgentIntelligenceService
 from app.services.job_templates import generate_job
 from app.models.job import JobCreate
 from app.models.auction import AuctionCreate
+from app.models.agent_decision import DecisionType
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -134,6 +135,7 @@ class JobSpawner:
         db = get_database_service()
         job_service = JobService(db)
         agent_service = AgentService(db)
+        auction_service = AuctionService(db)
 
         # Get all in-progress jobs
         from app.models.job import JobStatus
@@ -141,15 +143,15 @@ class JobSpawner:
 
         now = datetime.now(timezone.utc)
         completion_duration = self.settings.job_completion_duration_seconds
+        # Work starts when the job's auction closes (jobs started by hand fall back to created_at)
+        started_at = await auction_service.get_close_times([job.id for job in jobs])
 
         for job in jobs:
-            # Check if job has been in progress long enough
-            # We use created_at + duration since we don't track when job started
-            job_created = job.created_at
-            if hasattr(job_created, 'tzinfo') and job_created.tzinfo is None:
-                job_created = job_created.replace(tzinfo=timezone.utc)
+            job_started = started_at.get(job.id, job.created_at)
+            if job_started.tzinfo is None:
+                job_started = job_started.replace(tzinfo=timezone.utc)
 
-            elapsed = (now - job_created).total_seconds()
+            elapsed = (now - job_started).total_seconds()
 
             if elapsed >= completion_duration:
                 try:
@@ -200,7 +202,7 @@ class JobSpawner:
                     auction.id,
                     specialty_match_only=True,
                 )
-                bid_count = sum(1 for d in decisions if d.decision_type.value == "BID")
+                bid_count = sum(1 for d in decisions if d.decision_type == DecisionType.BID)
                 if bid_count > 0:
                     logger.info(
                         f"Auction {auction.id} ({auction.job_title}): "

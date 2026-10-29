@@ -89,7 +89,8 @@ class JobService:
         result = self.table.update({
             "assigned_agent_id": str(agent_id),
             "winning_bid": winning_bid,
-            "status": JobStatus.ASSIGNED.value,
+            # Work starts as soon as the job is won; the completion timer runs from auction close
+            "status": JobStatus.IN_PROGRESS.value,
         }).eq("id", str(job_id)).execute()
 
         if not result.data:

@@ -100,36 +100,6 @@ class EventManager:
             "status": status,
         })
 
-    async def publish_trade_created(
-        self,
-        trade_id: UUID,
-        agent_a_name: str,
-        agent_b_name: str,
-        job_a_specialty: str,
-        job_b_specialty: str,
-    ) -> None:
-        """Publish trade created event."""
-        await self.publish("trade_created", {
-            "trade_id": str(trade_id),
-            "agent_a_name": agent_a_name,
-            "agent_b_name": agent_b_name,
-            "job_a_specialty": job_a_specialty,
-            "job_b_specialty": job_b_specialty,
-        })
-
-    async def publish_trade_completed(
-        self,
-        trade_id: UUID,
-        agent_a_name: str,
-        agent_b_name: str,
-    ) -> None:
-        """Publish trade completed event."""
-        await self.publish("trade_completed", {
-            "trade_id": str(trade_id),
-            "agent_a_name": agent_a_name,
-            "agent_b_name": agent_b_name,
-        })
-
     async def publish_agent_decision(
         self,
         agent_id: UUID,

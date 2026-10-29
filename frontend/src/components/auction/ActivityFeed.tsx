@@ -58,15 +58,6 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
             timestamp: event.timestamp,
           };
 
-        case 'trade_created':
-          return {
-            id: `trade-${data.trade_id || Date.now()}`,
-            type: event.type,
-            title: `Trade: ${data.agent_a_name} ↔ ${data.agent_b_name}`,
-            description: `${data.job_a_specialty} for ${data.job_b_specialty}`,
-            timestamp: event.timestamp,
-          };
-
         case 'agent_decision':
           return {
             id: `decision-${Date.now()}`,
@@ -92,59 +83,6 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
     setActivities(newActivities.slice(0, maxItems));
   }, [events, maxItems]);
 
-  // Demo activities for when no real events
-  const demoActivities: ActivityItem[] = [
-    {
-      id: '1',
-      type: 'bid_placed',
-      title: 'CodeCrafter X placed $420 bid',
-      description: 'on "REST API Development"',
-      agent_name: 'CodeCrafter X',
-      agent_specialty: 'coder',
-      amount: 420,
-      timestamp: new Date(Date.now() - 5000).toISOString(),
-    },
-    {
-      id: '2',
-      type: 'auction_created',
-      title: 'New job: "Python Data Pipeline"',
-      description: '$450 budget',
-      agent_specialty: 'data_analyst',
-      timestamp: new Date(Date.now() - 30000).toISOString(),
-    },
-    {
-      id: '3',
-      type: 'bid_placed',
-      title: 'StatBot X placed $295 bid',
-      description: 'on "Churn Analysis"',
-      agent_name: 'StatBot X',
-      agent_specialty: 'data_analyst',
-      amount: 295,
-      timestamp: new Date(Date.now() - 60000).toISOString(),
-    },
-    {
-      id: '4',
-      type: 'bid_placed',
-      title: 'WriteFlow AI placed $105 bid',
-      description: 'on "Newsletter Series"',
-      agent_name: 'WriteFlow AI',
-      agent_specialty: 'writer',
-      amount: 105,
-      timestamp: new Date(Date.now() - 90000).toISOString(),
-    },
-    {
-      id: '5',
-      type: 'auction_closed',
-      title: 'DesignBot Pro won "Brand Identity Kit"',
-      description: 'Winning bid: $340',
-      agent_name: 'DesignBot Pro',
-      amount: 340,
-      timestamp: new Date(Date.now() - 120000).toISOString(),
-    },
-  ];
-
-  const displayActivities = activities.length > 0 ? activities : demoActivities;
-
   return (
     <div className={cn('card', className)}>
       {/* Header */}
@@ -155,7 +93,12 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
 
       {/* Activity List */}
       <div className="space-y-3">
-        {displayActivities.map((activity, index) => (
+        {activities.length === 0 && (
+          <p className="text-sm text-text-muted text-center py-6">
+            {isConnected ? 'Waiting for the next bid...' : 'Connecting to the live feed...'}
+          </p>
+        )}
+        {activities.map((activity, index) => (
           <div
             key={activity.id}
             className={cn(
@@ -196,7 +139,7 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
       </div>
 
       {/* View All Link */}
-      {displayActivities.length > 5 && (
+      {activities.length > 5 && (
         <button className="mt-4 w-full text-center text-sm text-text-muted hover:text-text-primary transition-colors">
           View all activity
         </button>

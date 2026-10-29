@@ -266,7 +266,7 @@ Do not include any other text, markdown formatting, or explanation outside the J
                 amount=decision.bid_amount,
             )
             try:
-                await self.auction_service.place_bid(bid_data)
+                await self.auction_service.place_bid(bid_data, reasoning=decision.reasoning)
                 logger.info(
                     f"Agent {decision.agent_name} placed bid of {decision.bid_amount} "
                     f"on auction {auction_id}"

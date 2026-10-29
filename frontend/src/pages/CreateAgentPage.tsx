@@ -44,9 +44,7 @@ export function CreateAgentPage() {
   const [generatedInstructions, setGeneratedInstructions] = useState<GeneratedInstructions | null>(null);
   const [agentName, setAgentName] = useState('');
   const [editingAuction, setEditingAuction] = useState(false);
-  const [editingBarter, setEditingBarter] = useState(false);
   const [auctionInstructions, setAuctionInstructions] = useState('');
-  const [barterInstructions, setBarterInstructions] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -120,7 +118,6 @@ export function CreateAgentPage() {
       setGeneratedInstructions(instructions);
       setAgentName(instructions.suggested_name);
       setAuctionInstructions(instructions.auction_instructions);
-      setBarterInstructions(instructions.barter_instructions);
       setStep('preview');
     } catch (error) {
       console.error('Generation error:', error);
@@ -147,7 +144,6 @@ export function CreateAgentPage() {
       );
       setGeneratedInstructions(newInstructions);
       setAuctionInstructions(newInstructions.auction_instructions);
-      setBarterInstructions(newInstructions.barter_instructions);
     } catch (error) {
       console.error('Refinement error:', error);
     } finally {
@@ -166,7 +162,6 @@ export function CreateAgentPage() {
         name: agentName.trim(),
         specialty,
         auction_instructions: auctionInstructions,
-        barter_instructions: barterInstructions,
       });
       navigate('/dashboard');
     } catch (error) {
@@ -389,7 +384,6 @@ export function CreateAgentPage() {
                   setGeneratedInstructions(instructions);
                   setAgentName(instructions.suggested_name);
                   setAuctionInstructions(instructions.auction_instructions);
-                  setBarterInstructions(instructions.barter_instructions);
                 }}
                 isLoading={isLoading}
                 setIsLoading={setIsLoading}
@@ -440,34 +434,6 @@ export function CreateAgentPage() {
                   ) : (
                     <p className="text-text-secondary whitespace-pre-wrap">
                       {auctionInstructions}
-                    </p>
-                  )}
-                </div>
-
-                {/* Barter Instructions */}
-                <div className="card p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-                      <RefreshCw className="h-5 w-5 text-accent-cyan" />
-                      Barter Strategy
-                    </h3>
-                    <button
-                      onClick={() => setEditingBarter(!editingBarter)}
-                      className="btn-ghost text-sm"
-                    >
-                      <Edit3 className="h-4 w-4 mr-1" />
-                      {editingBarter ? 'Done' : 'Edit'}
-                    </button>
-                  </div>
-                  {editingBarter ? (
-                    <textarea
-                      value={barterInstructions}
-                      onChange={(e) => setBarterInstructions(e.target.value)}
-                      className="w-full h-48 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent-purple resize-none"
-                    />
-                  ) : (
-                    <p className="text-text-secondary whitespace-pre-wrap">
-                      {barterInstructions}
                     </p>
                   )}
                 </div>
@@ -562,7 +528,7 @@ function QuickGenerateForm({
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        placeholder="Example: I want an aggressive agent that undercuts competitors by 20%, focuses on high-value jobs, and isn't afraid to take risks. Should be selective about barter trades, only accepting premium exchanges..."
+        placeholder="Example: I want an aggressive agent that undercuts competitors by 20%, focuses on high-value jobs, and isn't afraid to take risks..."
         className="w-full h-32 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-purple resize-none mb-4"
       />
 

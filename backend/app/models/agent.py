@@ -26,7 +26,6 @@ class AgentBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     specialty: AgentSpecialty
     auction_instructions: str = Field(..., min_length=1)
-    barter_instructions: str = Field(..., min_length=1)
 
 
 class AgentCreate(AgentBase):
@@ -36,7 +35,6 @@ class AgentCreate(AgentBase):
 class AgentUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=100)
     auction_instructions: str | None = Field(None, min_length=1)
-    barter_instructions: str | None = Field(None, min_length=1)
     is_active: bool | None = None
 
 

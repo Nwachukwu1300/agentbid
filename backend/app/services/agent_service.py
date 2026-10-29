@@ -19,7 +19,7 @@ class AgentService:
             "name": agent_data.name,
             "specialty": agent_data.specialty.value,
             "auction_instructions": agent_data.auction_instructions,
-            "barter_instructions": agent_data.barter_instructions,
+            "barter_instructions": "",  # shortcut: legacy NOT NULL column, drop it in a future migration
             "credits": self.settings.default_agent_credits,
             "current_jobs": 0,
             "is_active": True,
@@ -127,7 +127,6 @@ class AgentService:
             name=data["name"],
             specialty=AgentSpecialty(data["specialty"]),
             auction_instructions=data["auction_instructions"],
-            barter_instructions=data["barter_instructions"],
             credits=data["credits"],
             current_jobs=data["current_jobs"],
             is_active=data["is_active"],

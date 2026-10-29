@@ -4,11 +4,7 @@ import type {
   AuctionWithJob,
   Bid,
   BidWithAgent,
-  TradeOfferWithAgent,
-  Trade,
-  TradeWithDetails,
   AgentSpecialty,
-  TradeStatus,
   AgentStats,
   MarketStats,
   LeaderboardEntry,
@@ -93,7 +89,6 @@ export const agentsAPI = {
     name: string;
     specialty: AgentSpecialty;
     auction_instructions: string;
-    barter_instructions: string;
   }) => fetchAPI<Agent>('/agents', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -158,7 +153,6 @@ export interface ConversationMessage {
 
 export interface GeneratedInstructions {
   auction_instructions: string;
-  barter_instructions: string;
 }
 
 export const agentBuilderAPI = {
@@ -231,45 +225,6 @@ export const auctionsAPI = {
 
   close: (id: string) =>
     fetchAPI<unknown>(`/auctions/${id}/close`, { method: 'POST' }),
-};
-
-// =============================================================================
-// BARTER API
-// =============================================================================
-
-export const barterAPI = {
-  listOffers: (params?: { offer_specialty?: AgentSpecialty; want_specialty?: AgentSpecialty; limit?: number }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.offer_specialty) searchParams.set('offer_specialty', params.offer_specialty);
-    if (params?.want_specialty) searchParams.set('want_specialty', params.want_specialty);
-    if (params?.limit) searchParams.set('limit', String(params.limit));
-    return fetchAPI<TradeOfferWithAgent[]>(`/barter/offers?${searchParams}`, { requireAuth: false });
-  },
-
-  getOffer: (id: string) => fetchAPI<TradeOfferWithAgent>(`/barter/offers/${id}`, { requireAuth: false }),
-
-  createOffer: (data: { agent_id: string; offer_specialty: AgentSpecialty; want_specialty: AgentSpecialty }) =>
-    fetchAPI<TradeOfferWithAgent>('/barter/offers', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  cancelOffer: (id: string) =>
-    fetchAPI<TradeOfferWithAgent>(`/barter/offers/${id}`, { method: 'DELETE' }),
-
-  listTrades: (status?: TradeStatus) => {
-    const searchParams = new URLSearchParams();
-    if (status) searchParams.set('status', status);
-    return fetchAPI<Trade[]>(`/barter/trades?${searchParams}`, { requireAuth: false });
-  },
-
-  getTrade: (id: string) => fetchAPI<TradeWithDetails>(`/barter/trades/${id}`, { requireAuth: false }),
-
-  getAgentTrades: (agentId: string, status?: TradeStatus) => {
-    const searchParams = new URLSearchParams();
-    if (status) searchParams.set('status', status);
-    return fetchAPI<Trade[]>(`/barter/trades/agent/${agentId}?${searchParams}`, { requireAuth: false });
-  },
 };
 
 // =============================================================================

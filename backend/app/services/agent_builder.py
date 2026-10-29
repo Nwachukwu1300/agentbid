@@ -3,7 +3,7 @@ LLM-Assisted Agent Builder Service
 
 This service powers the "wow" feature - users describe their desired agent
 in natural language, and the LLM generates comprehensive, strategic
-auction and barter instructions.
+auction instructions.
 """
 
 import json
@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 class GeneratedInstructions(BaseModel):
     """The output of the LLM instruction generation."""
     auction_instructions: str
-    barter_instructions: str
     suggested_name: str
     personality_summary: str
 
@@ -45,10 +44,9 @@ class AgentBuilderService:
 The marketplace works like this:
 - Agents compete in real-time auctions for service jobs (like Upwork but for AI agents)
 - Agents win by bidding the LOWEST price (reverse auction)
-- Agents also engage in barter trades, exchanging services with each other
 - Each agent has a specialty: Designer, Coder, Writer, Data Analyst, or Tester
 - Agents start with 1000 credits and can hold max 5 concurrent jobs
-- When they win a job, credits transfer immediately
+- When an agent finishes a job it won, it is paid its winning bid (so bidding too low means earning less)
 
 Your job is to:
 1. Have a friendly, engaging conversation to understand what kind of agent the user wants
@@ -62,7 +60,6 @@ IMPORTANT STRATEGY DIMENSIONS TO EXPLORE:
 - Workload management: Stay lean (1-2 jobs) vs maximize capacity (4-5 jobs)
 - Credit strategy: Preserve credits vs reinvest aggressively
 - Competition response: React to competitors or stick to own strategy
-- Barter preference: Seek trades actively or focus on auctions
 - Service preferences: What types of work within their specialty they prefer
 
 Keep the conversation natural and conversational. Don't ask all questions at once.
@@ -79,21 +76,13 @@ Be enthusiastic and make the user feel their agent will be unique and strategic.
 The user wants a {specialty} agent with these characteristics:
 {conversation_summary}
 
-Generate TWO sets of instructions:
-
-1. AUCTION INSTRUCTIONS - How the agent should behave in competitive auctions
+Generate AUCTION INSTRUCTIONS - how the agent should behave in competitive auctions:
    - Be specific about bidding strategy, risk tolerance, pricing approach
    - Include personality traits that will influence decisions
    - Reference specific scenarios (when to bid aggressively, when to pass)
    - Make it feel like a real personality, not generic rules
 
-2. BARTER INSTRUCTIONS - How the agent should handle direct trade negotiations
-   - What trades are valuable to them
-   - When to accept vs decline trades
-   - Their approach to building relationships
-   - Specialty preferences for trades
-
-CRITICAL: Make these instructions RICH and DETAILED (150-300 words each).
+CRITICAL: Make these instructions RICH and DETAILED (150-300 words).
 They should capture a distinct personality that will lead to unique behavior.
 Avoid generic advice - be specific and strategic.
 
@@ -104,7 +93,6 @@ Also suggest:
 Respond with ONLY a valid JSON object in this exact format:
 {{
   "auction_instructions": "...",
-  "barter_instructions": "...",
   "suggested_name": "...",
   "personality_summary": "..."
 }}"""
@@ -113,7 +101,6 @@ Respond with ONLY a valid JSON object in this exact format:
 
 Current instructions:
 AUCTION: {current_auction}
-BARTER: {current_barter}
 
 User feedback: {feedback}
 
@@ -124,7 +111,6 @@ based on the user's input.
 Respond with ONLY a valid JSON object:
 {{
   "auction_instructions": "...",
-  "barter_instructions": "...",
   "suggested_name": "...",
   "personality_summary": "..."
 }}"""
@@ -191,7 +177,7 @@ Respond with ONLY a valid JSON object:
             specialty: The agent's specialty
 
         Returns:
-            Generated auction and barter instructions with suggested name
+            Generated auction instructions with suggested name
         """
         # Build conversation summary for context
         conversation_text = "\n".join([
@@ -241,7 +227,6 @@ Respond with ONLY a valid JSON object:
         """
         prompt = self.REFINEMENT_PROMPT.format(
             current_auction=current.auction_instructions,
-            current_barter=current.barter_instructions,
             feedback=feedback,
         )
 
@@ -283,18 +268,16 @@ Respond with ONLY a valid JSON object:
 Specialty: {specialty.value}
 User's description: {description}
 
-Create RICH, DETAILED instructions (150-300 words each) that capture a distinct personality.
+Create RICH, DETAILED instructions (150-300 words) that capture a distinct personality.
 Be specific about:
 - Bidding strategy and risk tolerance
 - Pricing approach
 - Workload preferences
 - When to be aggressive vs conservative
-- Barter preferences and trade approach
 
 Respond with ONLY a valid JSON object:
 {{
   "auction_instructions": "...",
-  "barter_instructions": "...",
   "suggested_name": "...",
   "personality_summary": "..."
 }}"""
@@ -332,7 +315,6 @@ Respond with ONLY a valid JSON object:
             data = json.loads(cleaned)
             return GeneratedInstructions(
                 auction_instructions=data["auction_instructions"],
-                barter_instructions=data["barter_instructions"],
                 suggested_name=data.get("suggested_name", "My Agent"),
                 personality_summary=data.get("personality_summary", "A strategic marketplace agent"),
             )

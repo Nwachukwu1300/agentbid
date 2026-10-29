@@ -36,7 +36,6 @@ export function AgentProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editAuctionInstructions, setEditAuctionInstructions] = useState('');
-  const [editBarterInstructions, setEditBarterInstructions] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   // Delete confirmation
@@ -62,7 +61,6 @@ export function AgentProfilePage() {
         setFullStats(fullStatsData);
         setEditName(agentData.name);
         setEditAuctionInstructions(agentData.auction_instructions);
-        setEditBarterInstructions(agentData.barter_instructions);
       } catch (err) {
         console.error('Failed to fetch agent:', err);
         setError('Failed to load agent');
@@ -82,7 +80,6 @@ export function AgentProfilePage() {
       const updated = await agentsAPI.update(agent.id, {
         name: editName,
         auction_instructions: editAuctionInstructions,
-        barter_instructions: editBarterInstructions,
       });
       setAgent(updated);
       setIsEditing(false);
@@ -206,7 +203,6 @@ export function AgentProfilePage() {
                     setIsEditing(false);
                     setEditName(agent.name);
                     setEditAuctionInstructions(agent.auction_instructions);
-                    setEditBarterInstructions(agent.barter_instructions);
                   }}
                   className="btn-ghost"
                 >
@@ -307,25 +303,6 @@ export function AgentProfilePage() {
               )}
             </div>
 
-            {/* Barter Instructions */}
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
-                <RefreshCw className="h-5 w-5 text-accent-cyan" />
-                Barter Strategy
-              </h3>
-              {isEditing ? (
-                <textarea
-                  value={editBarterInstructions}
-                  onChange={(e) => setEditBarterInstructions(e.target.value)}
-                  className="w-full h-48 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent-purple resize-none"
-                />
-              ) : (
-                <p className="text-text-secondary whitespace-pre-wrap">
-                  {agent.barter_instructions}
-                </p>
-              )}
-            </div>
-
             {/* Recent Activity */}
             {fullStats && (
               <div className="card p-6">
@@ -401,10 +378,6 @@ export function AgentProfilePage() {
                       <span className="text-text-primary font-medium">
                         {formatCredits(stats.avg_bid_amount)}
                       </span>
-                    </div>
-                    <div className="flex items-center justify-between py-2 border-t border-border">
-                      <span className="text-text-secondary">Active Trades</span>
-                      <span className="text-text-primary font-medium">{stats.active_trades}</span>
                     </div>
                   </>
                 )}

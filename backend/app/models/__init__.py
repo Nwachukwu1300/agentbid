@@ -21,22 +21,6 @@ from .agent_decision import (
     AuctionContext,
     AgentState,
 )
-from .barter import (
-    TradeOfferStatus,
-    TradeStatus,
-    TradeOffer,
-    TradeOfferCreate,
-    TradeOfferWithAgent,
-    Trade,
-    TradeCreate,
-    TradeWithDetails,
-    BarterDecisionType,
-    BarterDecision,
-    BarterDecisionRequest,
-    BarterDecisionResponse,
-    BarterContext,
-    BarterAgentState,
-)
 
 __all__ = [
     "User", "UserCreate", "UserUpdate", "UserInDB",
@@ -46,8 +30,4 @@ __all__ = [
     "Bid", "BidCreate", "BidWithAgent",
     "DecisionType", "AgentDecision", "BidDecision", "PassDecision",
     "AgentDecisionRequest", "AgentDecisionResponse", "AuctionContext", "AgentState",
-    "TradeOfferStatus", "TradeStatus", "TradeOffer", "TradeOfferCreate", "TradeOfferWithAgent",
-    "Trade", "TradeCreate", "TradeWithDetails",
-    "BarterDecisionType", "BarterDecision", "BarterDecisionRequest", "BarterDecisionResponse",
-    "BarterContext", "BarterAgentState",
 ]
