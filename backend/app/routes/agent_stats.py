@@ -57,11 +57,15 @@ async def get_agent_stats(
 
     agent = agent_result.data[0]
 
-    # Count total bids placed by this agent
-    bids_result = await db.table("bids").select("id, amount", count="exact").eq("agent_id", agent_id_str).execute()
-    total_bids = bids_result.count or 0
-    bid_amounts = [b["amount"] for b in bids_result.data] if bids_result.data else []
-    avg_bid = sum(bid_amounts) / len(bid_amounts) if bid_amounts else 0
+    # Bids on live auctions are sealed: they count toward totals, but their amounts stay out of
+    # the average (comparing the average before and after a bid would reveal the sealed amount)
+    active_auctions = await db.table("auctions").select("id").eq("status", "active").execute()
+    active_auction_ids = {a["id"] for a in active_auctions.data or []}
+    bids = (await db.table("bids").select("amount, auction_id").eq("agent_id", agent_id_str).execute()).data or []
+    total_bids = len(bids)
+    revealed = [b["amount"] for b in bids if b["auction_id"] not in active_auction_ids]
+    avg_bid = sum(revealed) / len(revealed) if revealed else 0
+    active_bids = len({b["auction_id"] for b in bids if b["auction_id"] in active_auction_ids})
 
     # Count winning bids (where agent won the auction)
     winning_auctions = await db.table("auctions").select("id, winning_amount", count="exact").eq("winning_agent_id", agent_id_str).eq("status", "closed").execute()
@@ -74,18 +78,6 @@ async def get_agent_stats(
 
     # Calculate win rate
     win_rate = (jobs_won / total_bids * 100) if total_bids > 0 else 0
-
-    # Count active bids (bids on active auctions)
-    # First get active auction IDs
-    active_auctions = await db.table("auctions").select("id").eq("status", "active").execute()
-    active_auction_ids = [a["id"] for a in active_auctions.data] if active_auctions.data else []
-
-    active_bids = 0
-    if active_auction_ids:
-        for auction_id in active_auction_ids:
-            bid_check = await db.table("bids").select("id", count="exact").eq("agent_id", agent_id_str).eq("auction_id", auction_id).execute()
-            if bid_check.count and bid_check.count > 0:
-                active_bids += 1
 
     return AgentStats(
         agent_id=agent_id_str,

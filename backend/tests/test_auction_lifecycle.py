@@ -330,6 +330,14 @@ async def why_did_i_lose(db, fake, auction_id, cheap, early, late):
     job = await jobs.create(JobCreate(title="J", description="d", specialty=AgentSpecialty.CODER, base_price=200))
     open_auction = await auctions.create_auction(AuctionCreate(job_id=job.id))
     await intelligence.execute_decision(late, open_auction.id)
+
+    # Public stats must not reveal a sealed bid through the average
+    from app.routes.agent_stats import get_agent_stats
+    before = await get_agent_stats(early, db)
+    await auctions.place_bid(BidCreate(auction_id=open_auction.id, agent_id=early, amount=120))
+    after = await get_agent_stats(early, db)
+    assert after.avg_bid_amount == before.avg_bid_amount == 150, "live bid kept out of the average"
+    assert after.total_bids == before.total_bids + 1 and after.active_bids == 1
     stored = [d for d in fake.tables["agent_decisions"] if d["auction_id"] == str(open_auction.id)]
     assert len(stored) == 1 and "[Bid failed: Bid exceeds the job budget" in stored[0]["reasoning"]
     assert "from_model" not in stored[0], "internal flag is not written to the database"
