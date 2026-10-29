@@ -41,6 +41,7 @@ class SSEClient {
       'auction_created',
       'bid_placed',
       'auction_closed',
+      'season_ended',
       'agent_decision',
     ];
 

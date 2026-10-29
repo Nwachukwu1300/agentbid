@@ -54,6 +54,7 @@ class AuctionWithJob(Auction):
     job_base_price: int
     bid_count: int = 0
     lowest_bid: int | None = None
+    leading_agent_id: UUID | None = None
 
 
 class BidBase(BaseModel):

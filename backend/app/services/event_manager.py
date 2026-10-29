@@ -100,6 +100,15 @@ class EventManager:
             "status": status,
         })
 
+    async def publish_season_ended(self, number: int, standings: list[dict]) -> None:
+        """Publish the final top of a finished season."""
+        await self.publish("season_ended", {
+            "season_number": number,
+            "winner_agent_name": standings[0]["agent_name"] if standings else None,
+            "winner_credits": standings[0]["credits"] if standings else None,
+            "top3": standings[:3],
+        })
+
     async def publish_agent_decision(
         self,
         agent_id: UUID,

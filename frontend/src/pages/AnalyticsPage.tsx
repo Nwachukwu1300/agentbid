@@ -15,10 +15,10 @@ import {
 } from 'recharts';
 import { DollarSign, TrendingUp, Users, CheckCircle, Trophy, BarChart3 } from 'lucide-react';
 import { Layout } from '@/components/layout';
-import { StatCard, SpecialtyBadge, ProgressBar } from '@/components/ui';
+import { StatCard, SpecialtyBadge, ProgressBar, CountdownTimer } from '@/components/ui';
 import { analyticsAPI } from '@/lib/api';
 import { cn, formatCredits } from '@/lib/utils';
-import type { AgentSpecialty, LeaderboardEntry, MarketStats } from '@/types';
+import type { AgentSpecialty, LeaderboardEntry, MarketStats, Season } from '@/types';
 
 // Chart colors
 const SPECIALTY_COLORS: Record<AgentSpecialty, string> = {
@@ -35,25 +35,28 @@ export function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<TimeRange>('30D');
   const [marketStats, setMarketStats] = useState<MarketStats | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [season, setSeason] = useState<Season | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchAnalytics() {
-      setLoading(true);
-      try {
-        const [stats, leaders] = await Promise.all([
-          analyticsAPI.getMarketStats(),
-          analyticsAPI.getLeaderboard(10),
-        ]);
-        setMarketStats(stats);
-        setLeaderboard(leaders);
-      } catch (error) {
-        console.error('Failed to fetch analytics:', error);
-      } finally {
-        setLoading(false);
-      }
+  async function fetchAnalytics() {
+    setLoading(true);
+    try {
+      const [stats, leaders, currentSeason] = await Promise.all([
+        analyticsAPI.getMarketStats(),
+        analyticsAPI.getLeaderboard(10),
+        analyticsAPI.getCurrentSeason().catch(() => null),
+      ]);
+      setMarketStats(stats);
+      setLeaderboard(leaders);
+      setSeason(currentSeason);
+    } catch (error) {
+      console.error('Failed to fetch analytics:', error);
+    } finally {
+      setLoading(false);
     }
+  }
 
+  useEffect(() => {
     fetchAnalytics();
   }, []);
 
@@ -279,12 +282,23 @@ export function AnalyticsPage() {
 
         {/* Leaderboard */}
         <div className="card">
-          <div className="flex items-center gap-2 mb-6">
-            <Trophy className="h-5 w-5 text-accent-orange" />
-            <div>
-              <h3 className="font-semibold text-text-primary">Agent Leaderboard</h3>
-              <p className="text-sm text-text-muted">Top performing agents this month</p>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-accent-orange" />
+              <div>
+                <h3 className="font-semibold text-text-primary">
+                  {season ? `Season ${season.number} Leaderboard` : 'Agent Leaderboard'}
+                </h3>
+                <p className="text-sm text-text-muted">Most credits when the season ends wins. Credits then reset.</p>
+              </div>
             </div>
+            {season && (
+              <div className="flex items-center gap-2 text-sm text-text-muted">
+                Ends in
+                {/* Refetch after the backend has had a moment to roll the season over */}
+                <CountdownTimer endTime={season.ends_at} size="sm" onExpire={() => setTimeout(fetchAnalytics, 15000)} />
+              </div>
+            )}
           </div>
 
           {leaderboard.length === 0 ? (
@@ -303,7 +317,8 @@ export function AnalyticsPage() {
                     <th className="pb-3 text-left text-sm font-medium text-text-muted">#</th>
                     <th className="pb-3 text-left text-sm font-medium text-text-muted">Agent</th>
                     <th className="pb-3 text-left text-sm font-medium text-text-muted">Specialty</th>
-                    <th className="pb-3 text-right text-sm font-medium text-text-muted">Earnings</th>
+                    <th className="pb-3 text-right text-sm font-medium text-text-muted">Credits</th>
+                    <th className="pb-3 text-right text-sm font-medium text-text-muted">Profit</th>
                     <th className="pb-3 text-right text-sm font-medium text-text-muted">Jobs</th>
                     <th className="pb-3 text-right text-sm font-medium text-text-muted">Win %</th>
                   </tr>
@@ -322,13 +337,19 @@ export function AnalyticsPage() {
                             {entry.specialty === 'tester' && '🧪'}
                           </span>
                           <span className="text-sm font-medium text-text-primary">{entry.agent_name}</span>
+                          {entry.bankrupt && (
+                            <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-accent-red/20 text-accent-red">Bankrupt</span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3">
                         <SpecialtyBadge specialty={entry.specialty} size="sm" />
                       </td>
                       <td className="py-3 text-right text-sm font-medium text-text-primary">
-                        {formatCredits(entry.earnings)}
+                        {formatCredits(entry.credits)}
+                      </td>
+                      <td className={cn('py-3 text-right text-sm font-medium', entry.profit >= 0 ? 'text-accent-green' : 'text-accent-red')}>
+                        {entry.profit >= 0 ? '+' : ''}{entry.profit}
                       </td>
                       <td className="py-3 text-right text-sm text-text-secondary">{entry.jobs_won}</td>
                       <td className="py-3 text-right">

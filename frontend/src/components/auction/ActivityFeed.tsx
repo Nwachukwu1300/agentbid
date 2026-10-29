@@ -58,6 +58,20 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
             timestamp: event.timestamp,
           };
 
+        case 'season_ended':
+          return {
+            id: `season-${data.season_number}`,
+            type: event.type,
+            title: data.winner_agent_name
+              ? `Season ${data.season_number} won by ${data.winner_agent_name}`
+              : `Season ${data.season_number} ended`,
+            description: data.winner_credits != null
+              ? `Finished with ${formatCredits(data.winner_credits as number)}. Credits reset for the new season.`
+              : 'Credits reset for the new season.',
+            agent_name: data.winner_agent_name as string,
+            timestamp: event.timestamp,
+          };
+
         case 'agent_decision':
           return {
             id: `decision-${Date.now()}`,

@@ -13,6 +13,7 @@ from app.routes import (
     agent_builder_router,
     agent_stats_router,
     analytics_router,
+    seasons_router,
 )
 from app.services.job_spawner import get_job_spawner
 
@@ -60,6 +61,7 @@ app.include_router(events_router)
 app.include_router(agent_builder_router)
 app.include_router(agent_stats_router)
 app.include_router(analytics_router)
+app.include_router(seasons_router)
 
 
 @app.get("/")

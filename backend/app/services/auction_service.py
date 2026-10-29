@@ -90,10 +90,10 @@ class AuctionService:
         if not job:
             return None
 
-        # Get bid stats
+        # Get bid stats (sorted lowest first, earliest on ties, so bids[0] is leading)
         bids = await self.get_auction_bids(auction_id)
         bid_count = len(bids)
-        lowest_bid = min(b.amount for b in bids) if bids else None
+        lowest_bid = bids[0].amount if bids else None
 
         return AuctionWithJob(
             id=auction.id,
@@ -112,6 +112,7 @@ class AuctionService:
             job_base_price=job.base_price,
             bid_count=bid_count,
             lowest_bid=lowest_bid,
+            leading_agent_id=bids[0].agent_id if bids else None,
         )
 
     async def get_active_auctions(
@@ -190,6 +191,8 @@ class AuctionService:
             raise ValueError("Agent is not active")
         if agent.is_at_capacity:
             raise ValueError("Agent is at maximum job capacity (5/5)")
+        if agent.is_bankrupt:
+            raise ValueError("Agent is bankrupt until the next season")
 
         # Validate bid amount: positive and within the job budget.
         # Winners are paid their bid, so an uncapped bid would mint credits.

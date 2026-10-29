@@ -9,6 +9,8 @@ from app.services.auction_service import AuctionService
 from app.services.agent_service import AgentService
 from app.services.agent_intelligence import AgentIntelligenceService
 from app.services.job_templates import generate_job
+from app.services.season_service import SeasonService
+from app.services.event_manager import get_event_manager
 from app.models.job import JobCreate
 from app.models.auction import AuctionCreate
 from app.models.agent_decision import DecisionType
@@ -27,6 +29,7 @@ class JobSpawner:
         self._close_task: asyncio.Task | None = None
         self._complete_task: asyncio.Task | None = None
         self._bidding_task: asyncio.Task | None = None
+        self._season_task: asyncio.Task | None = None
 
     async def start(self):
         """Start all background tasks."""
@@ -36,17 +39,24 @@ class JobSpawner:
         self._running = True
         logger.info("Starting JobSpawner background tasks")
 
+        # Make sure a season is running before agents start earning
+        try:
+            await self._check_season()
+        except Exception as e:
+            logger.error(f"Error starting season: {e}")
+
         self._spawn_task = asyncio.create_task(self._job_spawn_loop())
         self._close_task = asyncio.create_task(self._auction_close_loop())
         self._complete_task = asyncio.create_task(self._job_completion_loop())
         self._bidding_task = asyncio.create_task(self._agent_bidding_loop())
+        self._season_task = asyncio.create_task(self._season_loop())
 
     async def stop(self):
         """Stop all background tasks."""
         self._running = False
         logger.info("Stopping JobSpawner background tasks")
 
-        tasks = [self._spawn_task, self._close_task, self._complete_task, self._bidding_task]
+        tasks = [self._spawn_task, self._close_task, self._complete_task, self._bidding_task, self._season_task]
         for task in tasks:
             if task:
                 task.cancel()
@@ -130,8 +140,8 @@ class JobSpawner:
 
             await asyncio.sleep(10)
 
-    async def _complete_expired_jobs(self):
-        """Complete jobs that have been in progress long enough."""
+    async def _complete_expired_jobs(self, settle_all: bool = False):
+        """Complete jobs that have been in progress long enough (or all of them at season end)."""
         db = get_database_service()
         job_service = JobService(db)
         agent_service = AgentService(db)
@@ -153,24 +163,45 @@ class JobSpawner:
 
             elapsed = (now - job_started).total_seconds()
 
-            if elapsed >= completion_duration:
+            if settle_all or elapsed >= completion_duration:
                 try:
                     # Complete the job
                     completed_job = await job_service.complete_job(job.id)
                     if completed_job and completed_job.assigned_agent_id:
-                        # Credit the agent with the winning bid amount
-                        await agent_service.update_credits(
-                            completed_job.assigned_agent_id,
-                            completed_job.winning_bid or 0,
-                        )
+                        # Paid the bid, minus what the work cost (can be a loss)
+                        profit = (completed_job.winning_bid or 0) - self.settings.work_cost(completed_job.base_price)
+                        await agent_service.update_credits(completed_job.assigned_agent_id, profit)
                         # Free up agent capacity
                         await agent_service.decrement_jobs(completed_job.assigned_agent_id)
-                        logger.info(
-                            f"Job {job.id} completed, agent earned ${completed_job.winning_bid}"
-                        )
+                        logger.info(f"Job {job.id} completed, agent profit {profit}")
                 except Exception as e:
                     logger.error(f"Error completing job {job.id}: {e}")
 
+
+    async def _season_loop(self):
+        """Roll over to a new season when the current one ends."""
+        while self._running:
+            await asyncio.sleep(10)
+            try:
+                await self._check_season()
+            except Exception as e:
+                logger.error(f"Error in season loop: {e}")
+
+    async def _check_season(self):
+        """Start a season if none is running; finish and replace an expired one."""
+        seasons = SeasonService(get_database_service())
+        current = await seasons.get_current()
+        if current and datetime.fromisoformat(current["ends_at"]) > datetime.now(timezone.utc):
+            return
+
+        # Pay out all running work first so it counts toward the season it was won in
+        await self._complete_expired_jobs(settle_all=True)
+        if current:
+            standings = await seasons.finish(current)
+            await get_event_manager().publish_season_ended(current["number"], standings)
+            logger.info(f"Season {current['number']} finished")
+        new_season = await seasons.start_next()
+        logger.info(f"Season {new_season['number']} started, ends at {new_season['ends_at']}")
 
     async def _agent_bidding_loop(self):
         """Trigger agents to bid on active auctions every 10 seconds."""

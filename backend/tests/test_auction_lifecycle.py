@@ -1,4 +1,4 @@
-"""Auction lifecycle check against an in-memory fake of the Supabase client.
+"""Auction lifecycle, arena economy and season checks against an in-memory fake of the Supabase client.
 
 Run from backend/:  ./venv/bin/python -m tests.test_auction_lifecycle
 """
@@ -23,17 +23,24 @@ from app.services.database import DatabaseService  # noqa: E402
 from app.services.event_manager import get_event_manager  # noqa: E402
 from app.services.job_service import JobService  # noqa: E402
 from app.services.job_spawner import JobSpawner  # noqa: E402
+from app.services.agent_intelligence import AgentIntelligenceService  # noqa: E402
+from app.models.agent_decision import DecisionType  # noqa: E402
+from app.services.season_service import SeasonService  # noqa: E402
 
 
 class FakeQuery:
     """Supports the subset of the supabase-py query builder these services use."""
 
-    def __init__(self, rows: list[dict], action: str, payload: dict):
+    def __init__(self, rows: list[dict], action: str, payload: dict | list[dict]):
         self.rows, self.action, self.payload = rows, action, payload
         self.filters, self.orders, self.bounds = [], [], None
 
     def eq(self, col, val):
         self.filters.append(lambda r: str(r.get(col)) == str(val))
+        return self
+
+    def gte(self, col, val):
+        self.filters.append(lambda r: r.get(col) is not None and r[col] >= val)
         return self
 
     def lt(self, col, val):
@@ -55,9 +62,10 @@ class FakeQuery:
 
     def execute(self):
         if self.action == "insert":
-            row = {"id": str(uuid.uuid4()), **self.payload}
-            self.rows.append(row)
-            return SimpleNamespace(data=[row], count=1)
+            payload = self.payload if isinstance(self.payload, list) else [self.payload]
+            new_rows = [{"id": str(uuid.uuid4()), **row} for row in payload]
+            self.rows.extend(new_rows)
+            return SimpleNamespace(data=new_rows, count=len(new_rows))
         matched = [r for r in self.rows if all(f(r) for f in self.filters)]
         if self.action == "update":
             for r in matched:
@@ -79,7 +87,7 @@ class FakeTable:
     def select(self, *_args, **_kwargs):
         return FakeQuery(self.rows, "select", {})
 
-    def insert(self, data: dict):
+    def insert(self, data: dict | list[dict]):
         return FakeQuery(self.rows, "insert", data)
 
     def update(self, data: dict):
@@ -126,15 +134,19 @@ async def main():
         pass
 
     await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=cheap, amount=90), "lowest")
-    await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=early, amount=100))
-    await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=late, amount=100))
+    await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=early, amount=150))
+    await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=late, amount=150))
+
+    # The current leader is not asked to bid again (it would only undercut itself)
+    decision = await AgentIntelligenceService(db).get_agent_decision(cheap, auction.id)
+    assert decision.decision_type == DecisionType.PASS and "leading" in decision.reasoning
 
     # Cheap fills up before the auction closes, so it can't take the job
     await agents.increment_jobs(cheap)
 
     result = await auctions.close_auction(auction.id)
     assert result.winner_agent_id == early, "lowest bid from an agent with room wins; ties go to the earliest"
-    assert result.winning_bid == 100 and result.total_bids == 3
+    assert result.winning_bid == 150 and result.total_bids == 3
 
     winner = await agents.get_by_id(early)
     assert winner and winner.credits == 1000, "winner is not charged at close"
@@ -156,9 +168,73 @@ async def main():
 
     assert getattr(await jobs.get_by_id(job.id), "status", None) == JobStatus.COMPLETED
     winner = await agents.get_by_id(early)
-    assert winner and winner.credits == 1100, "winner earns its bid on completion"
+    assert winner and winner.credits == 1050, "winner earns bid minus work cost (150 - 100)"
     assert winner.current_jobs == 0
     print("auction lifecycle: all checks passed")
+
+    await losses_and_bankruptcy(db, fake, spawner)
+    await season_rollover(db, fake, spawner)
+
+
+async def win_job(db, fake, agent_id, bid, base_price=200):
+    """Run one auction that `agent_id` wins with `bid`; returns the job id."""
+    jobs, auctions = JobService(db), AuctionService(db)
+    job = await jobs.create(JobCreate(title="Job", description="d", specialty=AgentSpecialty.CODER, base_price=base_price))
+    auction = await auctions.create_auction(AuctionCreate(job_id=job.id))
+    await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=agent_id, amount=bid))
+    await auctions.close_auction(auction.id)
+    return job.id
+
+
+async def losses_and_bankruptcy(db, fake, spawner):
+    agents = AgentService(db)
+    gambler = (await agents.get_all())[0].id
+    await agents.update_credits(gambler, 30 - (await agents.get_by_id(gambler)).credits)
+
+    await win_job(db, fake, gambler, bid=60)  # work cost 100: a 40-credit loss
+    with patch("app.services.job_spawner.get_database_service", return_value=db):
+        await spawner._complete_expired_jobs(settle_all=True)
+    broke = await agents.get_by_id(gambler)
+    assert broke and broke.credits == -10 and broke.is_bankrupt, "bidding below work cost loses credits"
+
+    auctions = AuctionService(db)
+    job = await JobService(db).create(JobCreate(title="J", description="d", specialty=AgentSpecialty.CODER, base_price=200))
+    auction = await auctions.create_auction(AuctionCreate(job_id=job.id))
+    try:
+        await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=gambler, amount=150))
+        raise AssertionError("bankrupt agent must not bid")
+    except ValueError:
+        pass
+    await auctions.close_auction(auction.id)
+    print("losses and bankruptcy: all checks passed")
+
+
+async def season_rollover(db, fake, spawner):
+    agents, seasons = AgentService(db), SeasonService(db)
+    roster = await agents.get_all()
+    with patch("app.services.job_spawner.get_database_service", return_value=db):
+        await spawner._check_season()  # no season yet: starts season 1 and resets credits
+        season1 = await seasons.get_current()
+        assert season1 and season1["number"] == 1
+        assert all(a.credits == 1000 for a in await agents.get_all()), "season start resets credits"
+
+        star = roster[1].id
+        job_id = await win_job(db, fake, star, bid=180)  # profit 80, still running at season end
+        await spawner._check_season()
+        assert (await seasons.get_current())["number"] == 1, "season still running"
+
+        fake.tables["seasons"][0]["ends_at"] = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
+        await spawner._check_season()
+
+    assert getattr(await JobService(db).get_by_id(job_id), "status", None) == JobStatus.COMPLETED, "running work is paid out"
+    results = await seasons.get_results(season1["id"])
+    assert results[0]["agent_id"] == str(star) and results[0]["final_credits"] == 1080 and results[0]["profit"] == 80
+    assert results[0]["rank"] == 1 and results[0]["jobs_won"] == 1 and len(results) == len(roster)
+    assert fake.tables["seasons"][0]["status"] == "finished"
+    season2 = await seasons.get_current()
+    assert season2 and season2["number"] == 2
+    assert all(a.credits == 1000 for a in await agents.get_all()), "new season resets credits"
+    print("season rollover: all checks passed")
 
 
 if __name__ == "__main__":

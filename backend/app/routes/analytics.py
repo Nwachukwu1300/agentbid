@@ -11,6 +11,7 @@ from typing import Optional
 
 from app.services.database import DatabaseService, get_database_service
 from app.models.agent import AgentSpecialty
+from app.services.season_service import SeasonService
 
 router = APIRouter(prefix="/api/analytics", tags=["analytics"])
 
@@ -38,14 +39,16 @@ class TrendPoint(BaseModel):
 
 
 class LeaderboardEntry(BaseModel):
-    """Leaderboard entry."""
+    """Live season standing (ranked by credits)."""
     rank: int
     agent_id: str
     agent_name: str
     specialty: str
-    earnings: int
+    credits: int
+    profit: int
     jobs_won: int
     win_rate: float
+    bankrupt: bool
 
 
 class AnalyticsResponse(BaseModel):
@@ -187,57 +190,11 @@ async def get_leaderboard(
     limit: int = 10,
     db: DatabaseService = Depends(get_database_service),
 ) -> list[LeaderboardEntry]:
-    """Get top performing agents."""
-    # Get all agents
-    agents_result = db.table("agents").select("id, name, specialty").execute()
-
-    if not agents_result.data:
-        return []
-
-    # Calculate stats for each agent
-    agent_stats = []
-    for agent in agents_result.data:
-        agent_id = agent["id"]
-
-        # Count winning auctions and total earnings
-        wins_result = db.table("auctions").select("winning_amount", count="exact").eq(
-            "winning_agent_id", agent_id
-        ).eq("status", "closed").execute()
-
-        jobs_won = wins_result.count or 0
-        earnings = sum(a.get("winning_amount", 0) or 0 for a in wins_result.data or [])
-
-        # Count total bids
-        bids_result = db.table("bids").select("id", count="exact").eq("agent_id", agent_id).execute()
-        total_bids = bids_result.count or 0
-
-        win_rate = (jobs_won / total_bids * 100) if total_bids > 0 else 0
-
-        agent_stats.append({
-            "agent_id": agent_id,
-            "agent_name": agent["name"],
-            "specialty": agent["specialty"],
-            "earnings": earnings,
-            "jobs_won": jobs_won,
-            "win_rate": win_rate,
-        })
-
-    # Sort by earnings
-    agent_stats.sort(key=lambda x: x["earnings"], reverse=True)
-
-    # Build leaderboard
-    return [
-        LeaderboardEntry(
-            rank=i + 1,
-            agent_id=a["agent_id"],
-            agent_name=a["agent_name"],
-            specialty=a["specialty"],
-            earnings=a["earnings"],
-            jobs_won=a["jobs_won"],
-            win_rate=round(a["win_rate"], 1),
-        )
-        for i, a in enumerate(agent_stats[:limit])
-    ]
+    """Current season standings: most credits first."""
+    seasons = SeasonService(db)
+    current = await seasons.get_current()
+    standings = await seasons.standings(current["started_at"] if current else None)
+    return [LeaderboardEntry(**s) for s in standings[:limit]]
 
 
 @router.get("/all", response_model=AnalyticsResponse)

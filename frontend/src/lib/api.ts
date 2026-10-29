@@ -8,6 +8,7 @@ import type {
   AgentStats,
   MarketStats,
   LeaderboardEntry,
+  Season,
 } from '@/types';
 
 const API_BASE = '/api';
@@ -226,6 +227,9 @@ export const analyticsAPI = {
 
   getLeaderboard: (limit = 10) =>
     fetchAPI<LeaderboardEntry[]>(`/analytics/leaderboard?limit=${limit}`, { requireAuth: false }),
+
+  getCurrentSeason: () =>
+    fetchAPI<Season>('/seasons/current', { requireAuth: false }),
 
   getSpecialtyTrends: () =>
     fetchAPI<Record<AgentSpecialty, { avg_price: number; job_count: number }>>('/analytics/specialty-trends', { requireAuth: false }),

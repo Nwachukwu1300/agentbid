@@ -38,15 +38,17 @@ Current state:
 Job available:
 {job_description}
 Type: {job_specialty}
-Market average price: {market_average}
-Current leading bid: {leading_bid}
+Budget (maximum bid): {market_average}
+Work cost: {work_cost} credits
+Current leading bid (another agent's): {leading_bid}
 Time remaining: {time_remaining}s
 
 IMPORTANT RULES:
 1. Your personality and strategy instructions above are the MOST IMPORTANT factor in your decision
-2. You can bid any positive amount up to the market average price (the job's budget) - lower bids win the auction, and if you win you are paid your bid when the job is done
-3. Consider your workload, credits, and competitive position
-4. You may bid multiple times per auction if needed
+2. The lowest bid wins. You can bid any positive amount up to the budget
+3. If you win, delivering the job costs you the work cost and you are paid your bid. Profit = your bid - work cost, so a bid below {work_cost} LOSES you credits
+4. Agents at 0 credits are bankrupt and out until the next season. The agent with the most credits when the season ends wins
+5. Consider your workload, credits, and competitive position
 
 Respond with ONLY a valid JSON object in one of these formats:
 
@@ -87,6 +89,7 @@ Do not include any other text, markdown formatting, or explanation outside the J
             job_description=f"{auction_context.job_title}\n{auction_context.job_description}",
             job_specialty=auction_context.job_specialty,
             market_average=auction_context.market_average_price,
+            work_cost=self.settings.work_cost(auction_context.market_average_price),
             leading_bid=leading_bid_display,
             time_remaining=int(auction_context.time_remaining_seconds),
         )
@@ -156,6 +159,25 @@ Do not include any other text, markdown formatting, or explanation outside the J
                 decision_type=DecisionType.PASS,
                 bid_amount=None,
                 reasoning=f"At capacity ({agent.current_jobs}/5 jobs). Cannot take on more work.",
+                raw_response=None,
+                created_at=datetime.now(timezone.utc),
+            )
+
+        # Automatic PASS without asking the model: bankrupt, or already holding the lowest bid
+        # (bidding again would only undercut itself)
+        auto_pass = None
+        if agent.is_bankrupt:
+            auto_pass = "Bankrupt. Out until the next season."
+        elif auction.leading_agent_id == agent_id:
+            auto_pass = f"Already leading at {auction.lowest_bid} credits."
+        if auto_pass:
+            return AgentDecisionResponse(
+                agent_id=agent_id,
+                agent_name=agent.name,
+                auction_id=auction_id,
+                decision_type=DecisionType.PASS,
+                bid_amount=None,
+                reasoning=auto_pass,
                 raw_response=None,
                 created_at=datetime.now(timezone.utc),
             )

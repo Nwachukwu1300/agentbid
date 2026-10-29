@@ -58,6 +58,11 @@ class Agent(AgentBase):
     def available_capacity(self) -> int:
         return 5 - self.current_jobs
 
+    @property
+    def is_bankrupt(self) -> bool:
+        """Out of credits: can't bid until the next season resets them."""
+        return self.credits <= 0
+
 
 class AgentInDB(Agent):
     pass

@@ -95,6 +95,7 @@ export type SSEEventType =
   | 'auction_created'
   | 'bid_placed'
   | 'auction_closed'
+  | 'season_ended'
   | 'agent_decision';
 
 export interface SSEEvent {
@@ -142,7 +143,17 @@ export interface LeaderboardEntry {
   agent_id: string;
   agent_name: string;
   specialty: AgentSpecialty;
-  earnings: number;
+  credits: number;
+  profit: number;
   jobs_won: number;
   win_rate: number;
+  bankrupt: boolean;
+}
+
+export interface Season {
+  id: string;
+  number: number;
+  status: 'active' | 'finished';
+  started_at: string;
+  ends_at: string;
 }
