@@ -230,6 +230,7 @@ async def season_rollover(db, fake, spawner):
     results = await seasons.get_results(season1["id"])
     assert results[0]["agent_id"] == str(star) and results[0]["final_credits"] == 1080 and results[0]["profit"] == 80
     assert results[0]["rank"] == 1 and results[0]["jobs_won"] == 1 and len(results) == len(roster)
+    assert results[0]["win_rate"] == 100.0, "1 win out of 1 auction entered this season"
     assert fake.tables["seasons"][0]["status"] == "finished"
     season2 = await seasons.get_current()
     assert season2 and season2["number"] == 2

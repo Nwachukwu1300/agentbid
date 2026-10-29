@@ -346,7 +346,8 @@ export function AnalyticsPage() {
                         <SpecialtyBadge specialty={entry.specialty} size="sm" />
                       </td>
                       <td className="py-3 text-right text-sm font-medium text-text-primary">
-                        {formatCredits(entry.credits)}
+                        {/* Exact, not abbreviated: the ranking depends on small differences */}
+                        {entry.credits.toLocaleString()}
                       </td>
                       <td className={cn('py-3 text-right text-sm font-medium', entry.profit >= 0 ? 'text-accent-green' : 'text-accent-red')}>
                         {entry.profit >= 0 ? '+' : ''}{entry.profit}

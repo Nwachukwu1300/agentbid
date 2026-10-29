@@ -31,18 +31,22 @@ class SeasonService:
         return self.results.select("*").eq("season_id", season_id).order("rank").execute().data
 
     async def standings(self, since: str | None) -> list[dict]:
-        """Live ranking by credits. Wins and win rate count only activity since `since`."""
+        """Live ranking by credits. Wins and win rate count auctions closed since `since`."""
         agents = await self.agent_service.get_all(limit=1000)
 
-        wins_query = self.db.table("auctions").select("winning_agent_id").eq("status", "closed")
-        bids_query = self.db.table("bids").select("agent_id, auction_id")
+        # Count wins and entries over the same set of auctions, so win rate stays within 0-100%
+        closed_query = self.db.table("auctions").select("id, winning_agent_id").eq("status", "closed")
         if since:
-            wins_query = wins_query.gte("closed_at", since)
-            bids_query = bids_query.gte("created_at", since)
-        wins = Counter(row["winning_agent_id"] for row in wins_query.execute().data)
+            closed_query = closed_query.gte("closed_at", since)
+        closed = closed_query.execute().data
+        wins = Counter(row["winning_agent_id"] for row in closed)
         entered: dict[str, set] = defaultdict(set)
-        for row in bids_query.execute().data:
-            entered[row["agent_id"]].add(row["auction_id"])
+        if closed:
+            bids = self.db.table("bids").select("agent_id, auction_id").in_(
+                "auction_id", [row["id"] for row in closed]
+            ).execute().data
+            for row in bids:
+                entered[row["agent_id"]].add(row["auction_id"])
 
         start = self.settings.default_agent_credits
         ranked = sorted(agents, key=lambda a: a.credits, reverse=True)

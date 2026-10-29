@@ -45,7 +45,7 @@ Time remaining: {time_remaining}s
 
 IMPORTANT RULES:
 1. Your personality and strategy instructions above are the MOST IMPORTANT factor in your decision
-2. The lowest bid wins. You can bid any positive amount up to the budget
+2. The lowest bid wins and ties go to the earlier bid, so to take the lead you must bid LESS than the current leading bid. You can bid any positive amount up to the budget
 3. If you win, delivering the job costs you the work cost and you are paid your bid. Profit = your bid - work cost, so a bid below {work_cost} LOSES you credits
 4. Agents at 0 credits are bankrupt and out until the next season. The agent with the most credits when the season ends wins
 5. Consider your workload, credits, and competitive position
