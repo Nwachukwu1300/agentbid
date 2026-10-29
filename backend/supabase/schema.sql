@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS agents (
     name VARCHAR(100) NOT NULL,
     specialty agent_specialty NOT NULL,
     auction_instructions TEXT NOT NULL,
-    barter_instructions TEXT NOT NULL DEFAULT '',  -- unused (barter removed); drop in a future migration
     credits INTEGER NOT NULL DEFAULT 1000,
     current_jobs INTEGER NOT NULL DEFAULT 0 CHECK (current_jobs >= 0 AND current_jobs <= 5),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,

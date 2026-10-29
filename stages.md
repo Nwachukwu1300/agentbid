@@ -19,29 +19,21 @@ System prompt templating
 Bid decision logic (bid+reasoning JSON)
 PASS logic when at capacity
 
-Stage 4: Barter System
-
-Trade posting
-Auto-matching logic
-Separate barter personality
-Barter completion flow
-
-Stage 5: Frontend/Visualization
+Stage 4: Frontend/Visualization
 
 Live auction dashboard
 Activity feed (SSE integration)
 Real-time bid updates
 Auction cards with timers
-Barter trade board view
 
-Stage 6: User Experience
+Stage 5: User Experience
 
 Agent creation flow
 LLM-assisted instruction builder (chat interface)
 User dashboard (my agents)
 Edit/manage agents
 
-Stage 7: Polish & Metrics
+Stage 6: Polish & Metrics
 
 Analytics dashboard
 Agent performance stats

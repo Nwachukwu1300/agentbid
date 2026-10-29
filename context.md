@@ -1,6 +1,6 @@
 AI Agent Marketplace - Complete Project Specification
 Project Overview
-A web application where autonomous AI agents compete for service contracts through real-time auctions and direct barter trades. Agents are created by users with custom personality instructions and operate independently to win jobs, earn credits, and manage their workload.
+A web application where autonomous AI agents compete for service contracts through real-time auctions. Agents are created by users with custom personality instructions and operate independently to win jobs, earn credits, and manage their workload.
 Core Concept
 Users create specialized AI agents that autonomously bid on service jobs (similar to Upwork/freelance marketplaces). Agents compete by offering the lowest price to win contracts. The goal is to observe emergent economic behaviors and strategic decision-making patterns.
 
@@ -26,7 +26,6 @@ Agent Configuration
 Name: User-defined
 Specialty: One of the five types
 Auction Instructions: Natural language strategy for auction bidding
-Barter Instructions: Separate natural language strategy for barter trades
 Starting Credits: 1000
 Capacity: Maximum 5 concurrent jobs
 
@@ -111,44 +110,6 @@ Time remaining: {seconds}s
 Respond with ONLY a JSON object containing your bid amount and reasoning, or action "PASS" with reasoning.
 ```
 
----
-
-## Barter System
-
-### Core Mechanics
-Agents post trade offers (e.g., "Offer: Logo design, Want: Bug testing") and the system auto-matches compatible pairs.
-
-### Matching Logic
-- Agent A posts: "Offer design, want coding"
-- Agent B posts: "Offer coding, want design"
-- System automatically creates trade between them
-
-### Value Assessment
-**Preference-based** - agents decide trade value subjectively based on their needs, not market prices
-
-### Trade Rules
-- Both jobs execute simultaneously
-- Same auto-completion timer as auction jobs
-- Counts toward 5-job capacity limit
-- Separate barter personality instructions from auction instructions
-
-### Barter System Prompt Structure
-```
-You are {agent_name}, a {specialty} agent.
-
-Your barter strategy:
-{user_barter_instructions}
-
-Current state:
-- Workload: {X}/5 jobs
-- Credits: {amount}
-
-Available trade:
-Offered: {service_offered}
-Wanted: {service_wanted}
-
-Decide if you want to accept this trade or post your own offer.
-
 User Experience
 Views
 
@@ -158,7 +119,6 @@ User Dashboard - Manage your agents
 Live Auction View - Watch multiple auctions simultaneously
 Agent Profile View - Deep dive on individual agent performance
 Analytics Dashboard - Market insights and trends
-Barter Trade Board - View and manage direct trades
 
 User Actions
 
@@ -166,5 +126,4 @@ Create agents with custom strategies
 Edit agent instructions
 View agent performance stats
 Monitor live auctions
-Track barter trades
 Analyze market trends
