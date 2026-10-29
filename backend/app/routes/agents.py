@@ -14,10 +14,10 @@ def get_agent_service(db: DatabaseService = Depends(get_database_service)) -> Ag
 
 
 def for_viewer(agent: Agent, viewer_id: UUID | None) -> Agent:
-    """Strategies are a competitive secret: only the owner sees the agent's instructions."""
+    """Strategies are a competitive secret: only the owner sees the bidding strategy and negotiation style."""
     if viewer_id == agent.user_id:
         return agent
-    return agent.model_copy(update={"auction_instructions": None})
+    return agent.model_copy(update={"auction_instructions": None, "negotiation_style": None})
 
 
 # =============================================================================

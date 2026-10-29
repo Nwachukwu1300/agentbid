@@ -463,6 +463,62 @@ async def api_views():
     print("API views: all checks passed")
 
 
+async def builder_and_style():
+    import json
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.auth import get_current_user_id, get_optional_user_id
+    from app.services.database import get_database_service
+    from app.services.agent_builder import AgentBuilderService
+    from app.services.negotiation_service import DEFAULT_NEGOTIATION_STYLE
+
+    # The builder writes both parts, falls back to the default style, and states the real share
+    with share(0.3):
+        builder = AgentBuilderService()
+    both = builder._parse_instructions(json.dumps({"auction_instructions": "Bid low.", "negotiation_style": "Never budge.",
+                                                   "suggested_name": "Rock", "personality_summary": "Stubborn"}))
+    assert both.negotiation_style == "Never budge."
+    legacy = builder._parse_instructions(json.dumps({"auction_instructions": "Bid low."}))
+    assert legacy.negotiation_style == DEFAULT_NEGOTIATION_STYLE
+    assert "{negotiation_pct}" not in builder.system_prompt and "About 30% of winning bids" in builder.system_prompt
+    assert '"negotiation_style"' in builder.GENERATION_PROMPT and "NEGOTIATION STYLE" in builder.GENERATION_PROMPT
+
+    # Create and edit through the API; only the owner sees the style
+    a = Arena()
+    owner, stranger = uuid.uuid4(), uuid.uuid4()
+    viewer = {"id": owner}
+    app.dependency_overrides[get_database_service] = lambda: a.db
+    app.dependency_overrides[get_current_user_id] = lambda: owner
+    app.dependency_overrides[get_optional_user_id] = lambda: viewer["id"]
+    try:
+        client = TestClient(app)
+        r = client.post("/api/agents", json={"name": "Rock", "specialty": "coder", "auction_instructions": "Bid low.",
+                                             "negotiation_style": "Never budge.", "user_id": str(owner)})
+        assert r.status_code == 201 and r.json()["negotiation_style"] == "Never budge."
+        agent_id = r.json()["id"]
+        r = client.put(f"/api/agents/{agent_id}", json={"negotiation_style": "Split the difference."})
+        assert r.status_code == 200 and r.json()["negotiation_style"] == "Split the difference."
+        assert client.get(f"/api/agents/{agent_id}").json()["negotiation_style"] == "Split the difference."
+        viewer["id"] = stranger
+        seen = client.get(f"/api/agents/{agent_id}").json()
+        assert seen["negotiation_style"] is None and seen["auction_instructions"] is None
+        assert all(x["negotiation_style"] is None for x in client.get("/api/agents").json())
+        too_long = client.put(f"/api/agents/{agent_id}", json={"negotiation_style": "x" * 2001})
+        assert too_long.status_code == 422
+    finally:
+        app.dependency_overrides.clear()
+
+    # An agent with no style negotiates with the neutral default
+    a = Arena(); svc = a.service()
+    agent, _, neg = await a.won_job(svc)
+    next(r for r in a.fake.tables["agents"] if r["id"] == str(agent))["negotiation_style"] = None
+    a.script(svc, [say("counter", 120)], [say("walk_away")])
+    await a.run(svc, neg)
+    agent_prompt = next(p for s, p in a.prompts if s == "agent")
+    assert DEFAULT_NEGOTIATION_STYLE in agent_prompt
+    print("builder and style: all checks passed")
+
+
 async def main():
     await deals()
     await no_deals()
@@ -475,6 +531,7 @@ async def main():
     explanations()
     await game_loop()
     await api_views()
+    await builder_and_style()
 
 
 if __name__ == "__main__":

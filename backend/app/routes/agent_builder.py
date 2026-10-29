@@ -10,7 +10,7 @@ from typing import Optional
 from uuid import UUID
 
 from app.auth import get_current_user_id
-from app.models.agent import AgentSpecialty, STRATEGY_MAX_LENGTH
+from app.models.agent import AgentSpecialty, STRATEGY_MAX_LENGTH, NEGOTIATION_STYLE_MAX_LENGTH
 from app.services import ai_budget
 from app.services.database import DatabaseService, get_database_service
 from app.services.agent_builder import (
@@ -52,6 +52,7 @@ class CurrentInstructions(GeneratedInstructions):
     auction_instructions: str = Field(..., max_length=STRATEGY_MAX_LENGTH)
     suggested_name: str = Field(..., max_length=100)
     personality_summary: str = Field(..., max_length=1000)
+    negotiation_style: str = Field("", max_length=NEGOTIATION_STYLE_MAX_LENGTH)
 
 
 class RefineRequest(BaseModel):

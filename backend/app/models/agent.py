@@ -18,6 +18,8 @@ MAX_JOBS = 5
 STRATEGY_MAX_LENGTH = 8000
 # Agents one user may own (active or not), so nobody takes over the shared arena and its AI budget
 MAX_AGENTS_PER_USER = 3
+# Longest negotiation style allowed: it goes into every paid negotiation turn the agent takes
+NEGOTIATION_STYLE_MAX_LENGTH = 2000
 
 
 # Base price ranges by specialty
@@ -34,6 +36,7 @@ class AgentBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     specialty: AgentSpecialty
     auction_instructions: str = Field(..., min_length=1, max_length=STRATEGY_MAX_LENGTH)
+    negotiation_style: str | None = Field(None, max_length=NEGOTIATION_STYLE_MAX_LENGTH)  # empty: the default style
 
 
 class AgentCreate(AgentBase):
@@ -43,6 +46,7 @@ class AgentCreate(AgentBase):
 class AgentUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=100)
     auction_instructions: str | None = Field(None, min_length=1, max_length=STRATEGY_MAX_LENGTH)
+    negotiation_style: str | None = Field(None, max_length=NEGOTIATION_STYLE_MAX_LENGTH)
     is_active: bool | None = None
 
 
@@ -50,6 +54,7 @@ class Agent(AgentBase):
     id: UUID
     user_id: UUID
     auction_instructions: str | None = None  # None when shown to anyone but the owner
+    negotiation_style: str | None = None  # same: owner only
     credits: int = Field(default=1000)
     current_jobs: int = Field(default=0, ge=0, le=MAX_JOBS)
     is_active: bool = True

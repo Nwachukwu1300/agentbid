@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from app.config import get_settings
 from app.models.agent import AgentSpecialty
+from app.services.negotiation_service import DEFAULT_NEGOTIATION_STYLE
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class GeneratedInstructions(BaseModel):
     auction_instructions: str
     suggested_name: str
     personality_summary: str
+    negotiation_style: str = ""  # how the agent haggles with clients after winning
 
 
 class ConversationMessage(BaseModel):
@@ -42,11 +44,14 @@ class AgentBuilderService:
     SYSTEM_PROMPT = """You are an AI assistant helping users create autonomous agents for a competitive marketplace.
 
 The marketplace works like this:
-- Agents compete in real-time auctions for service jobs (like Upwork but for AI agents)
-- Agents win by bidding the LOWEST price (reverse auction)
-- Each agent has a specialty: Designer, Coder, Writer, Data Analyst, or Tester
-- Agents start with 1000 credits and can hold max 5 concurrent jobs
-- When an agent finishes a job it won, it is paid its winning bid (so bidding too low means earning less)
+- Agents compete in sealed auctions for service jobs in their own specialty (Designer, Coder, Writer, Data Analyst, or Tester)
+- Each agent places ONE secret bid per job (or passes); the LOWEST bid wins, ties go to the earlier bid
+- Doing a job costs the agent half the budget, plus 10% more for each job it is already running. Profit = price paid - work cost, so bidding below cost loses credits
+- About {negotiation_pct}% of winning bids go to a negotiation with the client before work starts: the final price can end up higher or lower than the bid, or the job can fall through. Agents don't know which ones in advance
+- Agents start with 1000 credits and can hold max 5 concurrent jobs. At 0 credits an agent is bankrupt until the season ends
+- Seasons last an hour: the agent with the most credits wins, then everyone resets to 1000
+
+Every agent has two parts: a BIDDING STRATEGY for the auctions and a NEGOTIATION STYLE for haggling with clients.
 
 Your job is to:
 1. Have a friendly, engaging conversation to understand what kind of agent the user wants
@@ -55,12 +60,13 @@ Your job is to:
 
 IMPORTANT STRATEGY DIMENSIONS TO EXPLORE:
 - Risk tolerance: Conservative (safe bids) vs Aggressive (undercut heavily)
-- Specialization focus: Jobs that match specialty vs taking any available work
+- Job selection: Which jobs within their specialty to chase or pass on
 - Pricing strategy: Premium (higher bids, fewer jobs) vs Volume (low bids, many jobs)
 - Workload management: Stay lean (1-2 jobs) vs maximize capacity (4-5 jobs)
 - Credit strategy: Preserve credits vs reinvest aggressively
 - Competition response: React to competitors or stick to own strategy
 - Service preferences: What types of work within their specialty they prefer
+- Negotiation: Hold firm vs settle quickly, how far to concede, when to walk away, how to handle a client who claims a tight budget
 
 Keep the conversation natural and conversational. Don't ask all questions at once.
 Ask 2-3 questions per response, building on previous answers.
@@ -82,7 +88,13 @@ Generate AUCTION INSTRUCTIONS - how the agent should behave in competitive aucti
    - Reference specific scenarios (when to bid aggressively, when to pass)
    - Make it feel like a real personality, not generic rules
 
-CRITICAL: Make these instructions RICH and DETAILED (150-300 words).
+Generate a NEGOTIATION STYLE - how the agent haggles with the client after winning (60-150 words):
+   - How firmly it holds its price and how far it will concede
+   - When it asks for more than its bid, and when it walks away (never below its work cost unless the user wants that)
+   - How it reads a client who claims a tight budget or questions quality
+   - Same personality as the auction instructions
+
+CRITICAL: Make the auction instructions RICH and DETAILED (150-300 words).
 They should capture a distinct personality that will lead to unique behavior.
 Avoid generic advice - be specific and strategic.
 
@@ -93,6 +105,7 @@ Also suggest:
 Respond with ONLY a valid JSON object in this exact format:
 {{
   "auction_instructions": "...",
+  "negotiation_style": "...",
   "suggested_name": "...",
   "personality_summary": "..."
 }}"""
@@ -101,6 +114,7 @@ Respond with ONLY a valid JSON object in this exact format:
 
 Current instructions:
 AUCTION: {current_auction}
+NEGOTIATION: {current_negotiation}
 
 User feedback: {feedback}
 
@@ -111,6 +125,7 @@ based on the user's input.
 Respond with ONLY a valid JSON object:
 {{
   "auction_instructions": "...",
+  "negotiation_style": "...",
   "suggested_name": "...",
   "personality_summary": "..."
 }}"""
@@ -118,6 +133,9 @@ Respond with ONLY a valid JSON object:
     def __init__(self):
         self.settings = get_settings()
         self.client = AsyncOpenAI(api_key=self.settings.openai_api_key, timeout=60, max_retries=1)
+        self.system_prompt = self.SYSTEM_PROMPT.replace(
+            "{negotiation_pct}", str(round(self.settings.negotiation_share * 100))
+        )
 
     async def chat(
         self,
@@ -135,7 +153,7 @@ Respond with ONLY a valid JSON object:
             The assistant's response
         """
         # Build messages for the API
-        api_messages = [{"role": "system", "content": self.SYSTEM_PROMPT}]
+        api_messages = [{"role": "system", "content": self.system_prompt}]
 
         # Add specialty context if provided
         if specialty:
@@ -194,7 +212,7 @@ Respond with ONLY a valid JSON object:
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": self.SYSTEM_PROMPT},
+                    {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt},
                 ],
                 max_tokens=1500,
@@ -227,6 +245,7 @@ Respond with ONLY a valid JSON object:
         """
         prompt = self.REFINEMENT_PROMPT.format(
             current_auction=current.auction_instructions,
+            current_negotiation=current.negotiation_style or "(none yet)",
             feedback=feedback,
         )
 
@@ -234,7 +253,7 @@ Respond with ONLY a valid JSON object:
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": self.SYSTEM_PROMPT},
+                    {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt},
                 ],
                 max_tokens=1500,
@@ -275,9 +294,13 @@ Be specific about:
 - Workload preferences
 - When to be aggressive vs conservative
 
+Also write a NEGOTIATION STYLE (60-150 words): how the agent haggles with the client after winning, how far it
+concedes, and when it walks away.
+
 Respond with ONLY a valid JSON object:
 {{
   "auction_instructions": "...",
+  "negotiation_style": "...",
   "suggested_name": "...",
   "personality_summary": "..."
 }}"""
@@ -286,7 +309,7 @@ Respond with ONLY a valid JSON object:
             response = await self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": self.SYSTEM_PROMPT},
+                    {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": prompt},
                 ],
                 max_tokens=1500,
@@ -317,6 +340,7 @@ Respond with ONLY a valid JSON object:
                 auction_instructions=data["auction_instructions"],
                 suggested_name=data.get("suggested_name", "My Agent"),
                 personality_summary=data.get("personality_summary", "A strategic marketplace agent"),
+                negotiation_style=data.get("negotiation_style") or DEFAULT_NEGOTIATION_STYLE,
             )
         except (json.JSONDecodeError, KeyError) as e:
             logger.error(f"Failed to parse instructions: {response_text}")
