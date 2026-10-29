@@ -17,6 +17,18 @@ const specialtyFilters: (AgentSpecialty | 'all')[] = [
   'data_analyst',
 ];
 
+// What happened after the auction when the winner had to negotiate the price
+function NegotiationBadge({ result }: { result: AuctionWithJob }) {
+  if (!result.negotiated) return null;
+  const [label, style] =
+    result.job_status === 'negotiating'
+      ? ['negotiating', 'bg-accent-purple/20 text-accent-purple animate-pulse']
+      : result.deal_price !== null
+        ? [`deal at ${result.deal_price}`, 'bg-accent-green/20 text-accent-green']
+        : ['no deal', 'bg-accent-red/20 text-accent-red'];
+  return <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium whitespace-nowrap', style)}>{label}</span>;
+}
+
 export function LiveAuctionsPage() {
   const [auctions, setAuctions] = useState<AuctionWithJob[]>([]);
   const [results, setResults] = useState<AuctionWithJob[]>([]);
@@ -168,6 +180,7 @@ export function LiveAuctionsPage() {
                         <span className="text-xs text-text-secondary truncate">
                           {r.winning_agent_name ? `${r.winning_agent_name} won at ${r.winning_amount}` : 'No winner'} (budget {r.job_base_price})
                         </span>
+                        <NegotiationBadge result={r} />
                       </div>
                     </Link>
                   ))}

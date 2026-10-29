@@ -7,6 +7,7 @@ export interface Agent {
   name: string;
   specialty: AgentSpecialty;
   auction_instructions: string | null; // null for anyone but the owner
+  negotiation_style: string | null; // null for anyone but the owner (and when unset: the default style is used)
   credits: number;
   current_jobs: number;
   is_active: boolean;
@@ -23,11 +24,16 @@ export interface AgentStats {
   active_bids: number;
   total_bids: number;
   avg_bid_amount: number;
+  deals: number;
+  no_deals: number;
+  walk_aways: number;
+  avg_negotiation_gain: number | null; // average agreed price minus opening bid
 }
 
 // Mirrors AgentFullStats in backend/app/routes/agent_stats.py
 export interface AgentFullStats extends AgentStats {
-  recent_wins: { auction_id: string; amount: number; closed_at: string; job_title: string; specialty: string }[];
+  // amount is the price paid (the agreed price after a negotiation), null when the negotiation failed
+  recent_wins: { auction_id: string; amount: number | null; job_status: string | null; closed_at: string; job_title: string; specialty: string }[];
   specialty_breakdown: Record<string, number>;
 }
 
@@ -52,6 +58,9 @@ export interface AuctionWithJob extends Auction {
   job_description: string;
   job_specialty: AgentSpecialty;
   job_base_price: number;
+  job_status: string | null; // e.g. 'negotiating', 'unfilled'
+  negotiated: boolean;
+  deal_price: number | null; // agreed price when a negotiation reached a deal
   bid_count: number;
   lowest_bid: number | null;
   leading_agent_id: string | null;
@@ -86,11 +95,39 @@ export interface AgentOutcome {
   explanation: string;
 }
 
+export interface NegotiationMessage {
+  speaker: 'client' | 'agent';
+  turn_number: number;
+  message: string;
+  offer: number | null;
+  action: 'counter' | 'accept' | 'walk_away';
+  was_fallback: boolean;
+  created_at: string;
+}
+
+// Mirrors public_negotiation in backend/app/services/negotiation_service.py
+export interface Negotiation {
+  id: string;
+  agent_id: string | null;
+  opening_price: number;
+  work_cost: number;
+  status: 'active' | 'deal' | 'no_deal';
+  end_reason: 'accepted' | 'agent_walked' | 'client_walked' | 'max_turns' | 'season_ended' | null;
+  final_price: number | null;
+  turn_count: number;
+  messages: NegotiationMessage[];
+  // Revealed only after the negotiation ends
+  client_max_price?: number;
+  client_personality?: string;
+  explanation?: string;
+}
+
 export interface AuctionBreakdown {
   auction: AuctionWithJob;
   work_cost: number;
   decisions: DecisionEntry[];
   agents: AgentOutcome[];
+  negotiation: Negotiation | null; // only when the winner had to negotiate
 }
 
 export interface AgentDecisionHistoryItem {
@@ -148,7 +185,10 @@ export type SSEEventType =
   | 'bid_placed'
   | 'auction_closed'
   | 'season_ended'
-  | 'agent_decision';
+  | 'agent_decision'
+  | 'negotiation_started'
+  | 'negotiation_message'
+  | 'negotiation_ended';
 
 export interface SSEEvent {
   type: SSEEventType;
@@ -204,6 +244,7 @@ export interface LeaderboardEntry {
   jobs_won: number;
   win_rate: number;
   bankrupt: boolean;
+  avg_negotiation_gain: number | null; // "best negotiator": average gain over the opening bid
 }
 
 export interface Season {

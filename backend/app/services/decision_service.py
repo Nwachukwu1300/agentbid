@@ -84,8 +84,8 @@ def negotiation_explanation(negotiation: dict, messages: list[dict]) -> str:
     elif reason == "client_walked":
         line = f"The client walked away. Its limit was {client_max}, so your {agent_last} could have worked."
     else:
-        line = (f"Time ran out. Your last ask of {agent_last} was within the client's limit of {client_max}: "
-                "accepting or meeting it sooner would have closed the deal.")
+        line = (f"Time ran out with your ask of {agent_last} still on the table. The client could have paid up to "
+                f"{client_max}, so a deal was possible, but neither side closed it in time.")
 
     if negotiation["client_personality"] == "bluffer" and client_offers and max(client_offers) < client_max:
         line = (f"The client was a bluffer. It never offered more than {max(client_offers)} "

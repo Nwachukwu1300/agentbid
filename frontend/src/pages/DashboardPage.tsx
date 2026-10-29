@@ -51,6 +51,10 @@ export function DashboardPage() {
                   active_bids: 0,
                   total_bids: 0,
                   avg_bid_amount: 0,
+                  deals: 0,
+                  no_deals: 0,
+                  walk_aways: 0,
+                  avg_negotiation_gain: null,
                 },
               };
             }

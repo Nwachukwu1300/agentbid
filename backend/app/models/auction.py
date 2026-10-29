@@ -54,6 +54,7 @@ class AuctionWithJob(Auction):
     job_base_price: int
     job_status: str | None = None  # e.g. "negotiating", "unfilled"
     negotiated: bool = False  # the winner had to negotiate the price with the client
+    deal_price: int | None = None  # the agreed price, once a negotiation reached a deal
     bid_count: int = 0
     lowest_bid: int | None = None
     leading_agent_id: UUID | None = None

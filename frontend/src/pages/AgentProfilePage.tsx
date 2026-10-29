@@ -15,6 +15,7 @@ import {
   Trash2,
   Clock,
   BarChart3,
+  MessagesSquare,
 } from 'lucide-react';
 import { Layout } from '@/components/layout';
 import { SpecialtyBadge, StatCard, ProgressBar } from '@/components/ui';
@@ -38,6 +39,7 @@ export function AgentProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editAuctionInstructions, setEditAuctionInstructions] = useState('');
+  const [editNegotiationStyle, setEditNegotiationStyle] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   // Delete confirmation
@@ -65,6 +67,7 @@ export function AgentProfilePage() {
         setHistory(historyData);
         setEditName(agentData.name);
         setEditAuctionInstructions(agentData.auction_instructions ?? '');
+        setEditNegotiationStyle(agentData.negotiation_style ?? '');
       } catch (err) {
         console.error('Failed to fetch agent:', err);
         setError('Failed to load agent');
@@ -84,6 +87,7 @@ export function AgentProfilePage() {
       const updated = await agentsAPI.update(agent.id, {
         name: editName,
         auction_instructions: editAuctionInstructions,
+        negotiation_style: editNegotiationStyle,
       });
       setAgent(updated);
       setIsEditing(false);
@@ -212,6 +216,7 @@ export function AgentProfilePage() {
                     setIsEditing(false);
                     setEditName(agent.name);
                     setEditAuctionInstructions(agent.auction_instructions ?? '');
+                    setEditNegotiationStyle(agent.negotiation_style ?? '');
                   }}
                   className="btn-ghost"
                 >
@@ -315,6 +320,30 @@ export function AgentProfilePage() {
               )}
             </div>
 
+            {/* Negotiation style: owner only, like the strategy */}
+            {isOwner && (
+              <div className="card p-6">
+                <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
+                  <MessagesSquare className="h-5 w-5 text-accent-cyan" />
+                  Negotiation Style
+                </h3>
+                {isEditing ? (
+                  <textarea
+                    value={editNegotiationStyle}
+                    onChange={(e) => setEditNegotiationStyle(e.target.value)}
+                    maxLength={2000}
+                    aria-label="Negotiation style"
+                    placeholder="Leave empty to use the default style"
+                    className="w-full h-32 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent-purple resize-none"
+                  />
+                ) : (
+                  <p className="text-text-secondary whitespace-pre-wrap">
+                    {agent.negotiation_style || 'Default: negotiate fairly, accept a reasonable profit, walk away below cost.'}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Decision History: every bid and pass with the agent's reasoning */}
             <div className="card p-6">
               <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
@@ -400,6 +429,27 @@ export function AgentProfilePage() {
                         {formatCredits(stats.avg_bid_amount)}
                       </span>
                     </div>
+                    <div className="flex items-center justify-between py-2 border-t border-border">
+                      <span className="text-text-secondary">Negotiations</span>
+                      <span className="text-text-primary font-medium">
+                        {stats.deals} deal{stats.deals === 1 ? '' : 's'} · {stats.no_deals} no deal
+                        {stats.walk_aways > 0 && ` (${stats.walk_aways} walked away)`}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between py-2 border-t border-border">
+                      <span className="text-text-secondary">Avg gain over opening bid</span>
+                      <span
+                        className={cn(
+                          'font-medium',
+                          stats.avg_negotiation_gain === null ? 'text-text-muted'
+                            : stats.avg_negotiation_gain >= 0 ? 'text-accent-green' : 'text-accent-red'
+                        )}
+                      >
+                        {stats.avg_negotiation_gain === null
+                          ? 'No deals yet'
+                          : `${stats.avg_negotiation_gain >= 0 ? '+' : ''}${stats.avg_negotiation_gain}`}
+                      </span>
+                    </div>
                   </>
                 )}
               </div>
@@ -422,9 +472,13 @@ export function AgentProfilePage() {
                         {win.job_title}
                       </p>
                       <div className="flex items-center justify-between mt-1">
-                        <span className="text-accent-green text-sm">
-                          +{formatCredits(win.amount)}
-                        </span>
+                        {win.job_status === 'negotiating' ? (
+                          <span className="text-accent-purple text-sm">Negotiating</span>
+                        ) : win.amount === null ? (
+                          <span className="text-accent-red text-sm">No deal</span>
+                        ) : (
+                          <span className="text-accent-green text-sm">+{formatCredits(win.amount)}</span>
+                        )}
                         <span className="text-text-muted text-xs">
                           {formatTimeAgo(win.closed_at)}
                         </span>

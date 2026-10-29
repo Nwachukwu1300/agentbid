@@ -11,6 +11,7 @@ import {
   Bot,
   User,
   ChevronRight,
+  MessagesSquare,
 } from 'lucide-react';
 import { Layout } from '@/components/layout';
 import { SpecialtyBadge } from '@/components/ui';
@@ -45,6 +46,8 @@ export function CreateAgentPage() {
   const [agentName, setAgentName] = useState('');
   const [editingAuction, setEditingAuction] = useState(false);
   const [auctionInstructions, setAuctionInstructions] = useState('');
+  const [editingNegotiation, setEditingNegotiation] = useState(false);
+  const [negotiationStyle, setNegotiationStyle] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -119,6 +122,7 @@ export function CreateAgentPage() {
       setGeneratedInstructions(instructions);
       setAgentName(instructions.suggested_name);
       setAuctionInstructions(instructions.auction_instructions);
+      setNegotiationStyle(instructions.negotiation_style);
       setStep('preview');
     } catch (error) {
       console.error('Generation error:', error);
@@ -138,13 +142,15 @@ export function CreateAgentPage() {
     setIsLoading(true);
 
     try {
+      // Refine what's on screen, including the user's own edits
       const newInstructions = await agentBuilderAPI.refine(
-        generatedInstructions,
+        { ...generatedInstructions, auction_instructions: auctionInstructions, negotiation_style: negotiationStyle },
         feedback,
         specialty
       );
       setGeneratedInstructions(newInstructions);
       setAuctionInstructions(newInstructions.auction_instructions);
+      setNegotiationStyle(newInstructions.negotiation_style);
     } catch (error) {
       console.error('Refinement error:', error);
     } finally {
@@ -164,6 +170,7 @@ export function CreateAgentPage() {
         name: agentName.trim(),
         specialty,
         auction_instructions: auctionInstructions,
+        negotiation_style: negotiationStyle.trim() || undefined,
       });
       navigate('/dashboard');
     } catch (error) {
@@ -387,6 +394,7 @@ export function CreateAgentPage() {
                   setGeneratedInstructions(instructions);
                   setAgentName(instructions.suggested_name);
                   setAuctionInstructions(instructions.auction_instructions);
+                  setNegotiationStyle(instructions.negotiation_style);
                 }}
                 isLoading={isLoading}
                 setIsLoading={setIsLoading}
@@ -437,6 +445,39 @@ export function CreateAgentPage() {
                   ) : (
                     <p className="text-text-secondary whitespace-pre-wrap">
                       {auctionInstructions}
+                    </p>
+                  )}
+                </div>
+
+                {/* Negotiation Style */}
+                <div className="card p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+                      <MessagesSquare className="h-5 w-5 text-accent-cyan" />
+                      Negotiation Style
+                    </h3>
+                    <button
+                      onClick={() => setEditingNegotiation(!editingNegotiation)}
+                      className="btn-ghost text-sm"
+                    >
+                      <Edit3 className="h-4 w-4 mr-1" />
+                      {editingNegotiation ? 'Done' : 'Edit'}
+                    </button>
+                  </div>
+                  <p className="text-sm text-text-muted mb-4">
+                    Some winning bids go to a negotiation with the client. This is how your agent haggles.
+                  </p>
+                  {editingNegotiation ? (
+                    <textarea
+                      value={negotiationStyle}
+                      onChange={(e) => setNegotiationStyle(e.target.value)}
+                      maxLength={2000}
+                      aria-label="Negotiation style"
+                      className="w-full h-32 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent-purple resize-none"
+                    />
+                  ) : (
+                    <p className="text-text-secondary whitespace-pre-wrap">
+                      {negotiationStyle || 'Default: negotiate fairly, accept a reasonable profit, walk away below cost.'}
                     </p>
                   )}
                 </div>

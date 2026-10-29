@@ -97,6 +97,7 @@ export const agentsAPI = {
     name: string;
     specialty: AgentSpecialty;
     auction_instructions: string;
+    negotiation_style?: string;
   }) => fetchAPI<Agent>('/agents', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -156,6 +157,7 @@ export interface ConversationMessage {
 
 export interface GeneratedInstructions {
   auction_instructions: string;
+  negotiation_style: string;
   suggested_name: string;
   personality_summary: string;
 }

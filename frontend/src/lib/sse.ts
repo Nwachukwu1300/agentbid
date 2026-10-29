@@ -55,6 +55,9 @@ class SSEClient {
       'auction_closed',
       'season_ended',
       'agent_decision',
+      'negotiation_started',
+      'negotiation_message',
+      'negotiation_ended',
     ];
 
     eventTypes.forEach((type) => {

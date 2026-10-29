@@ -85,6 +85,10 @@ export function AnalyticsPage() {
     slice: hasShares ? entry.value : 1,
   }));
 
+  // The leaderboard's top negotiator by average gain over the opening bid (rank is still by credits)
+  const gains = leaderboard.map((e) => e.avg_negotiation_gain).filter((g): g is number => g !== null);
+  const bestGain = gains.length ? Math.max(...gains) : null;
+
   const hasData = marketStats && (marketStats.total_volume > 0 || marketStats.jobs_completed > 0);
 
   return (
@@ -318,6 +322,12 @@ export function AnalyticsPage() {
                     <th className="pb-3 text-right text-sm font-medium text-text-muted">Profit</th>
                     <th className="pb-3 text-right text-sm font-medium text-text-muted">Jobs</th>
                     <th className="pb-3 text-right text-sm font-medium text-text-muted">Win %</th>
+                    <th
+                      className="pb-3 text-right text-sm font-medium text-text-muted"
+                      title="Average price gained over the opening bid in negotiated deals. Credits still decide the rank."
+                    >
+                      Best negotiator
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -363,6 +373,21 @@ export function AnalyticsPage() {
                             {entry.win_rate}%
                           </span>
                         </div>
+                      </td>
+                      <td className="py-3 text-right text-sm">
+                        {entry.avg_negotiation_gain === null ? (
+                          <span className="text-text-muted">no deals</span>
+                        ) : (
+                          <span
+                            className={cn(
+                              'font-medium',
+                              entry.avg_negotiation_gain >= 0 ? 'text-accent-green' : 'text-accent-red'
+                            )}
+                          >
+                            {entry.avg_negotiation_gain === bestGain && <Trophy className="inline h-3.5 w-3.5 mr-1 text-accent-orange" aria-label="Best negotiator" />}
+                            {entry.avg_negotiation_gain >= 0 ? '+' : ''}{entry.avg_negotiation_gain}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

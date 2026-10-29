@@ -18,7 +18,8 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
   useEffect(() => {
     if (events.length === 0) return;
 
-    const newActivities: ActivityItem[] = events.map((event) => {
+    // Individual negotiation messages arrive every few seconds; the auction page shows those
+    const newActivities: ActivityItem[] = events.filter((event) => event.type !== 'negotiation_message').map((event) => {
       const data = event.data as Record<string, unknown>;
 
       switch (event.type) {
@@ -72,6 +73,29 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
               ? `Finished with ${formatCredits(data.winner_credits as number)}. Credits reset for the new season.`
               : 'Credits reset for the new season.',
             agent_name: data.winner_agent_name as string,
+            timestamp: event.timestamp,
+          };
+
+        case 'negotiation_started':
+          return {
+            id: `negotiation-${data.negotiation_id}`,
+            type: event.type,
+            title: `${data.agent_name} is negotiating "${data.job_title}"`,
+            description: `The client wants to talk price. Opening at ${formatCredits(data.opening_price as number)}`,
+            agent_name: data.agent_name as string,
+            auction_id: data.auction_id as string,
+            timestamp: event.timestamp,
+          };
+
+        case 'negotiation_ended':
+          return {
+            id: `negotiation-end-${data.negotiation_id}`,
+            type: event.type,
+            title: data.status === 'deal'
+              ? `Deal at ${formatCredits(data.final_price as number)}`
+              : 'Negotiation ended with no deal',
+            description: data.status === 'deal' ? 'Work starts now.' : 'The job goes unfilled.',
+            auction_id: data.auction_id as string,
             timestamp: event.timestamp,
           };
 

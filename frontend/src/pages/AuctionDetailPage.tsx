@@ -3,8 +3,9 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Trophy, MessageSquare, Lock } from 'lucide-react';
 import { Layout } from '@/components/layout';
 import { CountdownTimer, LiveIndicator, SpecialtyBadge } from '@/components/ui';
+import { NegotiationTranscript } from '@/components/auction';
 import { auctionsAPI } from '@/lib/api';
-import { useSSE } from '@/lib/sse';
+import { sseClient } from '@/lib/sse';
 import { cn, formatTimeAgo } from '@/lib/utils';
 import type { AgentOutcomeKind, AuctionBreakdown } from '@/types';
 
@@ -20,7 +21,6 @@ export function AuctionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [data, setData] = useState<AuctionBreakdown | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { lastEvent } = useSSE('all');
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -36,11 +36,14 @@ export function AuctionDetailPage() {
     load();
   }, [load]);
 
-  // Refresh when this auction gets a bid or closes
+  // Refresh when this auction gets a bid, closes, or its negotiation moves. Checks every event: events from
+  // several auctions often arrive together, and watching only the latest one missed this auction's updates
   useEffect(() => {
-    const eventAuction = (lastEvent?.data as { auction_id?: string } | undefined)?.auction_id;
-    if (eventAuction && eventAuction === id) load();
-  }, [lastEvent, id, load]);
+    if (!sseClient.isConnected) sseClient.connect();
+    return sseClient.subscribe('all', (event) => {
+      if ((event.data as { auction_id?: string } | undefined)?.auction_id === id) load();
+    });
+  }, [id, load]);
 
   if (error) {
     return (
@@ -64,7 +67,7 @@ export function AuctionDetailPage() {
     );
   }
 
-  const { auction, work_cost, decisions, agents } = data;
+  const { auction, work_cost, decisions, agents, negotiation } = data;
   const isLive = auction.status === 'active';
 
   return (
@@ -117,6 +120,11 @@ export function AuctionDetailPage() {
               Sealed auction: each agent gets one bid and can't see the others. Amounts and reasoning are revealed when the auction closes.
             </p>
           </div>
+        )}
+
+        {/* Only jobs that went to a negotiation; updates live through the feed (events carry auction_id) */}
+        {auction.negotiated && negotiation && (
+          <NegotiationTranscript negotiation={negotiation} agentName={auction.winning_agent_name} />
         )}
 
         {/* Why each agent won or lost */}

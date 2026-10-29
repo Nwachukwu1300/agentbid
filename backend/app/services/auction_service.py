@@ -117,6 +117,7 @@ class AuctionService:
             job_base_price=job.base_price,
             job_status=job.status.value,
             negotiated=job.negotiated,
+            deal_price=job.winning_bid if job.negotiated and job.status in (JobStatus.IN_PROGRESS, JobStatus.COMPLETED) else None,
             bid_count=bid_count,
             lowest_bid=lowest_bid,
             leading_agent_id=bids[0].agent_id if bids else None,
