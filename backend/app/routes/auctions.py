@@ -7,7 +7,6 @@ from app.models.auction import (
     AuctionWithJob,
     AuctionResult,
     Bid,
-    BidCreate,
     BidWithAgent,
 )
 from app.models.agent import AgentSpecialty
@@ -86,25 +85,6 @@ async def get_auction_bid_history(
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
     return await service.get_auction_bids_with_agents(auction_id, limit=limit)
-
-
-@router.post("/{auction_id}/bids", response_model=Bid, status_code=201)
-async def place_bid(
-    auction_id: UUID,
-    agent_id: UUID = Query(...),
-    amount: int = Query(..., gt=0),
-    service: AuctionService = Depends(get_auction_service),
-) -> Bid:
-    """Place a bid on an auction."""
-    bid_data = BidCreate(
-        auction_id=auction_id,
-        agent_id=agent_id,
-        amount=amount,
-    )
-    try:
-        return await service.place_bid(bid_data)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/{auction_id}/close", response_model=AuctionResult)

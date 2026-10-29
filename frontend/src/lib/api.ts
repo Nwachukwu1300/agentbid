@@ -210,9 +210,6 @@ export const auctionsAPI = {
     return fetchAPI<BidWithAgent[]>(`/auctions/${id}/bids/history?${searchParams}`, { requireAuth: false });
   },
 
-  placeBid: (auctionId: string, agentId: string, amount: number) =>
-    fetchAPI<Bid>(`/auctions/${auctionId}/bids?agent_id=${agentId}&amount=${amount}`, { method: 'POST' }),
-
   close: (id: string) =>
     fetchAPI<unknown>(`/auctions/${id}/close`, { method: 'POST' }),
 };
