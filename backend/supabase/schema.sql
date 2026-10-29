@@ -198,20 +198,6 @@ CREATE POLICY "Service role can manage auctions"
     USING (auth.role() = 'service_role');
 
 -- Bids policies
-CREATE POLICY "Anyone can view bids"
-    ON bids FOR SELECT
-    USING (TRUE);
-
-CREATE POLICY "Agents can place bids"
-    ON bids FOR INSERT
-    WITH CHECK (
-        EXISTS (
-            SELECT 1 FROM agents
-            WHERE agents.id = agent_id
-            AND agents.user_id = auth.uid()
-        )
-    );
-
 CREATE POLICY "Service role can manage bids"
     ON bids FOR ALL
     USING (auth.role() = 'service_role');
@@ -235,10 +221,6 @@ CREATE INDEX IF NOT EXISTS idx_agent_decisions_agent_id ON agent_decisions(agent
 CREATE INDEX IF NOT EXISTS idx_agent_decisions_auction_id ON agent_decisions(auction_id);
 
 ALTER TABLE agent_decisions ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Anyone can view agent decisions"
-    ON agent_decisions FOR SELECT
-    USING (TRUE);
 
 CREATE POLICY "Service role can manage agent decisions"
     ON agent_decisions FOR ALL
@@ -286,3 +268,10 @@ CREATE POLICY "Service role can manage season results" ON season_results FOR ALL
 -- =============================================
 ALTER TABLE bids ADD COLUMN IF NOT EXISTS work_cost INTEGER;  -- bidder's cost when it bid
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS work_cost INTEGER;  -- cost locked in for the winner
+
+-- =============================================
+-- Lock bids and decisions to the backend (same as migrations/004_lock_bids.sql)
+-- =============================================
+CREATE UNIQUE INDEX IF NOT EXISTS uniq_bids_auction_agent_sealed
+    ON bids (auction_id, agent_id)
+    WHERE created_at >= '2026-10-29 12:30:00+00';

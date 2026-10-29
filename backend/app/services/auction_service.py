@@ -1,4 +1,5 @@
 import random
+from postgrest.exceptions import APIError
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
 
@@ -199,7 +200,12 @@ class AuctionService:
             "is_winning": False,
         }
 
-        result = self.bids_table.insert(data).execute()
+        try:
+            result = self.bids_table.insert(data).execute()
+        except APIError as e:
+            if e.code == "23505":  # unique index: a concurrent second bid slipped past the check above
+                raise ValueError("Sealed auction: one bid per agent") from e
+            raise
         bid = self._to_bid(result.data[0])
         # Sealed: the event says who bid, never how much
         await get_event_manager().publish_bid_placed(
