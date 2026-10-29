@@ -41,7 +41,7 @@ async def event_generator(
     event_manager: EventManager,
 ) -> AsyncGenerator[str, None]:
     """Generate SSE events from the event queue, with a heartbeat, until the client or server goes away."""
-    queue: asyncio.Queue = asyncio.Queue()
+    queue: asyncio.Queue = asyncio.Queue(maxsize=200)  # a stalled client drops events instead of growing memory
     await event_manager.subscribe(queue)
 
     try:

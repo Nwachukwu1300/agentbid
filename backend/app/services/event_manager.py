@@ -109,25 +109,6 @@ class EventManager:
             "top3": standings[:3],
         })
 
-    async def publish_agent_decision(
-        self,
-        agent_id: UUID,
-        agent_name: str,
-        agent_specialty: str,
-        decision_type: str,
-        context: str,
-        reasoning: str,
-    ) -> None:
-        """Publish agent decision event."""
-        await self.publish("agent_decision", {
-            "agent_id": str(agent_id),
-            "agent_name": agent_name,
-            "agent_specialty": agent_specialty,
-            "decision_type": decision_type,
-            "context": context,
-            "reasoning": reasoning,
-        })
-
     @property
     def subscriber_count(self) -> int:
         """Get the number of active subscribers."""

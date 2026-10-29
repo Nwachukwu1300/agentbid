@@ -76,48 +76,13 @@ class AgentService:
         result = await self.table.delete().eq("id", str(agent_id)).execute()
         return len(result.data) > 0
 
-    async def update_credits(self, agent_id: UUID, amount: int) -> Agent | None:
-        agent = await self.get_by_id(agent_id)
-        if not agent:
-            return None
-
-        new_credits = agent.credits + amount
-        result = await self.table.update({
-            "credits": new_credits,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }).eq("id", str(agent_id)).execute()
-
-        if not result.data:
-            return None
-        return self._to_agent(result.data[0])
-
-    async def increment_jobs(self, agent_id: UUID) -> Agent | None:
-        agent = await self.get_by_id(agent_id)
-        if not agent or agent.is_at_capacity:
-            return None
-
-        result = await self.table.update({
-            "current_jobs": agent.current_jobs + 1,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }).eq("id", str(agent_id)).execute()
-
-        if not result.data:
-            return None
-        return self._to_agent(result.data[0])
-
-    async def decrement_jobs(self, agent_id: UUID) -> Agent | None:
-        agent = await self.get_by_id(agent_id)
-        if not agent or agent.current_jobs <= 0:
-            return None
-
-        result = await self.table.update({
-            "current_jobs": agent.current_jobs - 1,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }).eq("id", str(agent_id)).execute()
-
-        if not result.data:
-            return None
-        return self._to_agent(result.data[0])
+    async def adjust(self, agent_id: UUID, credits: int = 0, jobs: int = 0) -> Agent | None:
+        """Add to credits and job count in one database statement (adjust_agent), so concurrent game
+        loops can't overwrite each other. None if the agent is missing or jobs would pass capacity."""
+        result = await self.db.rpc("adjust_agent", {
+            "p_agent_id": str(agent_id), "p_credits": credits, "p_jobs": jobs,
+        }).execute()
+        return self._to_agent(result.data[0]) if result.data else None
 
     def _to_agent(self, data: dict) -> Agent:
         return Agent(

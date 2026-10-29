@@ -3,7 +3,7 @@ from .agent_service import AgentService
 from .job_service import JobService
 from .auction_service import AuctionService
 from .job_spawner import JobSpawner, get_job_spawner
-from .job_templates import generate_job, generate_jobs_batch
+from .job_templates import generate_job
 
 __all__ = [
     "DatabaseService", "get_database_service",
@@ -11,5 +11,5 @@ __all__ = [
     "JobService",
     "AuctionService",
     "JobSpawner", "get_job_spawner",
-    "generate_job", "generate_jobs_batch",
+    "generate_job",
 ]

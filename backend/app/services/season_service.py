@@ -89,11 +89,14 @@ class SeasonService:
         return standings
 
     async def start_next(self) -> dict:
-        """Reset every agent's credits and open the next season."""
-        for agent in await self.agent_service.get_all(limit=1000):
-            await self.agent_service.update_credits(
-                agent.id, self.settings.default_agent_credits - agent.credits
-            )
+        """Reset every agent's credits and job count, then open the next season.
+
+        Called after every running job was paid, so no agent is working: zeroing the job count also heals any drift.
+        """
+        # One statement for every agent (PostgREST requires a filter; this one matches every row)
+        await self.agent_service.table.update({
+            "credits": self.settings.default_agent_credits, "current_jobs": 0,
+        }).gte("current_jobs", 0).execute()
 
         last = (await self.seasons.select("number").order("number", desc=True).range(0, 0).execute()).data
         now = datetime.now(timezone.utc)

@@ -4,10 +4,9 @@ API routes for marketplace analytics.
 Provides real market data for the analytics dashboard.
 """
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 
 from app.services.database import DatabaseService, get_database_service
 from app.models.agent import AgentSpecialty
@@ -94,43 +93,29 @@ async def get_market_stats(
 async def get_specialty_share(
     db: DatabaseService = Depends(get_database_service),
 ) -> list[SpecialtyShare]:
-    """Get market share by specialty (based on completed auctions)."""
-    # Get all completed auctions with job specialty
-    auctions_result = await db.table("auctions").select("job_id").eq("status", "closed").execute()
+    """Share of won jobs by specialty (a won job has a winning bid). All zeros before any job is won."""
+    specialties = [s.value for s in AgentSpecialty]
+    counts = {}
+    for specialty in specialties:
+        won = await db.table("jobs").select("id", count="exact").eq("specialty", specialty).not_.is_(
+            "winning_bid", "null"
+        ).execute()
+        counts[specialty] = won.count or 0
 
-    if not auctions_result.data:
-        # Return default distribution if no data
-        specialties = ["coder", "designer", "writer", "data_analyst", "tester"]
-        return [SpecialtyShare(specialty=s, value=0, percentage=20.0) for s in specialties]
-
-    # Count by specialty
-    specialty_counts: dict[str, int] = {}
-    for auction in auctions_result.data:
-        job_result = await db.table("jobs").select("specialty").eq("id", auction["job_id"]).execute()
-        if job_result.data:
-            specialty = job_result.data[0]["specialty"]
-            specialty_counts[specialty] = specialty_counts.get(specialty, 0) + 1
-
-    total = sum(specialty_counts.values())
-    if total == 0:
-        total = 1
-
-    # Build response
-    result = []
-    for specialty in ["coder", "designer", "writer", "data_analyst", "tester"]:
-        count = specialty_counts.get(specialty, 0)
-        result.append(SpecialtyShare(
-            specialty=specialty,
-            value=count,
-            percentage=round(count / total * 100, 1),
-        ))
-
-    return result
+    total = sum(counts.values())
+    return [
+        SpecialtyShare(
+            specialty=s,
+            value=counts[s],
+            percentage=round(counts[s] / total * 100, 1) if total else 0.0,
+        )
+        for s in specialties
+    ]
 
 
 @router.get("/bid-trend", response_model=list[TrendPoint])
 async def get_bid_trend(
-    days: int = 14,
+    days: int = Query(14, ge=1, le=30),
     db: DatabaseService = Depends(get_database_service),
 ) -> list[TrendPoint]:
     """Get average winning bid trend over time."""
@@ -160,7 +145,7 @@ async def get_bid_trend(
 
 @router.get("/volume-trend", response_model=list[TrendPoint])
 async def get_volume_trend(
-    days: int = 14,
+    days: int = Query(14, ge=1, le=30),
     db: DatabaseService = Depends(get_database_service),
 ) -> list[TrendPoint]:
     """Get job volume trend over time."""

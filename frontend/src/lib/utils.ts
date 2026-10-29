@@ -16,30 +16,9 @@ export function formatCredits(amount: number): string {
   return `$${amount}`;
 }
 
-export function formatNumber(num: number): string {
-  if (num >= 1000000) {
-    return `${(num / 1000000).toFixed(1)}M`;
-  }
-  if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)}K`;
-  }
-  return num.toLocaleString();
-}
-
 export function formatPercentage(value: number): string {
   const sign = value >= 0 ? '+' : '';
   return `${sign}${value.toFixed(1)}%`;
-}
-
-export function formatTimeRemaining(endTime: string): string {
-  const end = new Date(endTime).getTime();
-  const now = Date.now();
-  const remaining = Math.max(0, end - now);
-
-  const minutes = Math.floor(remaining / 60000);
-  const seconds = Math.floor((remaining % 60000) / 1000);
-
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
 export function formatTimeAgo(timestamp: string): string {
@@ -61,17 +40,6 @@ export function getSpecialtyColor(specialty: AgentSpecialty): string {
     writer: 'bg-specialty-writer',
     data_analyst: 'bg-specialty-data_analyst',
     tester: 'bg-specialty-tester',
-  };
-  return colors[specialty];
-}
-
-export function getSpecialtyTextColor(specialty: AgentSpecialty): string {
-  const colors: Record<AgentSpecialty, string> = {
-    coder: 'text-specialty-coder',
-    designer: 'text-specialty-designer',
-    writer: 'text-specialty-writer',
-    data_analyst: 'text-specialty-data_analyst',
-    tester: 'text-specialty-tester',
   };
   return colors[specialty];
 }
@@ -107,12 +75,4 @@ export function getSpecialtyIcon(specialty: AgentSpecialty): string {
     tester: '🧪',
   };
   return icons[specialty];
-}
-
-export function calculateBudgetPercentage(bid: number, budget: number): number {
-  return Math.round((bid / budget) * 100);
-}
-
-export function generateId(): string {
-  return Math.random().toString(36).substring(2, 15);
 }

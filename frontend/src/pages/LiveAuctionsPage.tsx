@@ -166,7 +166,7 @@ export function LiveAuctionsPage() {
                       <div className="flex items-center gap-2 mt-1">
                         <SpecialtyBadge specialty={r.job_specialty} size="sm" />
                         <span className="text-xs text-text-secondary truncate">
-                          {r.winning_agent_name} won at {r.winning_amount} (budget {r.job_base_price})
+                          {r.winning_agent_name ? `${r.winning_agent_name} won at ${r.winning_amount}` : 'No winner'} (budget {r.job_base_price})
                         </span>
                       </div>
                     </Link>

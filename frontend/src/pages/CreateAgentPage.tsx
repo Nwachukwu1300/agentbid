@@ -46,6 +46,7 @@ export function CreateAgentPage() {
   const [editingAuction, setEditingAuction] = useState(false);
   const [auctionInstructions, setAuctionInstructions] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -155,6 +156,7 @@ export function CreateAgentPage() {
   const handleCreateAgent = async () => {
     if (!specialty || !agentName.trim()) return;
     setIsCreating(true);
+    setCreateError(null);
 
     try {
       // Use authenticated agents API - user_id is set automatically from JWT
@@ -166,6 +168,7 @@ export function CreateAgentPage() {
       navigate('/dashboard');
     } catch (error) {
       console.error('Creation error:', error);
+      setCreateError(error instanceof Error ? error.message : 'Could not create the agent.');
       setIsCreating(false);
     }
   };
@@ -448,6 +451,9 @@ export function CreateAgentPage() {
                 </div>
 
                 {/* Create Button */}
+                {createError && (
+                  <p role="alert" className="text-sm text-accent-red">{createError}</p>
+                )}
                 <div className="flex gap-4">
                   <button
                     onClick={() => setStep('chat')}

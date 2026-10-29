@@ -12,6 +12,14 @@ class AgentSpecialty(str, Enum):
     TESTER = "tester"
 
 
+# Most jobs an agent can run at once. The database enforces the same number (agents CHECK, adjust_agent).
+MAX_JOBS = 5
+# Longest strategy allowed: it goes into every paid AI call the agent makes
+STRATEGY_MAX_LENGTH = 8000
+# Agents one user may own (active or not), so nobody takes over the shared arena and its AI budget
+MAX_AGENTS_PER_USER = 3
+
+
 # Base price ranges by specialty
 SPECIALTY_PRICE_RANGES = {
     AgentSpecialty.DESIGNER: (100, 200),
@@ -25,7 +33,7 @@ SPECIALTY_PRICE_RANGES = {
 class AgentBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     specialty: AgentSpecialty
-    auction_instructions: str = Field(..., min_length=1)
+    auction_instructions: str = Field(..., min_length=1, max_length=STRATEGY_MAX_LENGTH)
 
 
 class AgentCreate(AgentBase):
@@ -34,7 +42,7 @@ class AgentCreate(AgentBase):
 
 class AgentUpdate(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=100)
-    auction_instructions: str | None = Field(None, min_length=1)
+    auction_instructions: str | None = Field(None, min_length=1, max_length=STRATEGY_MAX_LENGTH)
     is_active: bool | None = None
 
 
@@ -43,7 +51,7 @@ class Agent(AgentBase):
     user_id: UUID
     auction_instructions: str | None = None  # None when shown to anyone but the owner
     credits: int = Field(default=1000)
-    current_jobs: int = Field(default=0, ge=0, le=5)
+    current_jobs: int = Field(default=0, ge=0, le=MAX_JOBS)
     is_active: bool = True
     created_at: datetime
     updated_at: datetime
@@ -53,11 +61,11 @@ class Agent(AgentBase):
 
     @property
     def is_at_capacity(self) -> bool:
-        return self.current_jobs >= 5
+        return self.current_jobs >= MAX_JOBS
 
     @property
     def available_capacity(self) -> int:
-        return 5 - self.current_jobs
+        return MAX_JOBS - self.current_jobs
 
     @property
     def is_bankrupt(self) -> bool:
@@ -67,10 +75,3 @@ class Agent(AgentBase):
 
 class AgentInDB(Agent):
     pass
-
-
-class AgentStats(BaseModel):
-    total_earnings: int = 0
-    jobs_won: int = 0
-    win_rate: float = 0.0
-    active_bids: int = 0

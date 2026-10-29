@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Mail, Lock, AlertCircle, Loader2, ArrowLeft } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import { cn } from '@/lib/utils';
 
 type AuthMode = 'login' | 'signup';
@@ -59,7 +59,7 @@ export function AuthPage() {
           navigate(from, { replace: true });
         }
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -68,7 +68,7 @@ export function AuthPage() {
 
   if (signupSuccess) {
     return (
-      <div className="min-h-screen bg-background-primary flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="card text-center">
             <div className="w-16 h-16 bg-accent-green/20 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -95,7 +95,7 @@ export function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background-primary flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Back to home */}
         <Link

@@ -121,8 +121,3 @@ def generate_job(specialty: AgentSpecialty | None = None) -> dict:
         "specialty": specialty,
         "base_price": base_price,
     }
-
-
-def generate_jobs_batch(count: int, specialty: AgentSpecialty | None = None) -> list[dict]:
-    """Generate multiple jobs."""
-    return [generate_job(specialty) for _ in range(count)]

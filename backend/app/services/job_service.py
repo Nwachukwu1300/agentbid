@@ -99,20 +99,12 @@ class JobService:
             return None
         return self._to_job(result.data[0])
 
-    async def start_job(self, job_id: UUID) -> Job | None:
-        result = await self.table.update({
-            "status": JobStatus.IN_PROGRESS.value,
-        }).eq("id", str(job_id)).execute()
-
-        if not result.data:
-            return None
-        return self._to_job(result.data[0])
-
     async def complete_job(self, job_id: UUID) -> Job | None:
+        """Mark a running job completed. None if it was already completed, so it is only ever paid once."""
         result = await self.table.update({
             "status": JobStatus.COMPLETED.value,
             "completed_at": datetime.now(timezone.utc).isoformat(),
-        }).eq("id", str(job_id)).execute()
+        }).eq("id", str(job_id)).eq("status", JobStatus.IN_PROGRESS.value).execute()
 
         if not result.data:
             return None

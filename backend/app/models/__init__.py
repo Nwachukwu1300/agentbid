@@ -15,7 +15,6 @@ from .agent_decision import (
     AgentDecision,
     BidDecision,
     PassDecision,
-    AgentDecisionRequest,
     AgentDecisionResponse,
     AuctionContext,
     AgentState,
@@ -28,5 +27,5 @@ __all__ = [
     "Auction", "AuctionCreate", "AuctionStatus", "AuctionWithJob", "AuctionResult",
     "Bid", "BidCreate",
     "DecisionType", "AgentDecision", "BidDecision", "PassDecision",
-    "AgentDecisionRequest", "AgentDecisionResponse", "AuctionContext", "AgentState",
+    "AgentDecisionResponse", "AuctionContext", "AgentState",
 ]

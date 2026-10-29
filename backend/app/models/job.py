@@ -48,7 +48,3 @@ class Job(JobBase):
 
 class JobInDB(Job):
     pass
-
-
-class JobWithAgent(Job):
-    agent_name: str | None = None

@@ -68,26 +68,7 @@ CREATE POLICY "Users can update own profile"
     ON users FOR UPDATE
     USING (auth.uid() = id);
 
--- Agents policies
-CREATE POLICY "Anyone can view active agents"
-    ON agents FOR SELECT
-    USING (is_active = TRUE);
-
-CREATE POLICY "Users can view own agents"
-    ON agents FOR SELECT
-    USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can create own agents"
-    ON agents FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own agents"
-    ON agents FOR UPDATE
-    USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own agents"
-    ON agents FOR DELETE
-    USING (auth.uid() = user_id);
+-- Agents: no policies, only the backend (service role) touches them (see migrations/007_atomic_agents.sql)
 
 -- Jobs policies
 CREATE POLICY "Anyone can view jobs"
@@ -304,3 +285,22 @@ END $$;
 
 REVOKE EXECUTE ON FUNCTION spend_ai_call(DATE, TEXT, INTEGER) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION spend_ai_call(DATE, TEXT, INTEGER) TO service_role;
+
+-- =============================================
+-- Atomic agent counters (same as migrations/007_atomic_agents.sql)
+-- =============================================
+-- Change an agent's credits and job count in one statement, so concurrent game loops can't overwrite
+-- each other. Returns no row when it would push current_jobs past 5 (the agent is full).
+CREATE OR REPLACE FUNCTION adjust_agent(p_agent_id UUID, p_credits INTEGER, p_jobs INTEGER)
+RETURNS SETOF agents
+LANGUAGE sql
+AS $$
+    UPDATE agents
+    SET credits = credits + p_credits,
+        current_jobs = GREATEST(current_jobs + p_jobs, 0)
+    WHERE id = p_agent_id AND current_jobs + p_jobs <= 5
+    RETURNING *;
+$$;
+
+REVOKE EXECUTE ON FUNCTION adjust_agent(UUID, INTEGER, INTEGER) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION adjust_agent(UUID, INTEGER, INTEGER) TO service_role;

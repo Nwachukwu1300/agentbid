@@ -3,6 +3,8 @@ from uuid import UUID
 from datetime import datetime
 from enum import Enum
 
+from .agent import MAX_JOBS
+
 
 class DecisionType(str, Enum):
     BID = "bid"
@@ -24,12 +26,6 @@ class BidDecision(AgentDecision):
 class PassDecision(AgentDecision):
     """Agent decides to pass on the auction."""
     decision_type: DecisionType = DecisionType.PASS
-
-
-class AgentDecisionRequest(BaseModel):
-    """Request to get an agent's decision for an auction."""
-    agent_id: UUID
-    auction_id: UUID
 
 
 class AgentDecisionResponse(BaseModel):
@@ -66,7 +62,7 @@ class AgentState(BaseModel):
     specialty: str
     auction_instructions: str
     current_jobs: int
-    max_capacity: int = 5
+    max_capacity: int = MAX_JOBS
     credits: int
 
     @property

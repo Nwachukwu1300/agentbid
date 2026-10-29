@@ -32,16 +32,6 @@ class AgentFullStats(AgentStats):
     specialty_breakdown: dict
 
 
-class UserDashboardStats(BaseModel):
-    """Aggregate statistics for user dashboard."""
-    total_agents: int
-    active_agents: int
-    total_earnings: int
-    total_jobs_won: int
-    avg_win_rate: float
-    total_active_bids: int
-
-
 @router.get("/{agent_id}/stats", response_model=AgentStats)
 async def get_agent_stats(
     agent_id: UUID,
@@ -145,69 +135,3 @@ async def get_agent_decisions(
 ) -> list[dict]:
     """The agent's latest bids and passes with reasoning, the job, and how each auction ended."""
     return await DecisionService(db).for_agent(agent_id, min(limit, 100))
-
-
-@router.get("/user/{user_id}/dashboard-stats", response_model=UserDashboardStats)
-async def get_user_dashboard_stats(
-    user_id: UUID,
-    db: DatabaseService = Depends(get_database_service),
-) -> UserDashboardStats:
-    """Get aggregate statistics for a user's dashboard."""
-    user_id_str = str(user_id)
-
-    # Get all agents for this user
-    agents_result = await db.table("agents").select("id, is_active").eq("user_id", user_id_str).execute()
-    agents = agents_result.data or []
-
-    total_agents = len(agents)
-    active_agents = sum(1 for a in agents if a["is_active"])
-
-    if not agents:
-        return UserDashboardStats(
-            total_agents=0,
-            active_agents=0,
-            total_earnings=0,
-            total_jobs_won=0,
-            avg_win_rate=0,
-            total_active_bids=0,
-        )
-
-    agent_ids = [a["id"] for a in agents]
-
-    # Aggregate stats across all agents
-    total_earnings = 0
-    total_jobs_won = 0
-    total_bids = 0
-    total_active_bids = 0
-
-    for agent_id in agent_ids:
-        # Earnings from won auctions
-        auctions = await db.table("auctions").select("winning_amount", count="exact").eq(
-            "winning_agent_id", agent_id
-        ).eq("status", "closed").execute()
-        total_jobs_won += auctions.count or 0
-        total_earnings += sum(a.get("winning_amount", 0) or 0 for a in auctions.data or [])
-
-        # Total bids
-        bids = await db.table("bids").select("id", count="exact").eq("agent_id", agent_id).execute()
-        total_bids += bids.count or 0
-
-        # Active bids
-        active_auctions = await db.table("auctions").select("id").eq("status", "active").execute()
-        for auction in active_auctions.data or []:
-            bid_check = await db.table("bids").select("id", count="exact").eq(
-                "agent_id", agent_id
-            ).eq("auction_id", auction["id"]).execute()
-            if bid_check.count and bid_check.count > 0:
-                total_active_bids += 1
-
-    avg_win_rate = (total_jobs_won / total_bids * 100) if total_bids > 0 else 0
-
-    return UserDashboardStats(
-        total_agents=total_agents,
-        active_agents=active_agents,
-        total_earnings=total_earnings,
-        total_jobs_won=total_jobs_won,
-        avg_win_rate=round(avg_win_rate, 1),
-        total_active_bids=total_active_bids,
-    )

@@ -13,7 +13,7 @@ from app.models.auction import (
     BidCreate,
 )
 from app.models.job import Job, JobStatus, JobUpdate
-from app.models.agent import AgentSpecialty, Agent
+from app.models.agent import AgentSpecialty, Agent, MAX_JOBS
 from app.services.database import DatabaseService
 from app.services.job_service import JobService
 from app.services.agent_service import AgentService
@@ -170,7 +170,7 @@ class AuctionService:
         if not agent.is_active:
             raise ValueError("Agent is not active")
         if agent.is_at_capacity:
-            raise ValueError("Agent is at maximum job capacity (5/5)")
+            raise ValueError(f"Agent is at maximum job capacity ({MAX_JOBS}/{MAX_JOBS})")
         if agent.is_bankrupt:
             raise ValueError("Agent is bankrupt until the next season")
 
@@ -242,16 +242,33 @@ class AuctionService:
         total_bids = len(bids)
 
         # Determine winner: bids are sorted lowest first, earliest on ties.
-        # Skip agents that filled up (won other jobs) or were deactivated since bidding.
+        # Skip agents that filled up (won other jobs), went bankrupt or were deactivated since bidding.
         winning_bid = None
         winner_agent = None
         for bid in bids:
             agent = await self.agent_service.get_by_id(bid.agent_id)
-            if agent and agent.is_active and not agent.is_at_capacity:
+            if agent and agent.is_active and not agent.is_at_capacity and not agent.is_bankrupt:
                 winning_bid, winner_agent = bid, agent
                 break
 
         now = datetime.now(timezone.utc).isoformat()
+        if winning_bid:
+            closing = {
+                "status": AuctionStatus.CLOSED.value,
+                "winning_bid_id": str(winning_bid.id),
+                "winning_agent_id": str(winning_bid.agent_id),
+                "winning_amount": winning_bid.amount,
+                "closed_at": now,
+            }
+        else:
+            closing = {"status": AuctionStatus.CANCELLED.value, "closed_at": now}
+
+        # Claim the auction first: only one closer can move it off "active", so a job is never assigned twice
+        claimed = await self.auctions_table.update(closing).eq("id", str(auction_id)).eq(
+            "status", AuctionStatus.ACTIVE.value
+        ).execute()
+        if not claimed.data:
+            raise ValueError("Auction is not active")
 
         if winning_bid:
             # Mark the winning bid
@@ -262,21 +279,12 @@ class AuctionService:
             winner_agent_name = winner_agent.name
 
             # No credits move here: the winner is paid its bid when the job completes
-            await self.agent_service.increment_jobs(winning_bid.agent_id)
+            await self.agent_service.adjust(winning_bid.agent_id, jobs=1)
 
             # Assign job to winner
             await self.job_service.assign_to_agent(
                 auction.job_id, winning_bid.agent_id, winning_bid.amount, winning_bid.work_cost
             )
-
-            # Update auction with winner info
-            await self.auctions_table.update({
-                "status": AuctionStatus.CLOSED.value,
-                "winning_bid_id": str(winning_bid.id),
-                "winning_agent_id": str(winning_bid.agent_id),
-                "winning_amount": winning_bid.amount,
-                "closed_at": now,
-            }).eq("id", str(auction_id)).execute()
 
             result = AuctionResult(
                 auction_id=auction_id,
@@ -288,13 +296,7 @@ class AuctionService:
                 status=AuctionStatus.CLOSED,
             )
         else:
-            # No bids - cancel the auction
-            await self.auctions_table.update({
-                "status": AuctionStatus.CANCELLED.value,
-                "closed_at": now,
-            }).eq("id", str(auction_id)).execute()
-
-            # Reset job status to pending
+            # No bids: the auction was cancelled above. Back to pending (unsold), maybe relisted below
             await self.job_service.update(
                 auction.job_id,
                 JobUpdate(status=JobStatus.PENDING),
@@ -314,6 +316,12 @@ class AuctionService:
             auction_id, auction.job_id, job.title, result.winner_agent_id,
             result.winner_agent_name, result.winning_bid, total_bids, result.status.value,
         )
+
+        if result.status == AuctionStatus.CANCELLED:
+            listings = await self.auctions_table.select("id", count="exact").eq("job_id", str(auction.job_id)).execute()
+            if (listings.count or 0) < 2:
+                # An unsold job gets one more auction. Unsold twice, it stays pending for good.
+                await self.create_auction(AuctionCreate(job_id=auction.job_id))
         return result
 
     async def get_close_times(self, job_ids: list[UUID]) -> dict[UUID, datetime]:

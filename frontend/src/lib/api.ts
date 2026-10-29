@@ -7,9 +7,12 @@ import type {
   AuctionStatus,
   AgentSpecialty,
   AgentStats,
+  AgentFullStats,
   MarketStats,
   LeaderboardEntry,
   Season,
+  SpecialtyShare,
+  TrendPoint,
 } from '@/types';
 
 const API_BASE = '/api';
@@ -47,7 +50,11 @@ async function fetchAPI<T>(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
-    throw new Error(error.detail || `HTTP error ${response.status}`);
+    // FastAPI validation errors (422) send a list like [{ loc: [..., 'field'], msg }]
+    const detail = Array.isArray(error.detail)
+      ? error.detail.map((e: { loc?: unknown[]; msg?: string }) => `${e.loc?.[e.loc.length - 1] ?? 'input'}: ${e.msg}`).join('; ')
+      : error.detail;
+    throw new Error(detail || `HTTP error ${response.status}`);
   }
 
   // Handle 204 No Content
@@ -130,21 +137,12 @@ export const agentStatsAPI = {
 
   // Get full stats with recent activity
   getFullStats: (agentId: string) =>
-    fetchAPI<AgentStats & { recent_wins: unknown[]; specialty_breakdown: Record<string, number> }>(`/agents/${agentId}/full-stats`, { requireAuth: false }),
+    fetchAPI<AgentFullStats>(`/agents/${agentId}/full-stats`, { requireAuth: false }),
 
   // Latest bids and passes with reasoning and how each auction ended
   getDecisions: (agentId: string, limit = 20) =>
     fetchAPI<AgentDecisionHistoryItem[]>(`/agents/${agentId}/decisions?limit=${limit}`, { requireAuth: false }),
 
-  // Get dashboard stats for a user's agents
-  getDashboardStats: (userId: string) =>
-    fetchAPI<{
-      total_agents: number;
-      active_agents: number;
-      total_earnings: number;
-      total_jobs_won: number;
-      total_active_bids: number;
-    }>(`/agents/user/${userId}/dashboard-stats`, { requireAuth: false }),
 };
 
 // =============================================================================
@@ -223,37 +221,12 @@ export const analyticsAPI = {
   getCurrentSeason: () =>
     fetchAPI<Season>('/seasons/current', { requireAuth: false }),
 
-  getSpecialtyTrends: () =>
-    fetchAPI<Record<AgentSpecialty, { avg_price: number; job_count: number }>>('/analytics/specialty-trends', { requireAuth: false }),
-};
+  getSpecialtyShare: () =>
+    fetchAPI<SpecialtyShare[]>('/analytics/specialty-share', { requireAuth: false }),
 
-// =============================================================================
-// JOBS API
-// =============================================================================
+  getBidTrend: (days: number) =>
+    fetchAPI<TrendPoint[]>(`/analytics/bid-trend?days=${days}`, { requireAuth: false }),
 
-export const jobsAPI = {
-  list: (params?: { specialty?: AgentSpecialty; status?: string; limit?: number }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.specialty) searchParams.set('specialty', params.specialty);
-    if (params?.status) searchParams.set('status', params.status);
-    if (params?.limit) searchParams.set('limit', String(params.limit));
-    return fetchAPI<unknown[]>(`/jobs?${searchParams}`, { requireAuth: false });
-  },
-};
-
-// =============================================================================
-// USERS API
-// =============================================================================
-
-export const usersAPI = {
-  // Get current user profile
-  getMe: () => fetchAPI<{ id: string; email: string; created_at: string }>('/users/me', { requireAuth: true }),
-
-  // Update current user
-  updateMe: (data: { email?: string }) =>
-    fetchAPI<{ id: string; email: string }>('/users/me', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-      requireAuth: true,
-    }),
+  getVolumeTrend: (days: number) =>
+    fetchAPI<TrendPoint[]>(`/analytics/volume-trend?days=${days}`, { requireAuth: false }),
 };

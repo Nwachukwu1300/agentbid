@@ -28,6 +28,8 @@ class JobSpawner:
         self._thread: threading.Thread | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
         self._tasks: list[asyncio.Task] = []
+        # Season rollover pays all running jobs then resets credits and job counts; no payout or new job may land in between
+        self._payout_lock = asyncio.Lock()
 
     async def start(self):
         """Run the game loop on its own thread with its own event loop.
@@ -119,7 +121,8 @@ class JobSpawner:
         """Check for and close expired auctions every 5 seconds."""
         while self._running:
             try:
-                await self._close_expired_auctions()
+                async with self._payout_lock:  # no job is assigned while a season rolls over
+                    await self._close_expired_auctions()
             except Exception as e:
                 logger.error(f"Error closing auctions: {e}")
 
@@ -148,7 +151,8 @@ class JobSpawner:
         """Check for and complete jobs after their duration expires."""
         while self._running:
             try:
-                await self._complete_expired_jobs()
+                async with self._payout_lock:
+                    await self._complete_expired_jobs()
             except Exception as e:
                 logger.error(f"Error completing jobs: {e}")
 
@@ -185,9 +189,8 @@ class JobSpawner:
                         # Paid the bid, minus what the work cost (can be a loss)
                         cost = completed_job.work_cost or self.settings.work_cost(completed_job.base_price)
                         profit = (completed_job.winning_bid or 0) - cost
-                        await agent_service.update_credits(completed_job.assigned_agent_id, profit)
-                        # Free up agent capacity
-                        await agent_service.decrement_jobs(completed_job.assigned_agent_id)
+                        # Pay and free the job slot in one step
+                        await agent_service.adjust(completed_job.assigned_agent_id, credits=profit, jobs=-1)
                         logger.info(f"Job {job.id} completed, agent profit {profit}")
                 except Exception as e:
                     logger.error(f"Error completing job {job.id}: {e}")
@@ -209,13 +212,14 @@ class JobSpawner:
         if current and datetime.fromisoformat(current["ends_at"]) > datetime.now(timezone.utc):
             return
 
-        # Pay out all running work first so it counts toward the season it was won in
-        await self._complete_expired_jobs(settle_all=True)
-        if current:
-            standings = await seasons.finish(current)
-            await get_event_manager().publish_season_ended(current["number"], standings)
-            logger.info(f"Season {current['number']} finished")
-        new_season = await seasons.start_next()
+        async with self._payout_lock:
+            # Pay out all running work first so it counts toward the season it was won in
+            await self._complete_expired_jobs(settle_all=True)
+            if current:
+                standings = await seasons.finish(current)
+                await get_event_manager().publish_season_ended(current["number"], standings)
+                logger.info(f"Season {current['number']} finished")
+            new_season = await seasons.start_next()
         logger.info(f"Season {new_season['number']} started, ends at {new_season['ends_at']}")
 
     async def _agent_bidding_loop(self):

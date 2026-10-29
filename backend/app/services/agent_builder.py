@@ -8,9 +8,9 @@ auction instructions.
 
 import json
 import logging
-from typing import Optional
+from typing import Literal, Optional
 from openai import AsyncOpenAI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.config import get_settings
 from app.models.agent import AgentSpecialty
@@ -27,8 +27,8 @@ class GeneratedInstructions(BaseModel):
 
 class ConversationMessage(BaseModel):
     """A message in the agent creation conversation."""
-    role: str  # 'user' or 'assistant'
-    content: str
+    role: Literal["user", "assistant"]  # never "system": clients can't override the builder's instructions
+    content: str = Field(..., max_length=4000)
 
 
 class AgentBuilderService:

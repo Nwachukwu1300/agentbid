@@ -5,7 +5,7 @@ from uuid import UUID
 from datetime import datetime, timezone
 from openai import AsyncOpenAI
 
-from app.models.agent import Agent
+from app.models.agent import Agent, MAX_JOBS
 from app.models.agent_decision import (
     AgentDecision,
     BidDecision,
@@ -177,7 +177,7 @@ Do not include any other text, markdown formatting, or explanation outside the J
                 auction_id=auction_id,
                 decision_type=DecisionType.PASS,
                 bid_amount=None,
-                reasoning=f"At capacity ({agent.current_jobs}/5 jobs). Cannot take on more work.",
+                reasoning=f"At capacity ({agent.current_jobs}/{MAX_JOBS} jobs). Cannot take on more work.",
                 raw_response=None,
                 created_at=datetime.now(timezone.utc),
             )
@@ -238,6 +238,7 @@ Do not include any other text, markdown formatting, or explanation outside the J
             )
 
         # Call OpenAI
+        decision, raw_response = None, None
         try:
             response = await self.client.chat.completions.create(
                 model=self.settings.openai_model,
@@ -250,41 +251,22 @@ Do not include any other text, markdown formatting, or explanation outside the J
             )
             raw_response = response.choices[0].message.content
             logger.debug(f"Agent {agent.name} raw response: {raw_response}")
-        except Exception as e:
-            logger.error(f"OpenAI API error for agent {agent.name}: {e}")
-            raise ValueError(f"Failed to get AI decision: {e}")
-
-        # Parse the decision
-        try:
             decision = self._parse_decision(raw_response)
-        except ValueError as e:
-            logger.error(f"Failed to parse decision for agent {agent.name}: {e}")
-            # Default to PASS on parse failure
-            return AgentDecisionResponse(
-                agent_id=agent_id,
-                agent_name=agent.name,
-                auction_id=auction_id,
-                decision_type=DecisionType.PASS,
-                bid_amount=None,
-                reasoning=f"Decision error: {e}",
-                raw_response=raw_response,
-                created_at=datetime.now(timezone.utc),
-            )
+        except Exception as e:
+            # The call is already paid for: fall through to a stored pass so the agent isn't asked again every round
+            logger.error(f"No usable AI decision for agent {agent.name}: {e}")
 
-        # Build response
-        decision_response = AgentDecisionResponse(
+        return AgentDecisionResponse(
             agent_id=agent_id,
             agent_name=agent.name,
             auction_id=auction_id,
-            decision_type=decision.decision_type,
+            decision_type=decision.decision_type if decision else DecisionType.PASS,
             bid_amount=decision.bid_amount if isinstance(decision, BidDecision) else None,
-            reasoning=decision.reasoning,
+            reasoning=decision.reasoning if decision else "No usable answer from the AI model. Passed on this auction.",
             raw_response=raw_response if self.settings.debug else None,
             created_at=datetime.now(timezone.utc),
             from_model=True,
         )
-
-        return decision_response
 
     async def _store_decision(self, decision: AgentDecisionResponse) -> None:
         """Store the agent decision in the database for analytics."""

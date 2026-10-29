@@ -22,6 +22,7 @@ class Settings(BaseSettings):
 
     # Agent Defaults
     default_agent_credits: int = 1000
+    # Ignored: capacity is fixed at models.agent.MAX_JOBS (5) and enforced by the database. Kept so old .env files still load.
     max_agent_capacity: int = 5
 
     # Job Settings

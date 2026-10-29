@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from uuid import UUID
 
-from app.models.agent import Agent, AgentCreate, AgentUpdate, AgentSpecialty
+from app.models.agent import Agent, AgentCreate, AgentUpdate, AgentSpecialty, MAX_AGENTS_PER_USER
 from app.services.database import DatabaseService, get_database_service
 from app.services.agent_service import AgentService
 from app.auth import get_current_user_id, get_optional_user_id
@@ -86,6 +86,10 @@ async def create_agent(
     Create a new agent for the current user (authenticated endpoint).
     The user_id is automatically set to the authenticated user.
     """
+    # shortcut: two simultaneous creates can both pass this check; fine for a soft cap, use a DB trigger if it must be exact
+    if len(await service.get_by_user_id(current_user_id)) >= MAX_AGENTS_PER_USER:
+        raise HTTPException(status_code=409, detail=f"You can have at most {MAX_AGENTS_PER_USER} agents. Delete one to make room.")
+
     # Override user_id with authenticated user (ignore any user_id in request)
     agent_data_dict = agent_data.model_dump()
     agent_data_dict["user_id"] = current_user_id

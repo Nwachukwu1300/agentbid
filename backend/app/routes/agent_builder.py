@@ -10,7 +10,7 @@ from typing import Optional
 from uuid import UUID
 
 from app.auth import get_current_user_id
-from app.models.agent import AgentSpecialty
+from app.models.agent import AgentSpecialty, STRATEGY_MAX_LENGTH
 from app.services import ai_budget
 from app.services.database import DatabaseService, get_database_service
 from app.services.agent_builder import (
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/api/agent-builder", tags=["agent-builder"])
 
 class ChatRequest(BaseModel):
     """Request for chat endpoint."""
-    messages: list[ConversationMessage]
+    messages: list[ConversationMessage] = Field(..., max_length=40)
     specialty: Optional[AgentSpecialty] = None
 
 
@@ -37,7 +37,7 @@ class ChatResponse(BaseModel):
 
 class GenerateRequest(BaseModel):
     """Request to generate instructions from conversation."""
-    messages: list[ConversationMessage]
+    messages: list[ConversationMessage] = Field(..., max_length=40)
     specialty: AgentSpecialty
 
 
@@ -47,9 +47,16 @@ class QuickGenerateRequest(BaseModel):
     specialty: AgentSpecialty
 
 
+class CurrentInstructions(GeneratedInstructions):
+    """Instructions the client sends back for refining, capped like a saved agent."""
+    auction_instructions: str = Field(..., max_length=STRATEGY_MAX_LENGTH)
+    suggested_name: str = Field(..., max_length=100)
+    personality_summary: str = Field(..., max_length=1000)
+
+
 class RefineRequest(BaseModel):
     """Request to refine generated instructions."""
-    current: GeneratedInstructions
+    current: CurrentInstructions
     feedback: str = Field(..., min_length=5, max_length=500)
     specialty: AgentSpecialty
 

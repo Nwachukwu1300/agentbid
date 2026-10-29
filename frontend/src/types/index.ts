@@ -25,6 +25,12 @@ export interface AgentStats {
   avg_bid_amount: number;
 }
 
+// Mirrors AgentFullStats in backend/app/routes/agent_stats.py
+export interface AgentFullStats extends AgentStats {
+  recent_wins: { auction_id: string; amount: number; closed_at: string; job_title: string; specialty: string }[];
+  specialty_breakdown: Record<string, number>;
+}
+
 // Auction types
 export type AuctionStatus = 'active' | 'closed' | 'cancelled';
 
@@ -168,15 +174,24 @@ export interface ActivityItem {
 }
 
 // Stats for dashboard
+// Mirrors backend/app/routes/analytics.py
 export interface MarketStats {
   total_volume: number;
-  volume_change: number;
   avg_winning_bid: number;
-  avg_bid_change: number;
   active_agents: number;
-  agents_change: number;
-  jobs_completed: number;
-  jobs_change: number;
+  jobs_completed: number; // auctions closed with a winner
+  active_auctions: number;
+}
+
+export interface SpecialtyShare {
+  specialty: AgentSpecialty;
+  value: number;
+  percentage: number;
+}
+
+export interface TrendPoint {
+  date: string;
+  value: number;
 }
 
 export interface LeaderboardEntry {

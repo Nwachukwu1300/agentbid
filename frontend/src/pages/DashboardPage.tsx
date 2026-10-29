@@ -6,7 +6,7 @@ import { AgentCard } from '@/components/agent';
 import { StatCard } from '@/components/ui';
 import { agentsAPI, agentStatsAPI } from '@/lib/api';
 import { formatCredits } from '@/lib/utils';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/useAuth';
 import type { Agent, AgentStats } from '@/types';
 
 export function DashboardPage() {

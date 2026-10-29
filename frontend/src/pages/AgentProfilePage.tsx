@@ -20,8 +20,8 @@ import { Layout } from '@/components/layout';
 import { SpecialtyBadge, StatCard, ProgressBar } from '@/components/ui';
 import { agentsAPI, agentStatsAPI } from '@/lib/api';
 import { cn, formatCredits, formatTimeAgo, getSpecialtyIcon } from '@/lib/utils';
-import type { Agent, AgentDecisionHistoryItem, AgentStats } from '@/types';
-import { useAuth } from '@/context/AuthContext';
+import type { Agent, AgentDecisionHistoryItem, AgentFullStats, AgentStats } from '@/types';
+import { useAuth } from '@/context/useAuth';
 
 export function AgentProfilePage() {
   const { id } = useParams<{ id: string }>();
@@ -29,7 +29,7 @@ export function AgentProfilePage() {
   const [agent, setAgent] = useState<Agent | null>(null);
   const { user } = useAuth();
   const [stats, setStats] = useState<AgentStats | null>(null);
-  const [fullStats, setFullStats] = useState<any>(null);
+  const [fullStats, setFullStats] = useState<AgentFullStats | null>(null);
   const [history, setHistory] = useState<AgentDecisionHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +121,8 @@ export function AgentProfilePage() {
   };
 
   const isOwner = !!user && !!agent && user.id === agent.user_id;
+  // Visitors came from an auction; the dashboard would bounce them to the login page
+  const backTo = user ? '/dashboard' : '/auctions';
 
   if (loading) {
     return (
@@ -146,8 +148,8 @@ export function AgentProfilePage() {
         <div className="p-6">
           <div className="card p-12 text-center">
             <p className="text-text-secondary mb-4">{error || 'Agent not found'}</p>
-            <Link to="/dashboard" className="btn-primary">
-              Back to Dashboard
+            <Link to={backTo} className="btn-primary">
+              {user ? 'Back to Dashboard' : 'Back to Auctions'}
             </Link>
           </div>
         </div>
@@ -161,7 +163,7 @@ export function AgentProfilePage() {
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/dashboard')} className="btn-ghost p-2">
+            <button onClick={() => navigate(backTo)} className="btn-ghost p-2" aria-label="Back">
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-4">
@@ -404,14 +406,14 @@ export function AgentProfilePage() {
             </div>
 
             {/* Recent Wins */}
-            {fullStats?.recent_wins?.length > 0 && (
+            {!!fullStats?.recent_wins.length && (
               <div className="card p-6">
                 <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
                   <Trophy className="h-5 w-5 text-accent-orange" />
                   Recent Wins
                 </h3>
                 <div className="space-y-3">
-                  {fullStats.recent_wins.slice(0, 5).map((win: any) => (
+                  {fullStats.recent_wins.slice(0, 5).map((win) => (
                     <div
                       key={win.auction_id}
                       className="p-3 bg-background-tertiary rounded-lg"
@@ -444,7 +446,7 @@ export function AgentProfilePage() {
                   {Object.entries(fullStats.specialty_breakdown).map(([spec, count]) => (
                     <div key={spec} className="flex items-center justify-between">
                       <span className="text-text-secondary capitalize">{spec.replace('_', ' ')}</span>
-                      <span className="text-text-primary font-medium">{count as number}</span>
+                      <span className="text-text-primary font-medium">{count}</span>
                     </div>
                   ))}
                 </div>
