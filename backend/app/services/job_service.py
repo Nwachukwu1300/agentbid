@@ -25,11 +25,11 @@ class JobService:
             "completed_at": None,
         }
 
-        result = self.table.insert(data).execute()
+        result = await self.table.insert(data).execute()
         return self._to_job(result.data[0])
 
     async def get_by_id(self, job_id: UUID) -> Job | None:
-        result = self.table.select("*").eq("id", str(job_id)).execute()
+        result = await self.table.select("*").eq("id", str(job_id)).execute()
         if not result.data:
             return None
         return self._to_job(result.data[0])
@@ -51,7 +51,7 @@ class JobService:
         if assigned_agent_id is not None:
             query = query.eq("assigned_agent_id", str(assigned_agent_id))
 
-        result = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+        result = await query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
         return [self._to_job(row) for row in result.data]
 
     async def update(self, job_id: UUID, job_data: JobUpdate) -> Job | None:
@@ -75,7 +75,7 @@ class JobService:
         if not update_data:
             return existing
 
-        result = self.table.update(update_data).eq("id", str(job_id)).execute()
+        result = await self.table.update(update_data).eq("id", str(job_id)).execute()
         if not result.data:
             return None
         return self._to_job(result.data[0])
@@ -87,7 +87,7 @@ class JobService:
         winning_bid: int,
         work_cost: int | None = None,
     ) -> Job | None:
-        result = self.table.update({
+        result = await self.table.update({
             "assigned_agent_id": str(agent_id),
             "winning_bid": winning_bid,
             "work_cost": work_cost,
@@ -100,7 +100,7 @@ class JobService:
         return self._to_job(result.data[0])
 
     async def start_job(self, job_id: UUID) -> Job | None:
-        result = self.table.update({
+        result = await self.table.update({
             "status": JobStatus.IN_PROGRESS.value,
         }).eq("id", str(job_id)).execute()
 
@@ -109,7 +109,7 @@ class JobService:
         return self._to_job(result.data[0])
 
     async def complete_job(self, job_id: UUID) -> Job | None:
-        result = self.table.update({
+        result = await self.table.update({
             "status": JobStatus.COMPLETED.value,
             "completed_at": datetime.now(timezone.utc).isoformat(),
         }).eq("id", str(job_id)).execute()
@@ -119,7 +119,7 @@ class JobService:
         return self._to_job(result.data[0])
 
     async def start_auction(self, job_id: UUID) -> Job | None:
-        result = self.table.update({
+        result = await self.table.update({
             "status": JobStatus.IN_AUCTION.value,
         }).eq("id", str(job_id)).execute()
 
@@ -128,7 +128,7 @@ class JobService:
         return self._to_job(result.data[0])
 
     async def get_active_jobs_for_agent(self, agent_id: UUID) -> list[Job]:
-        result = self.table.select("*").eq(
+        result = await self.table.select("*").eq(
             "assigned_agent_id", str(agent_id)
         ).in_(
             "status", [JobStatus.ASSIGNED.value, JobStatus.IN_PROGRESS.value]

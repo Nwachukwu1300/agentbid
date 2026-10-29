@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from uuid import UUID
 
-from app.models.job import Job, JobCreate, JobUpdate, JobStatus
+from app.models.job import Job, JobStatus
 from app.models.agent import AgentSpecialty
 from app.services.database import DatabaseService, get_database_service
 from app.services.job_service import JobService
@@ -11,14 +11,6 @@ router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
 def get_job_service(db: DatabaseService = Depends(get_database_service)) -> JobService:
     return JobService(db)
-
-
-@router.post("", response_model=Job, status_code=201)
-async def create_job(
-    job_data: JobCreate,
-    service: JobService = Depends(get_job_service),
-) -> Job:
-    return await service.create(job_data)
 
 
 @router.get("", response_model=list[Job])
@@ -45,53 +37,6 @@ async def get_job(
     service: JobService = Depends(get_job_service),
 ) -> Job:
     job = await service.get_by_id(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return job
-
-
-@router.put("/{job_id}", response_model=Job)
-async def update_job(
-    job_id: UUID,
-    job_data: JobUpdate,
-    service: JobService = Depends(get_job_service),
-) -> Job:
-    job = await service.update(job_id, job_data)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return job
-
-
-@router.post("/{job_id}/assign", response_model=Job)
-async def assign_job_to_agent(
-    job_id: UUID,
-    agent_id: UUID = Query(...),
-    winning_bid: int = Query(..., gt=0),
-    service: JobService = Depends(get_job_service),
-) -> Job:
-    job = await service.assign_to_agent(job_id, agent_id, winning_bid)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return job
-
-
-@router.post("/{job_id}/start", response_model=Job)
-async def start_job(
-    job_id: UUID,
-    service: JobService = Depends(get_job_service),
-) -> Job:
-    job = await service.start_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return job
-
-
-@router.post("/{job_id}/complete", response_model=Job)
-async def complete_job(
-    job_id: UUID,
-    service: JobService = Depends(get_job_service),
-) -> Job:
-    job = await service.complete_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job

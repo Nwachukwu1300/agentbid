@@ -1,25 +1,29 @@
 import asyncio
+import threading
 from datetime import datetime, timezone
-from typing import Any
 from uuid import UUID
 
 
 class EventManager:
-    """Manages SSE event broadcasting to connected clients."""
+    """Manages SSE event broadcasting to connected clients.
+
+    Subscribers live on the API server's event loop; events are published from the game loop's
+    own thread, so each event is handed to the subscriber's loop thread-safely.
+    """
 
     def __init__(self):
-        self._subscribers: set[asyncio.Queue] = set()
-        self._lock = asyncio.Lock()
+        self._subscribers: dict[asyncio.Queue, asyncio.AbstractEventLoop] = {}
+        self._lock = threading.Lock()
 
     async def subscribe(self, queue: asyncio.Queue) -> None:
-        """Add a subscriber queue."""
-        async with self._lock:
-            self._subscribers.add(queue)
+        """Add a subscriber queue (owned by the calling event loop)."""
+        with self._lock:
+            self._subscribers[queue] = asyncio.get_running_loop()
 
     async def unsubscribe(self, queue: asyncio.Queue) -> None:
         """Remove a subscriber queue."""
-        async with self._lock:
-            self._subscribers.discard(queue)
+        with self._lock:
+            self._subscribers.pop(queue, None)
 
     async def publish(self, event_type: str, data: dict) -> None:
         """Publish an event to all subscribers."""
@@ -31,13 +35,13 @@ class EventManager:
             },
         }
 
-        async with self._lock:
-            for queue in self._subscribers:
-                try:
-                    queue.put_nowait(event)
-                except asyncio.QueueFull:
-                    # Skip if queue is full (client not consuming fast enough)
-                    pass
+        with self._lock:
+            subscribers = list(self._subscribers.items())
+        for queue, loop in subscribers:
+            try:
+                loop.call_soon_threadsafe(_offer, queue, event)
+            except RuntimeError:
+                pass  # that subscriber's loop has shut down
 
     async def publish_auction_created(
         self,
@@ -128,6 +132,13 @@ class EventManager:
     def subscriber_count(self) -> int:
         """Get the number of active subscribers."""
         return len(self._subscribers)
+
+
+def _offer(queue: asyncio.Queue, event: dict) -> None:
+    try:
+        queue.put_nowait(event)
+    except asyncio.QueueFull:
+        pass  # client not consuming fast enough
 
 
 # Singleton instance

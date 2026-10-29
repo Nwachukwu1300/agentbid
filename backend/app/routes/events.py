@@ -1,39 +1,65 @@
 import asyncio
 import json
+import signal
+import threading
 from datetime import datetime, timezone
 from typing import AsyncGenerator
-from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
-from app.services.database import DatabaseService, get_database_service
 from app.services.event_manager import EventManager, get_event_manager
 
 router = APIRouter(prefix="/api/events", tags=["events"])
 
 
+# Set when the server is told to stop, so open live feeds end and the server can shut down.
+shutting_down = threading.Event()
+
+
+def end_feeds_on_shutdown_signal() -> None:
+    """Uvicorn waits for open connections to close before it shuts down, and a live feed never closes
+    on its own, so a connected browser kept the server from stopping. Uvicorn installs its signal
+    handlers before the app loads, so wrap them at app startup (call from the lifespan)."""
+    if threading.current_thread() is not threading.main_thread():
+        return  # signal handlers can only be changed from the main thread
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        previous = signal.getsignal(sig)
+
+        def handler(signum, frame, previous=previous):
+            shutting_down.set()
+            if callable(previous):
+                previous(signum, frame)
+
+        signal.signal(sig, handler)
+
+
+PING_SECONDS = 15  # the browser treats ~45s of silence as a dead connection and reconnects
+
+
 async def event_generator(
     event_manager: EventManager,
 ) -> AsyncGenerator[str, None]:
-    """Generate SSE events from the event queue."""
+    """Generate SSE events from the event queue, with a heartbeat, until the client or server goes away."""
     queue: asyncio.Queue = asyncio.Queue()
-
-    # Subscribe to all events
     await event_manager.subscribe(queue)
 
     try:
-        # Send initial connection event
         yield format_sse_event("connected", {"status": "connected", "timestamp": datetime.now(timezone.utc).isoformat()})
 
-        while True:
+        idle = 0.0
+        while not shutting_down.is_set():
             try:
-                # Wait for events with timeout to send keepalive
-                event = await asyncio.wait_for(queue.get(), timeout=30.0)
+                # Short waits so a shutdown is noticed within a second
+                event = await asyncio.wait_for(queue.get(), timeout=1.0)
                 yield format_sse_event(event["type"], event["data"])
+                idle = 0.0
             except asyncio.TimeoutError:
-                # Send keepalive comment
-                yield ": keepalive\n\n"
+                idle += 1.0
+                if idle >= PING_SECONDS:
+                    # A named event (not a comment) so the browser can see the connection is alive
+                    yield format_sse_event("ping", {})
+                    idle = 0.0
     except asyncio.CancelledError:
         pass
     finally:
@@ -68,18 +94,3 @@ async def event_stream(
             "X-Accel-Buffering": "no",  # Disable buffering for nginx
         },
     )
-
-
-@router.post("/test/{event_type}")
-async def send_test_event(
-    event_type: str,
-    event_manager: EventManager = Depends(get_event_manager),
-):
-    """Send a test event (for development)."""
-    test_data = {
-        "test": True,
-        "event_type": event_type,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
-    await event_manager.publish(event_type, test_data)
-    return {"status": "sent", "event_type": event_type}

@@ -1,7 +1,7 @@
 import asyncio
+import threading
 import logging
 from datetime import datetime, timezone
-from contextlib import asynccontextmanager
 
 from app.services.database import get_database_service
 from app.services.job_service import JobService
@@ -25,45 +25,59 @@ class JobSpawner:
     def __init__(self):
         self.settings = get_settings()
         self._running = False
-        self._spawn_task: asyncio.Task | None = None
-        self._close_task: asyncio.Task | None = None
-        self._complete_task: asyncio.Task | None = None
-        self._bidding_task: asyncio.Task | None = None
-        self._season_task: asyncio.Task | None = None
+        self._thread: threading.Thread | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._tasks: list[asyncio.Task] = []
 
     async def start(self):
-        """Start all background tasks."""
+        """Run the game loop on its own thread with its own event loop.
+
+        Agent decisions make slow, blocking AI and database calls; on the API's event loop they
+        froze every request (and the whole server when a connection hung).
+        """
         if self._running:
             return
-
         self._running = True
         logger.info("Starting JobSpawner background tasks")
+        self._thread = threading.Thread(target=self._run_thread, name="game-loop", daemon=True)
+        self._thread.start()
 
+    def _run_thread(self):
+        self._loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._loop)
+        try:
+            self._loop.run_until_complete(self._run())
+        finally:
+            self._loop.close()
+
+    async def _run(self):
         # Make sure a season is running before agents start earning
         try:
             await self._check_season()
         except Exception as e:
             logger.error(f"Error starting season: {e}")
 
-        self._spawn_task = asyncio.create_task(self._job_spawn_loop())
-        self._close_task = asyncio.create_task(self._auction_close_loop())
-        self._complete_task = asyncio.create_task(self._job_completion_loop())
-        self._bidding_task = asyncio.create_task(self._agent_bidding_loop())
-        self._season_task = asyncio.create_task(self._season_loop())
+        self._tasks = [
+            asyncio.create_task(loop())
+            for loop in (
+                self._job_spawn_loop,
+                self._auction_close_loop,
+                self._job_completion_loop,
+                self._agent_bidding_loop,
+                self._season_loop,
+            )
+        ]
+        await asyncio.gather(*self._tasks, return_exceptions=True)
 
     async def stop(self):
-        """Stop all background tasks."""
+        """Stop the game loop and wait (briefly) for its thread to finish."""
         self._running = False
         logger.info("Stopping JobSpawner background tasks")
-
-        tasks = [self._spawn_task, self._close_task, self._complete_task, self._bidding_task, self._season_task]
-        for task in tasks:
-            if task:
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
+        if self._loop and self._loop.is_running():
+            self._loop.call_soon_threadsafe(lambda: [task.cancel() for task in self._tasks])
+        if self._thread:
+            # A call already in flight finishes first (bounded by the client timeouts)
+            await asyncio.to_thread(self._thread.join, 35)
 
     async def _job_spawn_loop(self):
         """Spawn a new job every 30 seconds and start an auction."""
@@ -77,7 +91,7 @@ class JobSpawner:
 
     async def _spawn_job_and_auction(self):
         """Create a new job from template and start its auction."""
-        db = get_database_service()
+        db = await get_database_service()
         job_service = JobService(db)
         auction_service = AuctionService(db)
 
@@ -113,7 +127,7 @@ class JobSpawner:
 
     async def _close_expired_auctions(self):
         """Find and close all auctions that have passed their end time."""
-        db = get_database_service()
+        db = await get_database_service()
         auction_service = AuctionService(db)
 
         expired = await auction_service.get_expired_auctions()
@@ -142,7 +156,7 @@ class JobSpawner:
 
     async def _complete_expired_jobs(self, settle_all: bool = False):
         """Complete jobs that have been in progress long enough (or all of them at season end)."""
-        db = get_database_service()
+        db = await get_database_service()
         job_service = JobService(db)
         agent_service = AgentService(db)
         auction_service = AuctionService(db)
@@ -190,7 +204,7 @@ class JobSpawner:
 
     async def _check_season(self):
         """Start a season if none is running; finish and replace an expired one."""
-        seasons = SeasonService(get_database_service())
+        seasons = SeasonService(await get_database_service())
         current = await seasons.get_current()
         if current and datetime.fromisoformat(current["ends_at"]) > datetime.now(timezone.utc):
             return
@@ -216,7 +230,7 @@ class JobSpawner:
 
     async def _trigger_agent_bids(self):
         """Trigger all eligible agents to bid on all active auctions."""
-        db = get_database_service()
+        db = await get_database_service()
         auction_service = AuctionService(db)
         intelligence_service = AgentIntelligenceService(db)
 
@@ -253,14 +267,3 @@ def get_job_spawner() -> JobSpawner:
     if _spawner is None:
         _spawner = JobSpawner()
     return _spawner
-
-
-@asynccontextmanager
-async def lifespan_job_spawner():
-    """Context manager for FastAPI lifespan to manage job spawner."""
-    spawner = get_job_spawner()
-    await spawner.start()
-    try:
-        yield
-    finally:
-        await spawner.stop()

@@ -9,15 +9,16 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
 
-from app.models.agent import AgentSpecialty, AgentCreate, Agent
+from app.auth import get_current_user_id
+from app.models.agent import AgentSpecialty
+from app.services import ai_budget
+from app.services.database import DatabaseService, get_database_service
 from app.services.agent_builder import (
     AgentBuilderService,
     get_agent_builder,
     ConversationMessage,
     GeneratedInstructions,
 )
-from app.services.database import DatabaseService, get_database_service
-from app.services.agent_service import AgentService
 
 router = APIRouter(prefix="/api/agent-builder", tags=["agent-builder"])
 
@@ -53,26 +54,25 @@ class RefineRequest(BaseModel):
     specialty: AgentSpecialty
 
 
-class CreateAgentRequest(BaseModel):
-    """Request to create an agent with generated instructions."""
-    user_id: UUID
-    name: str = Field(..., min_length=1, max_length=100)
-    specialty: AgentSpecialty
-    auction_instructions: str = Field(..., min_length=1)
-
-
 def get_builder() -> AgentBuilderService:
     return get_agent_builder()
 
 
-def get_agent_service(db: DatabaseService = Depends(get_database_service)) -> AgentService:
-    return AgentService(db)
+async def spend_builder_call(
+    user_id: UUID = Depends(get_current_user_id),
+    db: DatabaseService = Depends(get_database_service),
+) -> UUID:
+    """Builder calls cost money (gpt-4o): signed-in users only, capped per user per day."""
+    if not await ai_budget.try_builder_call(db, str(user_id)):
+        raise HTTPException(status_code=429, detail="Daily agent-builder limit reached. Try again tomorrow.")
+    return user_id
 
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_with_builder(
     request: ChatRequest,
     builder: AgentBuilderService = Depends(get_builder),
+    _user_id: UUID = Depends(spend_builder_call),
 ) -> ChatResponse:
     """
     Continue the agent creation conversation.
@@ -107,6 +107,7 @@ async def chat_with_builder(
 async def generate_instructions(
     request: GenerateRequest,
     builder: AgentBuilderService = Depends(get_builder),
+    _user_id: UUID = Depends(spend_builder_call),
 ) -> GeneratedInstructions:
     """
     Generate comprehensive agent instructions from the conversation.
@@ -127,6 +128,7 @@ async def generate_instructions(
 async def quick_generate(
     request: QuickGenerateRequest,
     builder: AgentBuilderService = Depends(get_builder),
+    _user_id: UUID = Depends(spend_builder_call),
 ) -> GeneratedInstructions:
     """
     Quick generation without conversation.
@@ -147,6 +149,7 @@ async def quick_generate(
 async def refine_instructions(
     request: RefineRequest,
     builder: AgentBuilderService = Depends(get_builder),
+    _user_id: UUID = Depends(spend_builder_call),
 ) -> GeneratedInstructions:
     """
     Refine generated instructions based on user feedback.
@@ -161,27 +164,6 @@ async def refine_instructions(
         )
     except ValueError as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/create-agent", response_model=Agent, status_code=201)
-async def create_agent_from_builder(
-    request: CreateAgentRequest,
-    service: AgentService = Depends(get_agent_service),
-) -> Agent:
-    """
-    Create an agent with the finalized instructions.
-
-    This is the final step of the agent creation flow.
-    The agent will be immediately active and ready to compete.
-    """
-    agent_data = AgentCreate(
-        user_id=request.user_id,
-        name=request.name,
-        specialty=request.specialty,
-        auction_instructions=request.auction_instructions,
-    )
-
-    return await service.create(agent_data)
 
 
 # Initial prompt to start the conversation

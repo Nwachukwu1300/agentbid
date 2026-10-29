@@ -8,7 +8,6 @@ from app.routes import (
     jobs_router,
     users_router,
     auctions_router,
-    agent_decisions_router,
     events_router,
     agent_builder_router,
     agent_stats_router,
@@ -16,6 +15,7 @@ from app.routes import (
     seasons_router,
 )
 from app.services.job_spawner import get_job_spawner
+from app.routes.events import end_feeds_on_shutdown_signal
 
 settings = get_settings()
 
@@ -23,6 +23,7 @@ settings = get_settings()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifecycle - start/stop background tasks."""
+    end_feeds_on_shutdown_signal()
     # Startup: Start the job spawner
     spawner = get_job_spawner()
     await spawner.start()
@@ -45,8 +46,8 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
-    allow_credentials=True,
+    allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
+    allow_credentials=False,  # auth uses a bearer token header, not cookies
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -56,7 +57,6 @@ app.include_router(agents_router)
 app.include_router(jobs_router)
 app.include_router(users_router)
 app.include_router(auctions_router)
-app.include_router(agent_decisions_router)
 app.include_router(events_router)
 app.include_router(agent_builder_router)
 app.include_router(agent_stats_router)

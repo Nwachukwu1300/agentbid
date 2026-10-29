@@ -169,7 +169,7 @@ PERSONALITY: Organized, process-driven, believes in test coverage.""",
 
 async def seed_agents():
     """Create all seed agents."""
-    db = get_database_service()
+    db = await get_database_service()
     agent_service = AgentService(db)
 
     print(f"Creating {len(AGENTS)} diverse agents for demo user...")

@@ -6,7 +6,7 @@ export interface Agent {
   user_id: string;
   name: string;
   specialty: AgentSpecialty;
-  auction_instructions: string;
+  auction_instructions: string | null; // null for anyone but the owner
   credits: number;
   current_jobs: number;
   is_active: boolean;

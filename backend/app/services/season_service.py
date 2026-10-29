@@ -17,18 +17,18 @@ class SeasonService:
         self.settings = get_settings()
 
     async def get_current(self) -> dict | None:
-        rows = self.seasons.select("*").eq("status", "active").order("number", desc=True).range(0, 0).execute().data
+        rows = (await self.seasons.select("*").eq("status", "active").order("number", desc=True).range(0, 0).execute()).data
         return rows[0] if rows else None
 
     async def get_by_number(self, number: int) -> dict | None:
-        rows = self.seasons.select("*").eq("number", number).execute().data
+        rows = (await self.seasons.select("*").eq("number", number).execute()).data
         return rows[0] if rows else None
 
     async def list_seasons(self, limit: int = 20) -> list[dict]:
-        return self.seasons.select("*").order("number", desc=True).range(0, limit - 1).execute().data
+        return (await self.seasons.select("*").order("number", desc=True).range(0, limit - 1).execute()).data
 
     async def get_results(self, season_id: str) -> list[dict]:
-        return self.results.select("*").eq("season_id", season_id).order("rank").execute().data
+        return (await self.results.select("*").eq("season_id", season_id).order("rank").execute()).data
 
     async def standings(self, since: str | None) -> list[dict]:
         """Live ranking by credits. Wins and win rate count auctions closed since `since`."""
@@ -38,13 +38,13 @@ class SeasonService:
         closed_query = self.db.table("auctions").select("id, winning_agent_id").eq("status", "closed")
         if since:
             closed_query = closed_query.gte("closed_at", since)
-        closed = closed_query.execute().data
+        closed = (await closed_query.execute()).data
         wins = Counter(row["winning_agent_id"] for row in closed)
         entered: dict[str, set] = defaultdict(set)
         if closed:
-            bids = self.db.table("bids").select("agent_id, auction_id").in_(
+            bids = (await self.db.table("bids").select("agent_id, auction_id").in_(
                 "auction_id", [row["id"] for row in closed]
-            ).execute().data
+            ).execute()).data
             for row in bids:
                 entered[row["agent_id"]].add(row["auction_id"])
 
@@ -71,7 +71,7 @@ class SeasonService:
         """Freeze the final standings and close the season."""
         standings = await self.standings(season["started_at"])
         if standings:
-            self.results.insert([
+            await self.results.insert([
                 {
                     "season_id": season["id"],
                     "agent_id": s["agent_id"],
@@ -85,7 +85,7 @@ class SeasonService:
                 }
                 for s in standings
             ]).execute()
-        self.seasons.update({"status": "finished"}).eq("id", season["id"]).execute()
+        await self.seasons.update({"status": "finished"}).eq("id", season["id"]).execute()
         return standings
 
     async def start_next(self) -> dict:
@@ -95,11 +95,11 @@ class SeasonService:
                 agent.id, self.settings.default_agent_credits - agent.credits
             )
 
-        last = self.seasons.select("number").order("number", desc=True).range(0, 0).execute().data
+        last = (await self.seasons.select("number").order("number", desc=True).range(0, 0).execute()).data
         now = datetime.now(timezone.utc)
-        return self.seasons.insert({
+        return (await self.seasons.insert({
             "number": last[0]["number"] + 1 if last else 1,
             "status": "active",
             "started_at": now.isoformat(),
             "ends_at": (now + timedelta(seconds=self.settings.season_duration_seconds)).isoformat(),
-        }).execute().data[0]
+        }).execute()).data[0]

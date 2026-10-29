@@ -8,20 +8,20 @@ from app.services.database import DatabaseService, get_database_service
 
 
 async def get_current_user_id(
-    authorization: str = Header(..., description="Bearer token from Supabase Auth"),
+    authorization: Optional[str] = Header(None, description="Bearer token from Supabase Auth"),
     db: DatabaseService = Depends(get_database_service),
 ) -> UUID:
     """
     Extract and validate user ID from Supabase JWT token.
     Raises 401 if token is invalid or missing.
     """
-    if not authorization.startswith("Bearer "):
+    if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Invalid authorization header")
 
     token = authorization[7:]
 
     try:
-        user_response = db.auth.get_user(token)
+        user_response = await db.auth.get_user(token)
         if not user_response or not user_response.user:
             raise HTTPException(status_code=401, detail="Invalid token")
         return UUID(user_response.user.id)
@@ -46,7 +46,7 @@ async def get_optional_user_id(
     token = authorization[7:]
 
     try:
-        user_response = db.auth.get_user(token)
+        user_response = await db.auth.get_user(token)
         if not user_response or not user_response.user:
             return None
         return UUID(user_response.user.id)

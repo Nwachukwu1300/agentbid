@@ -1,8 +1,9 @@
+import asyncio
 import json
 import logging
 from uuid import UUID
 from datetime import datetime, timezone
-from openai import OpenAI
+from openai import AsyncOpenAI
 
 from app.models.agent import Agent
 from app.models.agent_decision import (
@@ -19,8 +20,23 @@ from app.services.database import DatabaseService
 from app.services.agent_service import AgentService
 from app.services.auction_service import AuctionService
 from app.config import get_settings
+from app.services import ai_budget
 
 logger = logging.getLogger(__name__)
+
+
+# One OpenAI client per event loop, reused across rounds (a new client each round leaks connections)
+_openai_clients: dict[asyncio.AbstractEventLoop, AsyncOpenAI] = {}
+
+
+def _openai_client() -> AsyncOpenAI:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:  # constructed outside a loop (e.g. tests): a private client
+        return AsyncOpenAI(api_key=get_settings().openai_api_key, timeout=30, max_retries=1)
+    if loop not in _openai_clients:
+        _openai_clients[loop] = AsyncOpenAI(api_key=get_settings().openai_api_key, timeout=30, max_retries=1)
+    return _openai_clients[loop]
 
 
 class AgentIntelligenceService:
@@ -65,7 +81,7 @@ Do not include any other text, markdown formatting, or explanation outside the J
     def __init__(self, db: DatabaseService):
         self.db = db
         self.settings = get_settings()
-        self.client = OpenAI(api_key=self.settings.openai_api_key)
+        self.client = _openai_client()
         self.agent_service = AgentService(db)
         self.auction_service = AuctionService(db)
         self.decisions_table = db.table("agent_decisions")
@@ -170,9 +186,9 @@ Do not include any other text, markdown formatting, or explanation outside the J
         auto_pass = None
         if agent.is_bankrupt:
             auto_pass = "Bankrupt. Out until the next season."
-        elif self.decisions_table.select("id").eq("agent_id", str(agent_id)).eq(
+        elif (await self.decisions_table.select("id").eq("agent_id", str(agent_id)).eq(
             "auction_id", str(auction_id)
-        ).execute().data:
+        ).execute()).data:
             auto_pass = "Already made its one sealed decision on this auction."
         if auto_pass:
             return AgentDecisionResponse(
@@ -208,9 +224,22 @@ Do not include any other text, markdown formatting, or explanation outside the J
         # Build the prompt
         system_prompt = self._build_system_prompt(agent_state, auction_context)
 
+        if not await ai_budget.try_agent_call(self.db):
+            logger.warning("Daily agent AI budget reached; agents pass until tomorrow")
+            return AgentDecisionResponse(
+                agent_id=agent_id,
+                agent_name=agent.name,
+                auction_id=auction_id,
+                decision_type=DecisionType.PASS,
+                bid_amount=None,
+                reasoning="Daily AI budget reached. Sitting out until tomorrow.",
+                raw_response=None,
+                created_at=datetime.now(timezone.utc),
+            )
+
         # Call OpenAI
         try:
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model=self.settings.openai_model,
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -268,7 +297,7 @@ Do not include any other text, markdown formatting, or explanation outside the J
                 "reasoning": decision.reasoning,
                 "created_at": decision.created_at.isoformat(),
             }
-            self.decisions_table.insert(data).execute()
+            await self.decisions_table.insert(data).execute()
         except Exception as e:
             # Don't fail the decision if storage fails
             logger.error(f"Failed to store agent decision: {e}")

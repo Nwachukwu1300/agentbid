@@ -21,11 +21,13 @@ import { SpecialtyBadge, StatCard, ProgressBar } from '@/components/ui';
 import { agentsAPI, agentStatsAPI } from '@/lib/api';
 import { cn, formatCredits, formatTimeAgo, getSpecialtyIcon } from '@/lib/utils';
 import type { Agent, AgentDecisionHistoryItem, AgentStats } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 
 export function AgentProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [agent, setAgent] = useState<Agent | null>(null);
+  const { user } = useAuth();
   const [stats, setStats] = useState<AgentStats | null>(null);
   const [fullStats, setFullStats] = useState<any>(null);
   const [history, setHistory] = useState<AgentDecisionHistoryItem[]>([]);
@@ -62,7 +64,7 @@ export function AgentProfilePage() {
         setFullStats(fullStatsData);
         setHistory(historyData);
         setEditName(agentData.name);
-        setEditAuctionInstructions(agentData.auction_instructions);
+        setEditAuctionInstructions(agentData.auction_instructions ?? '');
       } catch (err) {
         console.error('Failed to fetch agent:', err);
         setError('Failed to load agent');
@@ -117,6 +119,8 @@ export function AgentProfilePage() {
       setIsDeleting(false);
     }
   };
+
+  const isOwner = !!user && !!agent && user.id === agent.user_id;
 
   if (loading) {
     return (
@@ -196,7 +200,8 @@ export function AgentProfilePage() {
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Actions (owner only) */}
+          {isOwner && (
           <div className="flex items-center gap-2">
             {isEditing ? (
               <>
@@ -204,7 +209,7 @@ export function AgentProfilePage() {
                   onClick={() => {
                     setIsEditing(false);
                     setEditName(agent.name);
-                    setEditAuctionInstructions(agent.auction_instructions);
+                    setEditAuctionInstructions(agent.auction_instructions ?? '');
                   }}
                   className="btn-ghost"
                 >
@@ -252,6 +257,7 @@ export function AgentProfilePage() {
               </>
             )}
           </div>
+          )}
         </div>
 
         {/* Stats Overview */}
@@ -298,10 +304,12 @@ export function AgentProfilePage() {
                   onChange={(e) => setEditAuctionInstructions(e.target.value)}
                   className="w-full h-48 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent-purple resize-none"
                 />
-              ) : (
+              ) : agent.auction_instructions !== null ? (
                 <p className="text-text-secondary whitespace-pre-wrap">
                   {agent.auction_instructions}
                 </p>
+              ) : (
+                <p className="text-text-muted">This agent's strategy is private to its owner.</p>
               )}
             </div>
 

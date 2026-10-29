@@ -13,6 +13,13 @@ def get_agent_service(db: DatabaseService = Depends(get_database_service)) -> Ag
     return AgentService(db)
 
 
+def for_viewer(agent: Agent, viewer_id: UUID | None) -> Agent:
+    """Strategies are a competitive secret: only the owner sees the agent's instructions."""
+    if viewer_id == agent.user_id:
+        return agent
+    return agent.model_copy(update={"auction_instructions": None})
+
+
 # =============================================================================
 # PUBLIC ENDPOINTS (No authentication required)
 # =============================================================================
@@ -24,29 +31,29 @@ async def list_agents(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     service: AgentService = Depends(get_agent_service),
+    viewer_id: UUID | None = Depends(get_optional_user_id),
 ) -> list[Agent]:
-    """
-    List all agents in the marketplace (public endpoint).
-    Used for the main auction views where all agents are visible.
-    """
-    return await service.get_all(
+    """List all agents in the marketplace (public; strategies only for their owner)."""
+    agents = await service.get_all(
         specialty=specialty,
         is_active=is_active,
         limit=limit,
         offset=offset,
     )
+    return [for_viewer(a, viewer_id) for a in agents]
 
 
 @router.get("/{agent_id}", response_model=Agent)
 async def get_agent(
     agent_id: UUID,
     service: AgentService = Depends(get_agent_service),
+    viewer_id: UUID | None = Depends(get_optional_user_id),
 ) -> Agent:
-    """Get a single agent by ID (public endpoint)."""
+    """Get a single agent by ID (public; strategy only for its owner)."""
     agent = await service.get_by_id(agent_id)
     if not agent:
         raise HTTPException(status_code=404, detail="Agent not found")
-    return agent
+    return for_viewer(agent, viewer_id)
 
 
 # =============================================================================
@@ -160,34 +167,3 @@ async def toggle_agent_active(
 # =============================================================================
 # ADMIN/INTERNAL ENDPOINTS (Should be protected in production)
 # =============================================================================
-
-@router.post("/{agent_id}/credits", response_model=Agent)
-async def update_agent_credits(
-    agent_id: UUID,
-    amount: int = Query(..., description="Amount to add (positive) or subtract (negative)"),
-    service: AgentService = Depends(get_agent_service),
-) -> Agent:
-    """
-    Update agent credits (internal endpoint for auction system).
-    Note: In production, this should be restricted to service-to-service calls.
-    """
-    agent = await service.update_credits(agent_id, amount)
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    return agent
-
-
-# =============================================================================
-# LEGACY ENDPOINT (Kept for backwards compatibility, consider deprecating)
-# =============================================================================
-
-@router.get("/user/{user_id}", response_model=list[Agent])
-async def get_user_agents(
-    user_id: UUID,
-    service: AgentService = Depends(get_agent_service),
-) -> list[Agent]:
-    """
-    Get agents by user ID (legacy endpoint).
-    Prefer using GET /api/agents/my/agents for authenticated access.
-    """
-    return await service.get_by_user_id(user_id)

@@ -9,7 +9,7 @@ auction instructions.
 import json
 import logging
 from typing import Optional
-from openai import OpenAI
+from openai import AsyncOpenAI
 from pydantic import BaseModel
 
 from app.config import get_settings
@@ -117,7 +117,7 @@ Respond with ONLY a valid JSON object:
 
     def __init__(self):
         self.settings = get_settings()
-        self.client = OpenAI(api_key=self.settings.openai_api_key)
+        self.client = AsyncOpenAI(api_key=self.settings.openai_api_key, timeout=60, max_retries=1)
 
     async def chat(
         self,
@@ -153,7 +153,7 @@ Respond with ONLY a valid JSON object:
             })
 
         try:
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model="gpt-4o",  # Use GPT-4 for better conversation quality
                 messages=api_messages,
                 max_tokens=500,
@@ -191,7 +191,7 @@ Respond with ONLY a valid JSON object:
         )
 
         try:
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": self.SYSTEM_PROMPT},
@@ -231,7 +231,7 @@ Respond with ONLY a valid JSON object:
         )
 
         try:
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": self.SYSTEM_PROMPT},
@@ -283,7 +283,7 @@ Respond with ONLY a valid JSON object:
 }}"""
 
         try:
-            response = self.client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model="gpt-4o",
                 messages=[
                     {"role": "system", "content": self.SYSTEM_PROMPT},

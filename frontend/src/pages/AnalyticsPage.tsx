@@ -50,7 +50,7 @@ export function AnalyticsPage() {
       setLeaderboard(leaders);
       setSeason(currentSeason);
     } catch (error) {
-      console.error('Failed to fetch analytics:', error);
+      console.warn('Could not load analytics (server unreachable?)', error);
     } finally {
       setLoading(false);
     }

@@ -69,16 +69,16 @@ class DecisionService:
         jobs = round((cost / idle - 1) / self.settings.workload_cost_step) if idle else 0
         return f"{cost} (idle)" if jobs <= 0 else f"{cost} ({jobs} job{'s' if jobs > 1 else ''} running)"
 
-    def _agents_by_id(self, agent_ids: set[str]) -> dict[str, dict]:
+    async def _agents_by_id(self, agent_ids: set[str]) -> dict[str, dict]:
         if not agent_ids:
             return {}
-        rows = self.db.table("agents").select("id, name, specialty").in_("id", list(agent_ids)).execute().data
+        rows = (await self.db.table("agents").select("id, name, specialty").in_("id", list(agent_ids)).execute()).data
         return {row["id"]: row for row in rows}
 
     async def for_auction(self, auction_id: UUID) -> list[dict]:
         """Every stored decision on an auction, oldest first, with the agent's name."""
-        rows = self.decisions.select("*").eq("auction_id", str(auction_id)).order("created_at").execute().data
-        agents = self._agents_by_id({row["agent_id"] for row in rows})
+        rows = (await self.decisions.select("*").eq("auction_id", str(auction_id)).order("created_at").execute()).data
+        agents = await self._agents_by_id({row["agent_id"] for row in rows})
         return [
             {
                 **row,
@@ -110,7 +110,7 @@ class DecisionService:
 
         last_reasoning = {d["agent_id"]: d["reasoning"] for d in decisions}  # oldest first, so last wins
         agent_ids = set(best) | set(last_reasoning)
-        agents = self._agents_by_id(agent_ids)
+        agents = await self._agents_by_id(agent_ids)
         winner_id = str(auction.winning_agent_id) if auction.winning_agent_id else None
         label = {agent_id: self._cost_label(cost, base_price) for agent_id, cost in costs.items()}
 
@@ -142,22 +142,22 @@ class DecisionService:
 
     async def for_agent(self, agent_id: UUID, limit: int = 20) -> list[dict]:
         """An agent's latest decisions with the job and how the auction turned out."""
-        rows = self.decisions.select("*").eq("agent_id", str(agent_id)).order(
+        rows = (await self.decisions.select("*").eq("agent_id", str(agent_id)).order(
             "created_at", desc=True
-        ).range(0, limit - 1).execute().data
+        ).range(0, limit - 1).execute()).data
         auction_ids = list({row["auction_id"] for row in rows})
         auctions = {
             row["id"]: row
             for row in (
-                self.db.table("auctions").select("id, job_id, status, winning_agent_id, winning_amount")
-                .in_("id", auction_ids).execute().data if auction_ids else []
+                (await self.db.table("auctions").select("id, job_id, status, winning_agent_id, winning_amount")
+                .in_("id", auction_ids).execute()).data if auction_ids else []
             )
         }
         job_ids = list({a["job_id"] for a in auctions.values()})
         jobs = {
             row["id"]: row
             for row in (
-                self.db.table("jobs").select("id, title, specialty").in_("id", job_ids).execute().data
+                (await self.db.table("jobs").select("id, title, specialty").in_("id", job_ids).execute()).data
                 if job_ids else []
             )
         }

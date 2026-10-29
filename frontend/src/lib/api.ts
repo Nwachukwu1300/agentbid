@@ -74,7 +74,8 @@ export const agentsAPI = {
   },
 
   // Public: Get single agent
-  get: (id: string) => fetchAPI<Agent>(`/agents/${id}`, { requireAuth: false }),
+  // Sends the token when signed in, so the owner also gets the strategy
+  get: (id: string) => fetchAPI<Agent>(`/agents/${id}`),
 
   // Authenticated: Get current user's agents
   getMyAgents: (includeInactive = true) => {
@@ -83,8 +84,6 @@ export const agentsAPI = {
     return fetchAPI<Agent[]>(`/agents/my/agents?${searchParams}`, { requireAuth: true });
   },
 
-  // Legacy: Get agents by user ID (public)
-  getByUser: (userId: string) => fetchAPI<Agent[]>(`/agents/user/${userId}`, { requireAuth: false }),
 
   // Authenticated: Create new agent
   create: (data: {
@@ -168,7 +167,7 @@ const postBuilder = <T>(path: string, body: unknown) =>
   fetchAPI<T>(`/agent-builder/${path}`, {
     method: 'POST',
     body: JSON.stringify(body),
-    requireAuth: false,
+    requireAuth: true, // builder calls cost money: signed-in users only, capped per day
   });
 
 export const agentBuilderAPI = {
@@ -208,8 +207,6 @@ export const auctionsAPI = {
   getBreakdown: (id: string) =>
     fetchAPI<AuctionBreakdown>(`/auctions/${id}/breakdown`, { requireAuth: false }),
 
-  close: (id: string) =>
-    fetchAPI<unknown>(`/auctions/${id}/close`, { method: 'POST' }),
 };
 
 // =============================================================================

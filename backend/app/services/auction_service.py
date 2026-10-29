@@ -63,7 +63,7 @@ class AuctionService:
             "closed_at": None,
         }
 
-        result = self.auctions_table.insert(data).execute()
+        result = await self.auctions_table.insert(data).execute()
         auction = self._to_auction(result.data[0])
 
         # Update job status to in_auction
@@ -75,7 +75,7 @@ class AuctionService:
         return auction
 
     async def get_by_id(self, auction_id: UUID) -> Auction | None:
-        result = self.auctions_table.select("*").eq("id", str(auction_id)).execute()
+        result = await self.auctions_table.select("*").eq("id", str(auction_id)).execute()
         if not result.data:
             return None
         return self._to_auction(result.data[0])
@@ -134,7 +134,7 @@ class AuctionService:
             query = query.order("ends_at")
         else:
             query = query.order("closed_at", desc=True)
-        result = query.range(offset, offset + limit - 1).execute()
+        result = await query.range(offset, offset + limit - 1).execute()
 
         auctions_with_jobs = []
         for row in result.data:
@@ -146,7 +146,7 @@ class AuctionService:
     async def get_expired_auctions(self) -> list[Auction]:
         """Get all auctions that have passed their end time but are still active."""
         now = datetime.now(timezone.utc).isoformat()
-        result = self.auctions_table.select("*").eq(
+        result = await self.auctions_table.select("*").eq(
             "status", AuctionStatus.ACTIVE.value
         ).lt("ends_at", now).execute()
 
@@ -183,9 +183,9 @@ class AuctionService:
             raise ValueError("Associated job not found")
         if bid_data.amount > job.base_price:
             raise ValueError(f"Bid exceeds the job budget ({job.base_price})")
-        already = self.bids_table.select("id").eq("auction_id", str(bid_data.auction_id)).eq(
+        already = (await self.bids_table.select("id").eq("auction_id", str(bid_data.auction_id)).eq(
             "agent_id", str(bid_data.agent_id)
-        ).execute().data
+        ).execute()).data
         if already:
             raise ValueError("Sealed auction: one bid per agent")
 
@@ -201,7 +201,7 @@ class AuctionService:
         }
 
         try:
-            result = self.bids_table.insert(data).execute()
+            result = await self.bids_table.insert(data).execute()
         except APIError as e:
             if e.code == "23505":  # unique index: a concurrent second bid slipped past the check above
                 raise ValueError("Sealed auction: one bid per agent") from e
@@ -219,7 +219,7 @@ class AuctionService:
         limit: int = 100,
     ) -> list[Bid]:
         """Get all bids for an auction, ordered by amount (lowest first), then by time (earliest first)."""
-        result = self.bids_table.select("*").eq(
+        result = await self.bids_table.select("*").eq(
             "auction_id", str(auction_id)
         ).order("amount").order("created_at").range(0, limit - 1).execute()
 
@@ -255,7 +255,7 @@ class AuctionService:
 
         if winning_bid:
             # Mark the winning bid
-            self.bids_table.update({"is_winning": True}).eq(
+            await self.bids_table.update({"is_winning": True}).eq(
                 "id", str(winning_bid.id)
             ).execute()
 
@@ -270,7 +270,7 @@ class AuctionService:
             )
 
             # Update auction with winner info
-            self.auctions_table.update({
+            await self.auctions_table.update({
                 "status": AuctionStatus.CLOSED.value,
                 "winning_bid_id": str(winning_bid.id),
                 "winning_agent_id": str(winning_bid.agent_id),
@@ -289,7 +289,7 @@ class AuctionService:
             )
         else:
             # No bids - cancel the auction
-            self.auctions_table.update({
+            await self.auctions_table.update({
                 "status": AuctionStatus.CANCELLED.value,
                 "closed_at": now,
             }).eq("id", str(auction_id)).execute()
@@ -320,7 +320,7 @@ class AuctionService:
         """When each job's auction closed (= when work on it started)."""
         if not job_ids:
             return {}
-        result = self.auctions_table.select("job_id, closed_at").in_(
+        result = await self.auctions_table.select("job_id, closed_at").in_(
             "job_id", [str(j) for j in job_ids]
         ).eq("status", AuctionStatus.CLOSED.value).execute()
         return {

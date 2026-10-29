@@ -51,25 +51,25 @@ async def get_agent_stats(
     agent_id_str = str(agent_id)
 
     # Get agent to verify it exists
-    agent_result = db.table("agents").select("*").eq("id", agent_id_str).execute()
+    agent_result = await db.table("agents").select("*").eq("id", agent_id_str).execute()
     if not agent_result.data:
         raise HTTPException(status_code=404, detail="Agent not found")
 
     agent = agent_result.data[0]
 
     # Count total bids placed by this agent
-    bids_result = db.table("bids").select("id, amount", count="exact").eq("agent_id", agent_id_str).execute()
+    bids_result = await db.table("bids").select("id, amount", count="exact").eq("agent_id", agent_id_str).execute()
     total_bids = bids_result.count or 0
     bid_amounts = [b["amount"] for b in bids_result.data] if bids_result.data else []
     avg_bid = sum(bid_amounts) / len(bid_amounts) if bid_amounts else 0
 
     # Count winning bids (where agent won the auction)
-    winning_auctions = db.table("auctions").select("id, winning_amount", count="exact").eq("winning_agent_id", agent_id_str).eq("status", "closed").execute()
+    winning_auctions = await db.table("auctions").select("id, winning_amount", count="exact").eq("winning_agent_id", agent_id_str).eq("status", "closed").execute()
     jobs_won = winning_auctions.count or 0
     total_earnings = sum(a.get("winning_amount", 0) or 0 for a in winning_auctions.data) if winning_auctions.data else 0
 
     # Count completed jobs assigned to this agent
-    completed_jobs = db.table("jobs").select("id", count="exact").eq("assigned_agent_id", agent_id_str).eq("status", "completed").execute()
+    completed_jobs = await db.table("jobs").select("id", count="exact").eq("assigned_agent_id", agent_id_str).eq("status", "completed").execute()
     jobs_completed = completed_jobs.count or 0
 
     # Calculate win rate
@@ -77,13 +77,13 @@ async def get_agent_stats(
 
     # Count active bids (bids on active auctions)
     # First get active auction IDs
-    active_auctions = db.table("auctions").select("id").eq("status", "active").execute()
+    active_auctions = await db.table("auctions").select("id").eq("status", "active").execute()
     active_auction_ids = [a["id"] for a in active_auctions.data] if active_auctions.data else []
 
     active_bids = 0
     if active_auction_ids:
         for auction_id in active_auction_ids:
-            bid_check = db.table("bids").select("id", count="exact").eq("agent_id", agent_id_str).eq("auction_id", auction_id).execute()
+            bid_check = await db.table("bids").select("id", count="exact").eq("agent_id", agent_id_str).eq("auction_id", auction_id).execute()
             if bid_check.count and bid_check.count > 0:
                 active_bids += 1
 
@@ -110,7 +110,7 @@ async def get_agent_full_stats(
     agent_id_str = str(agent_id)
 
     # Get recent winning auctions with job details
-    recent_wins_result = db.table("auctions").select(
+    recent_wins_result = await db.table("auctions").select(
         "id, winning_amount, closed_at, job_id"
     ).eq("winning_agent_id", agent_id_str).eq("status", "closed").order(
         "closed_at", desc=True
@@ -119,7 +119,7 @@ async def get_agent_full_stats(
     recent_wins = []
     for auction in recent_wins_result.data or []:
         # Get job details
-        job_result = db.table("jobs").select("title, specialty").eq("id", auction["job_id"]).execute()
+        job_result = await db.table("jobs").select("title, specialty").eq("id", auction["job_id"]).execute()
         job = job_result.data[0] if job_result.data else {}
         recent_wins.append({
             "auction_id": auction["id"],
@@ -133,7 +133,7 @@ async def get_agent_full_stats(
     specialty_breakdown = {}
     if recent_wins_result.data:
         for win in recent_wins_result.data:
-            job_result = db.table("jobs").select("specialty").eq("id", win["job_id"]).execute()
+            job_result = await db.table("jobs").select("specialty").eq("id", win["job_id"]).execute()
             if job_result.data:
                 spec = job_result.data[0]["specialty"]
                 specialty_breakdown[spec] = specialty_breakdown.get(spec, 0) + 1
@@ -164,7 +164,7 @@ async def get_user_dashboard_stats(
     user_id_str = str(user_id)
 
     # Get all agents for this user
-    agents_result = db.table("agents").select("id, is_active").eq("user_id", user_id_str).execute()
+    agents_result = await db.table("agents").select("id, is_active").eq("user_id", user_id_str).execute()
     agents = agents_result.data or []
 
     total_agents = len(agents)
@@ -190,20 +190,20 @@ async def get_user_dashboard_stats(
 
     for agent_id in agent_ids:
         # Earnings from won auctions
-        auctions = db.table("auctions").select("winning_amount", count="exact").eq(
+        auctions = await db.table("auctions").select("winning_amount", count="exact").eq(
             "winning_agent_id", agent_id
         ).eq("status", "closed").execute()
         total_jobs_won += auctions.count or 0
         total_earnings += sum(a.get("winning_amount", 0) or 0 for a in auctions.data or [])
 
         # Total bids
-        bids = db.table("bids").select("id", count="exact").eq("agent_id", agent_id).execute()
+        bids = await db.table("bids").select("id", count="exact").eq("agent_id", agent_id).execute()
         total_bids += bids.count or 0
 
         # Active bids
-        active_auctions = db.table("auctions").select("id").eq("status", "active").execute()
+        active_auctions = await db.table("auctions").select("id").eq("status", "active").execute()
         for auction in active_auctions.data or []:
-            bid_check = db.table("bids").select("id", count="exact").eq(
+            bid_check = await db.table("bids").select("id", count="exact").eq(
                 "agent_id", agent_id
             ).eq("auction_id", auction["id"]).execute()
             if bid_check.count and bid_check.count > 0:

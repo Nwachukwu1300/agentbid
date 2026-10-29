@@ -144,7 +144,7 @@ CREATE TYPE auction_status AS ENUM ('active', 'closed', 'cancelled');
 CREATE TABLE IF NOT EXISTS auctions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     job_id UUID NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
-    duration_seconds INTEGER NOT NULL CHECK (duration_seconds >= 90 AND duration_seconds <= 120),
+    duration_seconds INTEGER NOT NULL CHECK (duration_seconds > 0),  -- length comes from AUCTION_*_DURATION_SECONDS
     status auction_status NOT NULL DEFAULT 'active',
     winning_bid_id UUID,  -- Will reference bids table
     winning_agent_id UUID REFERENCES agents(id) ON DELETE SET NULL,
@@ -275,3 +275,33 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS work_cost INTEGER;  -- cost locked in 
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_bids_auction_agent_sealed
     ON bids (auction_id, agent_id)
     WHERE created_at >= '2026-10-29 12:30:00+00';
+
+-- =============================================
+-- AI usage caps (same as migrations/005_ai_usage.sql)
+-- =============================================
+CREATE TABLE IF NOT EXISTS ai_usage (
+    day DATE NOT NULL,
+    key TEXT NOT NULL,          -- 'agents' or 'builder:<user id>'
+    calls INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, key)
+);
+ALTER TABLE ai_usage ENABLE ROW LEVEL SECURITY;  -- no policies: only the backend (service role) can touch it
+
+-- Count one call if the key is under its limit for the day. Atomic, so concurrent calls can't overshoot.
+CREATE OR REPLACE FUNCTION spend_ai_call(p_day DATE, p_key TEXT, p_limit INTEGER)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+AS $$
+DECLARE spent INTEGER;
+BEGIN
+    IF p_limit <= 0 THEN
+        RETURN FALSE;
+    END IF;
+    INSERT INTO ai_usage AS u (day, key, calls) VALUES (p_day, p_key, 1)
+    ON CONFLICT (day, key) DO UPDATE SET calls = u.calls + 1 WHERE u.calls < p_limit
+    RETURNING calls INTO spent;
+    RETURN spent IS NOT NULL;
+END $$;
+
+REVOKE EXECUTE ON FUNCTION spend_ai_call(DATE, TEXT, INTEGER) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION spend_ai_call(DATE, TEXT, INTEGER) TO service_role;

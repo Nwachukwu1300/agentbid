@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     # Application Settings
     app_name: str = "AgentBid"
     debug: bool = False
+    # Comma-separated frontend URLs allowed to call the API from a browser
+    cors_origins: str = "http://localhost:3000,http://localhost:5173"
 
     # Agent Defaults
     default_agent_credits: int = 1000
@@ -34,6 +36,10 @@ class Settings(BaseSettings):
     work_cost_ratio: float = 0.5  # delivering a job costs this share of its budget...
     workload_cost_step: float = 0.10  # ...plus this much more per job the agent is already running
     season_duration_seconds: int = 3600
+
+    # Daily caps on paid AI calls
+    ai_daily_agent_calls: int = 3000  # whole arena; agents pass once it is reached
+    ai_daily_builder_calls_per_user: int = 30
 
     def work_cost(self, base_price: int, jobs_running: int = 0) -> int:
         """Credits it costs this agent to deliver a job. Winner's profit = bid - work cost."""

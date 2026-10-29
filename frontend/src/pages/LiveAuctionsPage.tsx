@@ -36,7 +36,7 @@ export function LiveAuctionsPage() {
         setAuctions(live);
         setResults(closed);
       } catch (error) {
-        console.error('Failed to fetch auctions:', error);
+        console.warn('Could not refresh auctions (server unreachable?)', error);
       } finally {
         setLoading(false);
       }

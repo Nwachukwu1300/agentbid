@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import cast
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 for key in ("SUPABASE_URL", "SUPABASE_KEY", "OPENAI_API_KEY"):
     os.environ.setdefault(key, "test")
@@ -63,7 +63,7 @@ class FakeQuery:
         self.bounds = (start, end)
         return self
 
-    def execute(self):
+    async def execute(self):  # the real client is async
         if self.action == "insert":
             payload = self.payload if isinstance(self.payload, list) else [self.payload]
             new_rows = [{"id": str(uuid.uuid4()), **row} for row in payload]
@@ -97,12 +97,29 @@ class FakeTable:
         return FakeQuery(self.rows, "update", data)
 
 
+class FakeRPC:
+    def __init__(self, result):
+        self.result = result
+
+    async def execute(self):
+        return SimpleNamespace(data=self.result)
+
+
 class FakeDB:
     def __init__(self):
         self.tables: dict[str, list[dict]] = {}
+        self.ai_usage: dict[tuple[str, str], int] = {}
 
     def table(self, name):
         return FakeTable(self.tables.setdefault(name, []))
+
+    def rpc(self, fn, params):
+        assert fn == "spend_ai_call"
+        key = (params["p_day"], params["p_key"])
+        if params["p_limit"] <= 0 or self.ai_usage.get(key, 0) >= params["p_limit"]:
+            return FakeRPC(False)
+        self.ai_usage[key] = self.ai_usage.get(key, 0) + 1
+        return FakeRPC(True)
 
 
 async def main():
@@ -164,12 +181,13 @@ async def main():
     assert winner.current_jobs == 1
     assert getattr(await jobs.get_by_id(job.id), "status", None) == JobStatus.IN_PROGRESS, "won job starts immediately"
 
+    await asyncio.sleep(0)  # events are handed to this loop as scheduled callbacks
     seen = [events.get_nowait() for _ in range(events.qsize())]
     assert [e["type"] for e in seen] == ["auction_created", "bid_placed", "bid_placed", "bid_placed", "auction_closed"]
     assert "amount" not in seen[1]["data"] and "reasoning" not in seen[1]["data"], "bid events stay sealed"
 
     spawner = JobSpawner()
-    with patch("app.services.job_spawner.get_database_service", return_value=db):
+    with patch("app.services.job_spawner.get_database_service", new=AsyncMock(return_value=db)):
         await spawner._complete_expired_jobs()
         assert getattr(await jobs.get_by_id(job.id), "status", None) == JobStatus.IN_PROGRESS, "not done right after winning"
 
@@ -183,10 +201,77 @@ async def main():
     assert winner.current_jobs == 0
     print("auction lifecycle: all checks passed")
 
+    # The game loop publishes from its own thread; events still reach this loop's subscribers
+    import threading
+    def publish_from_game_thread():
+        asyncio.run(get_event_manager().publish("season_ended", {"season_number": 99}))
+    worker = threading.Thread(target=publish_from_game_thread)
+    worker.start(); worker.join()
+    await asyncio.sleep(0)
+    assert events.get_nowait()["data"]["season_number"] == 99, "cross-thread event delivered"
+    while not events.empty():
+        events.get_nowait()
+
+    # Public agent views hide the strategy from everyone but the owner
+    from app.routes.agents import for_viewer
+    owner_view = await agents.get_by_id(early)
+    assert owner_view and for_viewer(owner_view, owner_view.user_id).auction_instructions == "x"
+    assert for_viewer(owner_view, None).auction_instructions is None
+    assert for_viewer(owner_view, uuid.uuid4()).auction_instructions is None
+
+    api_surface(db)
+    await ai_caps(db)
     await why_did_i_lose(db, fake, auction.id, cheap, early, late)
     await workload_cost(db, fake, spawner)
     await losses_and_bankruptcy(db, fake, spawner)
     await season_rollover(db, fake, spawner)
+
+
+def api_surface(db):
+    """Locked-down endpoints, login on paid AI calls, and the static builder prompt (no network)."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.services.database import get_database_service
+    app.dependency_overrides[get_database_service] = lambda: db
+    client = TestClient(app)  # no "with": the game loop does not start
+    try:
+        agent_id = str(uuid.uuid4())
+        gone = [("post", f"/api/agents/{agent_id}/credits"), ("post", "/api/auctions"),
+                ("post", f"/api/auctions/{agent_id}/close"), ("post", "/api/events/test/x"), ("post", "/api/jobs"),
+                ("post", "/api/agent-decisions/execute"), ("get", f"/api/agents/user/{agent_id}"),
+                ("get", f"/api/auctions/{agent_id}/bids")]
+        for method, path in gone:
+            assert getattr(client, method)(path).status_code in (404, 405), f"{method} {path} should be gone"
+        r = client.post("/api/agent-builder/chat", json={"messages": [], "specialty": "coder"})
+        assert r.status_code == 401, f"builder without login must be 401, got {r.status_code}"
+        r = client.get("/api/agent-builder/initial-prompt/coder")
+        assert r.status_code == 200 and r.json()["message"]
+    finally:
+        app.dependency_overrides.clear()
+    print("API surface: all checks passed")
+
+
+async def ai_caps(db):
+    from app.config import get_settings
+    from app.services import ai_budget
+    os.environ["AI_DAILY_AGENT_CALLS"] = "2"
+    os.environ["AI_DAILY_BUILDER_CALLS_PER_USER"] = "1"
+    get_settings.cache_clear()
+    try:
+        assert [await ai_budget.try_agent_call(db, "2026-01-01") for _ in range(3)] == [True, True, False]
+        assert await ai_budget.try_agent_call(db, "2026-01-02"), "new day, fresh budget"
+        assert await ai_budget.try_builder_call(db, "u1", "2026-01-02")
+        assert not await ai_budget.try_builder_call(db, "u1", "2026-01-02")
+        assert await ai_budget.try_builder_call(db, "u2", "2026-01-02"), "builder cap is per user"
+
+        class BrokenDB:
+            def rpc(self, *_):
+                raise ConnectionError("database down")
+        assert not await ai_budget.try_agent_call(BrokenDB()), "fails closed when usage can't be counted"
+    finally:
+        del os.environ["AI_DAILY_AGENT_CALLS"], os.environ["AI_DAILY_BUILDER_CALLS_PER_USER"]
+        get_settings.cache_clear()
+    print("AI caps: all checks passed")
 
 
 async def why_did_i_lose(db, fake, auction_id, cheap, early, late):
@@ -273,7 +358,7 @@ async def workload_cost(db, fake, spawner):
             row["current_jobs"], row["credits"] = 2, 1000
     job_id = await win_job(db, fake, busy, bid=150)  # 200 job, 2 jobs running: cost 120
     assert getattr(await JobService(db).get_by_id(job_id), "work_cost", None) == 120
-    with patch("app.services.job_spawner.get_database_service", return_value=db):
+    with patch("app.services.job_spawner.get_database_service", new=AsyncMock(return_value=db)):
         await spawner._complete_expired_jobs(settle_all=True)
     after = await agents.get_by_id(busy)
     assert after and after.credits == 1030, "paid 150 minus the 120 cost locked in when it bid"
@@ -288,7 +373,7 @@ async def losses_and_bankruptcy(db, fake, spawner):
     await agents.update_credits(gambler, 30 - (await agents.get_by_id(gambler)).credits)
 
     await win_job(db, fake, gambler, bid=60)  # work cost 100: a 40-credit loss
-    with patch("app.services.job_spawner.get_database_service", return_value=db):
+    with patch("app.services.job_spawner.get_database_service", new=AsyncMock(return_value=db)):
         await spawner._complete_expired_jobs(settle_all=True)
     broke = await agents.get_by_id(gambler)
     assert broke and broke.credits == -10 and broke.is_bankrupt, "bidding below work cost loses credits"
@@ -308,7 +393,7 @@ async def losses_and_bankruptcy(db, fake, spawner):
 async def season_rollover(db, fake, spawner):
     agents, seasons = AgentService(db), SeasonService(db)
     roster = await agents.get_all()
-    with patch("app.services.job_spawner.get_database_service", return_value=db):
+    with patch("app.services.job_spawner.get_database_service", new=AsyncMock(return_value=db)):
         await spawner._check_season()  # no season yet: starts season 1 and resets credits
         season1 = await seasons.get_current()
         assert season1 and season1["number"] == 1

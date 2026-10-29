@@ -2,11 +2,8 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from uuid import UUID
 
 from app.models.auction import (
-    Auction,
-    AuctionCreate,
     AuctionStatus,
     AuctionWithJob,
-    AuctionResult,
 )
 from app.models.agent import AgentSpecialty
 from app.services.database import DatabaseService, get_database_service
@@ -20,18 +17,6 @@ def get_auction_service(
     db: DatabaseService = Depends(get_database_service),
 ) -> AuctionService:
     return AuctionService(db)
-
-
-@router.post("", response_model=Auction, status_code=201)
-async def create_auction(
-    auction_data: AuctionCreate,
-    service: AuctionService = Depends(get_auction_service),
-) -> Auction:
-    """Create a new auction for a job."""
-    try:
-        return await service.create_auction(auction_data)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("", response_model=list[AuctionWithJob])
@@ -74,18 +59,3 @@ async def get_auction_breakdown(
     if not breakdown:
         raise HTTPException(status_code=404, detail="Auction not found")
     return breakdown
-
-
-@router.post("/{auction_id}/close", response_model=AuctionResult)
-async def close_auction(
-    auction_id: UUID,
-    service: AuctionService = Depends(get_auction_service),
-) -> AuctionResult:
-    """
-    Close an auction manually.
-    Determines winner (lowest bid, tie=first), transfers credits, assigns job.
-    """
-    try:
-        return await service.close_auction(auction_id)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))

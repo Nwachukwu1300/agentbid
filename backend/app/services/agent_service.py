@@ -27,17 +27,17 @@ class AgentService:
             "updated_at": now,
         }
 
-        result = self.table.insert(data).execute()
+        result = await self.table.insert(data).execute()
         return self._to_agent(result.data[0])
 
     async def get_by_id(self, agent_id: UUID) -> Agent | None:
-        result = self.table.select("*").eq("id", str(agent_id)).execute()
+        result = await self.table.select("*").eq("id", str(agent_id)).execute()
         if not result.data:
             return None
         return self._to_agent(result.data[0])
 
     async def get_by_user_id(self, user_id: UUID) -> list[Agent]:
-        result = self.table.select("*").eq("user_id", str(user_id)).order("created_at", desc=True).execute()
+        result = await self.table.select("*").eq("user_id", str(user_id)).order("created_at", desc=True).execute()
         return [self._to_agent(row) for row in result.data]
 
     async def get_all(
@@ -54,7 +54,7 @@ class AgentService:
         if is_active is not None:
             query = query.eq("is_active", is_active)
 
-        result = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
+        result = await query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
         return [self._to_agent(row) for row in result.data]
 
     async def update(self, agent_id: UUID, agent_data: AgentUpdate) -> Agent | None:
@@ -68,13 +68,13 @@ class AgentService:
 
         update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
 
-        result = self.table.update(update_data).eq("id", str(agent_id)).execute()
+        result = await self.table.update(update_data).eq("id", str(agent_id)).execute()
         if not result.data:
             return None
         return self._to_agent(result.data[0])
 
     async def delete(self, agent_id: UUID) -> bool:
-        result = self.table.delete().eq("id", str(agent_id)).execute()
+        result = await self.table.delete().eq("id", str(agent_id)).execute()
         return len(result.data) > 0
 
     async def update_credits(self, agent_id: UUID, amount: int) -> Agent | None:
@@ -83,7 +83,7 @@ class AgentService:
             return None
 
         new_credits = agent.credits + amount
-        result = self.table.update({
+        result = await self.table.update({
             "credits": new_credits,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }).eq("id", str(agent_id)).execute()
@@ -97,7 +97,7 @@ class AgentService:
         if not agent or agent.is_at_capacity:
             return None
 
-        result = self.table.update({
+        result = await self.table.update({
             "current_jobs": agent.current_jobs + 1,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }).eq("id", str(agent_id)).execute()
@@ -111,7 +111,7 @@ class AgentService:
         if not agent or agent.current_jobs <= 0:
             return None
 
-        result = self.table.update({
+        result = await self.table.update({
             "current_jobs": agent.current_jobs - 1,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }).eq("id", str(agent_id)).execute()

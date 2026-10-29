@@ -41,6 +41,7 @@ class AgentUpdate(BaseModel):
 class Agent(AgentBase):
     id: UUID
     user_id: UUID
+    auction_instructions: str | None = None  # None when shown to anyone but the owner
     credits: int = Field(default=1000)
     current_jobs: int = Field(default=0, ge=0, le=5)
     is_active: bool = True

@@ -26,6 +26,8 @@ function App() {
         <Route path="/auctions" element={<LiveAuctionsPage />} />
         <Route path="/auctions/:id" element={<AuctionDetailPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
+        {/* Agent profiles are public; editing and the strategy are owner-only */}
+        <Route path="/agents/:id" element={<AgentProfilePage />} />
 
         {/* Protected routes (require auth, user's own agents) */}
         <Route
@@ -41,14 +43,6 @@ function App() {
           element={
             <ProtectedRoute>
               <CreateAgentPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/agents/:id"
-          element={
-            <ProtectedRoute>
-              <AgentProfilePage />
             </ProtectedRoute>
           }
         />

@@ -66,15 +66,15 @@ async def get_market_stats(
 ) -> MarketStats:
     """Get overall marketplace statistics."""
     # Count active agents
-    agents_result = db.table("agents").select("id", count="exact").eq("is_active", True).execute()
+    agents_result = await db.table("agents").select("id", count="exact").eq("is_active", True).execute()
     active_agents = agents_result.count or 0
 
     # Count active auctions
-    auctions_result = db.table("auctions").select("id", count="exact").eq("status", "active").execute()
+    auctions_result = await db.table("auctions").select("id", count="exact").eq("status", "active").execute()
     active_auctions = auctions_result.count or 0
 
     # Get completed auctions with winning amounts
-    completed_result = db.table("auctions").select("winning_amount").eq("status", "closed").not_.is_("winning_amount", "null").execute()
+    completed_result = await db.table("auctions").select("winning_amount").eq("status", "closed").not_.is_("winning_amount", "null").execute()
     completed_auctions = completed_result.data or []
 
     jobs_completed = len(completed_auctions)
@@ -96,7 +96,7 @@ async def get_specialty_share(
 ) -> list[SpecialtyShare]:
     """Get market share by specialty (based on completed auctions)."""
     # Get all completed auctions with job specialty
-    auctions_result = db.table("auctions").select("job_id").eq("status", "closed").execute()
+    auctions_result = await db.table("auctions").select("job_id").eq("status", "closed").execute()
 
     if not auctions_result.data:
         # Return default distribution if no data
@@ -106,7 +106,7 @@ async def get_specialty_share(
     # Count by specialty
     specialty_counts: dict[str, int] = {}
     for auction in auctions_result.data:
-        job_result = db.table("jobs").select("specialty").eq("id", auction["job_id"]).execute()
+        job_result = await db.table("jobs").select("specialty").eq("id", auction["job_id"]).execute()
         if job_result.data:
             specialty = job_result.data[0]["specialty"]
             specialty_counts[specialty] = specialty_counts.get(specialty, 0) + 1
@@ -143,7 +143,7 @@ async def get_bid_trend(
         day_end = day_start + timedelta(days=1)
 
         # Get auctions closed on this day
-        auctions = db.table("auctions").select("winning_amount").eq(
+        auctions = await db.table("auctions").select("winning_amount").eq(
             "status", "closed"
         ).gte("closed_at", day_start.isoformat()).lt("closed_at", day_end.isoformat()).execute()
 
@@ -173,7 +173,7 @@ async def get_volume_trend(
         day_end = day_start + timedelta(days=1)
 
         # Count jobs created on this day
-        jobs = db.table("jobs").select("id", count="exact").gte(
+        jobs = await db.table("jobs").select("id", count="exact").gte(
             "created_at", day_start.isoformat()
         ).lt("created_at", day_end.isoformat()).execute()
 
