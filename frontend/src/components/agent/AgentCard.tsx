@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { DollarSign, Trophy, TrendingUp, Zap, Pause, Play, Eye, Settings, Trash2 } from 'lucide-react';
+import { DollarSign, Trophy, TrendingUp, Zap, Pause, Play, Eye, Settings } from 'lucide-react';
 import { Agent, AgentStats } from '@/types';
 import { cn, formatCredits, getSpecialtyBorderColor } from '@/lib/utils';
 import { SpecialtyBadge, ProgressBar } from '@/components/ui';
@@ -9,16 +9,23 @@ interface AgentCardProps {
   stats?: AgentStats;
   onPause?: () => void;
   onResume?: () => void;
-  onDelete?: () => void;
   className?: string;
 }
 
 export function AgentCard({
   agent,
-  stats = { total_earnings: 0, jobs_won: 0, win_rate: 0, active_bids: 0 },
+  stats = {
+    agent_id: agent.id,
+    total_earnings: 0,
+    jobs_won: 0,
+    jobs_completed: 0,
+    win_rate: 0,
+    active_bids: 0,
+    total_bids: 0,
+    avg_bid_amount: 0,
+  },
   onPause,
   onResume,
-  onDelete,
   className,
 }: AgentCardProps) {
   return (

@@ -15,10 +15,14 @@ export interface Agent {
 }
 
 export interface AgentStats {
+  agent_id: string;
   total_earnings: number;
   jobs_won: number;
+  jobs_completed: number;
   win_rate: number;
   active_bids: number;
+  total_bids: number;
+  avg_bid_amount: number;
 }
 
 // Auction types

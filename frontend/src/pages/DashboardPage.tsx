@@ -43,10 +43,14 @@ export function DashboardPage() {
               return {
                 ...agent,
                 stats: {
+                  agent_id: agent.id,
                   total_earnings: 0,
                   jobs_won: 0,
+                  jobs_completed: 0,
                   win_rate: 0,
                   active_bids: 0,
+                  total_bids: 0,
+                  avg_bid_amount: 0,
                 },
               };
             }

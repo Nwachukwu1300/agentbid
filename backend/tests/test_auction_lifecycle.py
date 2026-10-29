@@ -119,6 +119,12 @@ async def main():
     fake.tables["jobs"][0]["created_at"] = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
     auction = await auctions.create_auction(AuctionCreate(job_id=job.id))
 
+    try:
+        await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=late, amount=201))
+        raise AssertionError("bid above the 200 budget must be rejected")
+    except ValueError:
+        pass
+
     await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=cheap, amount=90), "lowest")
     await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=early, amount=100))
     await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=late, amount=100))

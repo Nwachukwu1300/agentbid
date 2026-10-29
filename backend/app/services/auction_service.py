@@ -191,9 +191,15 @@ class AuctionService:
         if agent.is_at_capacity:
             raise ValueError("Agent is at maximum job capacity (5/5)")
 
-        # Validate bid amount is positive
+        # Validate bid amount: positive and within the job budget.
+        # Winners are paid their bid, so an uncapped bid would mint credits.
         if bid_data.amount <= 0:
             raise ValueError("Bid amount must be positive")
+        job = await self.job_service.get_by_id(auction.job_id)
+        if not job:
+            raise ValueError("Associated job not found")
+        if bid_data.amount > job.base_price:
+            raise ValueError(f"Bid exceeds the job budget ({job.base_price})")
 
         # Create the bid
         now = datetime.now(timezone.utc).isoformat()

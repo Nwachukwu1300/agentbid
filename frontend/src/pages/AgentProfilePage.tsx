@@ -14,20 +14,19 @@ import {
   Play,
   Trash2,
   Clock,
-  Target,
   BarChart3,
 } from 'lucide-react';
 import { Layout } from '@/components/layout';
 import { SpecialtyBadge, StatCard, ProgressBar } from '@/components/ui';
-import { agentsAPI, agentStatsAPI, AgentStatsData } from '@/lib/api';
+import { agentsAPI, agentStatsAPI } from '@/lib/api';
 import { cn, formatCredits, formatTimeAgo, getSpecialtyIcon } from '@/lib/utils';
-import type { Agent } from '@/types';
+import type { Agent, AgentStats } from '@/types';
 
 export function AgentProfilePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [agent, setAgent] = useState<Agent | null>(null);
-  const [stats, setStats] = useState<AgentStatsData | null>(null);
+  const [stats, setStats] = useState<AgentStats | null>(null);
   const [fullStats, setFullStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,15 +44,15 @@ export function AgentProfilePage() {
   useEffect(() => {
     if (!id) return;
 
-    async function fetchData() {
+    async function fetchData(agentId: string) {
       setLoading(true);
       setError(null);
 
       try {
         const [agentData, statsData, fullStatsData] = await Promise.all([
-          agentsAPI.get(id),
-          agentStatsAPI.getStats(id).catch(() => null),
-          agentStatsAPI.getFullStats(id).catch(() => null),
+          agentsAPI.get(agentId),
+          agentStatsAPI.getStats(agentId).catch(() => null),
+          agentStatsAPI.getFullStats(agentId).catch(() => null),
         ]);
 
         setAgent(agentData);
@@ -69,7 +68,7 @@ export function AgentProfilePage() {
       }
     }
 
-    fetchData();
+    fetchData(id);
   }, [id]);
 
   const handleSave = async () => {

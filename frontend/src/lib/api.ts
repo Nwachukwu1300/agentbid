@@ -129,7 +129,7 @@ export const agentStatsAPI = {
 
   // Get full stats with recent activity
   getFullStats: (agentId: string) =>
-    fetchAPI<AgentStats & { recent_activity: unknown[] }>(`/agents/${agentId}/full-stats`, { requireAuth: false }),
+    fetchAPI<AgentStats & { recent_wins: unknown[]; recent_bids: unknown[]; specialty_breakdown: Record<string, number> }>(`/agents/${agentId}/full-stats`, { requireAuth: false }),
 
   // Get dashboard stats for a user's agents
   getDashboardStats: (userId: string) =>
@@ -153,44 +153,33 @@ export interface ConversationMessage {
 
 export interface GeneratedInstructions {
   auction_instructions: string;
+  suggested_name: string;
+  personality_summary: string;
 }
 
+// Mirrors backend/app/routes/agent_builder.py
+const postBuilder = <T>(path: string, body: unknown) =>
+  fetchAPI<T>(`/agent-builder/${path}`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+    requireAuth: false,
+  });
+
 export const agentBuilderAPI = {
-  // Get initial prompt for a specialty
   getInitialPrompt: (specialty: AgentSpecialty) =>
-    fetchAPI<{ prompt: string }>(`/agent-builder/initial-prompt/${specialty}`, { requireAuth: false }),
+    fetchAPI<{ message: string }>(`/agent-builder/initial-prompt/${specialty}`, { requireAuth: false }),
 
-  // Chat with the agent builder
-  chat: (data: { specialty: AgentSpecialty; messages: ConversationMessage[]; user_message: string }) =>
-    fetchAPI<{ response: string; messages: ConversationMessage[] }>('/agent-builder/chat', {
-      method: 'POST',
-      body: JSON.stringify(data),
-      requireAuth: false,
-    }),
+  chat: (messages: ConversationMessage[], specialty: AgentSpecialty) =>
+    postBuilder<{ message: string; ready_to_generate: boolean }>('chat', { messages, specialty }),
 
-  // Generate instructions from conversation
-  generate: (data: { specialty: AgentSpecialty; messages: ConversationMessage[] }) =>
-    fetchAPI<GeneratedInstructions>('/agent-builder/generate', {
-      method: 'POST',
-      body: JSON.stringify(data),
-      requireAuth: false,
-    }),
+  generate: (messages: ConversationMessage[], specialty: AgentSpecialty) =>
+    postBuilder<GeneratedInstructions>('generate', { messages, specialty }),
 
-  // Quick generate without conversation
-  quickGenerate: (data: { specialty: AgentSpecialty; strategy_description: string }) =>
-    fetchAPI<GeneratedInstructions>('/agent-builder/quick-generate', {
-      method: 'POST',
-      body: JSON.stringify(data),
-      requireAuth: false,
-    }),
+  quickGenerate: (description: string, specialty: AgentSpecialty) =>
+    postBuilder<GeneratedInstructions>('quick-generate', { description, specialty }),
 
-  // Refine existing instructions
-  refine: (data: { instructions: GeneratedInstructions; feedback: string }) =>
-    fetchAPI<GeneratedInstructions>('/agent-builder/refine', {
-      method: 'POST',
-      body: JSON.stringify(data),
-      requireAuth: false,
-    }),
+  refine: (current: GeneratedInstructions, feedback: string, specialty: AgentSpecialty) =>
+    postBuilder<GeneratedInstructions>('refine', { current, feedback, specialty }),
 };
 
 // =============================================================================

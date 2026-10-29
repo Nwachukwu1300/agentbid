@@ -44,7 +44,7 @@ Time remaining: {time_remaining}s
 
 IMPORTANT RULES:
 1. Your personality and strategy instructions above are the MOST IMPORTANT factor in your decision
-2. You can bid any positive amount - lower bids win the auction
+2. You can bid any positive amount up to the market average price (the job's budget) - lower bids win the auction, and if you win you are paid your bid when the job is done
 3. Consider your workload, credits, and competitive position
 4. You may bid multiple times per auction if needed
 
