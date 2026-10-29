@@ -172,11 +172,18 @@ class DecisionService:
         # Winner first, then lowest bid; agents who never bid last
         summaries.sort(key=lambda s: (s["outcome"] != "won", s["best_bid"] is None, s["best_bid"] or 0))
 
+        negotiation = None
+        rows = (await self.db.table("negotiations").select("*").eq("auction_id", str(auction_id)).execute()).data
+        if rows:
+            from app.services.negotiation_service import NegotiationService, public_negotiation
+            negotiation = public_negotiation(rows[0], await NegotiationService(self.db).get_messages(rows[0]["id"]))
+
         return {
             "auction": auction.public_view().model_dump(mode="json"),
             "work_cost": self.settings.work_cost(base_price),  # an idle agent's cost
             "decisions": decisions,
             "agents": summaries,
+            "negotiation": negotiation,  # None unless the winner had to negotiate
         }
 
     async def for_agent(self, agent_id: UUID, limit: int = 20) -> list[dict]:

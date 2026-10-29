@@ -61,7 +61,7 @@ IMPORTANT RULES:
 1. Your negotiation style above is the MOST IMPORTANT factor in your decision
 2. Actions: "counter" proposes a new price in "offer"; "accept" agrees to the client's latest offer; "walk_away" ends the talks
 3. No deal earns you 0 credits. Accepting a price below your work cost of {work_cost} LOSES you credits
-4. You may ask for more than your winning bid if you think the client has room, up to {max_offer}
+4. You want the price HIGH. You may ask for more than your winning bid if you think the client has room, up to {max_offer}. If the client offers as much as you are asking, accept it rather than asking for less
 5. If the last message passes without an accept, there is no deal
 6. The client may bluff about its budget
 
@@ -81,12 +81,15 @@ def build_negotiation_prompt(
         profit = client_offer - work_cost
         offer_math = (
             f"The client's current offer is {client_offer}. If you accept {client_offer}, you earn "
-            f"{client_offer} minus your cost of {work_cost}, which is {profit} credits."
+            f"{client_offer} minus your cost of {work_cost}, which is {profit} credits. Walking away earns 0."
         )
         if profit < 0:
             offer_math += f" WARNING: accepting {client_offer} is BELOW your work cost and LOSES you {-profit} credits."
+        elif profit > 0:
+            offer_math += f" {client_offer} is ABOVE your cost: accepting is a profit, not a loss."
     if turns_left == 0:
-        offer_math += " This is the LAST message: if you don't accept now, there is no deal and you earn 0."
+        offer_math += (" This is the LAST message. Only \"accept\" can make a deal now: a counter or walk_away "
+                       "ends with no deal and 0 credits.")
     lines = [f"You opened at {opening_price}."]
     for m in history:
         who = "Client" if m["speaker"] == "client" else "You"

@@ -24,6 +24,10 @@ class AgentStats(BaseModel):
     active_bids: int
     total_bids: int
     avg_bid_amount: float
+    deals: int = 0  # negotiations that ended in a deal
+    no_deals: int = 0
+    walk_aways: int = 0  # no deals where this agent walked away
+    avg_negotiation_gain: float | None = None  # average agreed price minus opening bid, over deals
 
 
 class AgentFullStats(AgentStats):
@@ -57,14 +61,19 @@ async def get_agent_stats(
     avg_bid = sum(revealed) / len(revealed) if revealed else 0
     active_bids = len({b["auction_id"] for b in bids if b["auction_id"] in active_auction_ids})
 
-    # Count winning bids (where agent won the auction)
-    winning_auctions = await db.table("auctions").select("id, winning_amount", count="exact").eq("winning_agent_id", agent_id_str).eq("status", "closed").execute()
+    # Auctions won (win rate measures bidding, whatever happened in a negotiation after)
+    winning_auctions = await db.table("auctions").select("id", count="exact").eq("winning_agent_id", agent_id_str).eq("status", "closed").execute()
     jobs_won = winning_auctions.count or 0
-    total_earnings = sum(a.get("winning_amount", 0) or 0 for a in winning_auctions.data) if winning_auctions.data else 0
 
-    # Count completed jobs assigned to this agent
-    completed_jobs = await db.table("jobs").select("id", count="exact").eq("assigned_agent_id", agent_id_str).eq("status", "completed").execute()
-    jobs_completed = completed_jobs.count or 0
+    # Earnings: what completed jobs actually paid (the agreed price when negotiated)
+    completed = (await db.table("jobs").select("winning_bid").eq("assigned_agent_id", agent_id_str).eq("status", "completed").execute()).data or []
+    jobs_completed = len(completed)
+    total_earnings = sum(j.get("winning_bid") or 0 for j in completed)
+
+    negotiations = (await db.table("negotiations").select("status, end_reason, opening_price, final_price").eq(
+        "agent_id", agent_id_str
+    ).execute()).data or []
+    deal_gains = [n["final_price"] - n["opening_price"] for n in negotiations if n["status"] == "deal"]
 
     # Calculate win rate
     win_rate = (jobs_won / total_bids * 100) if total_bids > 0 else 0
@@ -78,6 +87,10 @@ async def get_agent_stats(
         active_bids=active_bids,
         total_bids=total_bids,
         avg_bid_amount=round(avg_bid, 2),
+        deals=len(deal_gains),
+        no_deals=sum(n["status"] == "no_deal" for n in negotiations),
+        walk_aways=sum(n["end_reason"] == "agent_walked" for n in negotiations),
+        avg_negotiation_gain=round(sum(deal_gains) / len(deal_gains), 1) if deal_gains else None,
     )
 
 
@@ -101,11 +114,13 @@ async def get_agent_full_stats(
     recent_wins = []
     for auction in recent_wins_result.data or []:
         # Get job details
-        job_result = await db.table("jobs").select("title, specialty").eq("id", auction["job_id"]).execute()
+        job_result = await db.table("jobs").select("title, specialty, winning_bid, status").eq("id", auction["job_id"]).execute()
         job = job_result.data[0] if job_result.data else {}
         recent_wins.append({
             "auction_id": auction["id"],
-            "amount": auction["winning_amount"],
+            # The price the job pays (agreed price after a negotiation); no deal pays nothing
+            "amount": None if job.get("status") == "unfilled" else job.get("winning_bid", auction["winning_amount"]),
+            "job_status": job.get("status"),
             "closed_at": auction["closed_at"],
             "job_title": job.get("title", "Unknown"),
             "specialty": job.get("specialty", "unknown"),

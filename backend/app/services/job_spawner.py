@@ -10,6 +10,7 @@ from app.services.agent_service import AgentService
 from app.services.agent_intelligence import AgentIntelligenceService
 from app.services.job_templates import generate_job
 from app.services.season_service import SeasonService
+from app.services.negotiation_service import NegotiationService
 from app.services.event_manager import get_event_manager
 from app.models.job import JobCreate
 from app.models.auction import AuctionCreate
@@ -67,6 +68,7 @@ class JobSpawner:
                 self._job_completion_loop,
                 self._agent_bidding_loop,
                 self._season_loop,
+                self._negotiation_loop,
             )
         ]
         await asyncio.gather(*self._tasks, return_exceptions=True)
@@ -171,11 +173,12 @@ class JobSpawner:
 
         now = datetime.now(timezone.utc)
         completion_duration = self.settings.job_completion_duration_seconds
-        # Work starts when the job's auction closes (jobs started by hand fall back to created_at)
-        started_at = await auction_service.get_close_times([job.id for job in jobs])
+        # Work starts when the job is won or its negotiation reaches a deal; older jobs fall back to
+        # their auction's close time, then to created_at
+        close_times = await auction_service.get_close_times([job.id for job in jobs if not job.started_at])
 
         for job in jobs:
-            job_started = started_at.get(job.id, job.created_at)
+            job_started = job.started_at or close_times.get(job.id, job.created_at)
             if job_started.tzinfo is None:
                 job_started = job_started.replace(tzinfo=timezone.utc)
 
@@ -196,6 +199,16 @@ class JobSpawner:
                     logger.error(f"Error completing job {job.id}: {e}")
 
 
+    async def _negotiation_loop(self):
+        """Take the next turn in every negotiation that is due (paced by next_turn_at)."""
+        while self._running:
+            try:
+                # AI calls run outside the lock; each turn's result is applied under it
+                await NegotiationService(await get_database_service()).advance_due(self._payout_lock)
+            except Exception as e:
+                logger.error(f"Error in negotiation loop: {e}")
+            await asyncio.sleep(1)
+
     async def _season_loop(self):
         """Roll over to a new season when the current one ends."""
         while self._running:
@@ -213,7 +226,9 @@ class JobSpawner:
             return
 
         async with self._payout_lock:
-            # Pay out all running work first so it counts toward the season it was won in
+            # Open negotiations end with no deal (slots released), then running work is paid out
+            # so it counts toward the season it was won in
+            await NegotiationService(await get_database_service()).end_all_for_season()
             await self._complete_expired_jobs(settle_all=True)
             if current:
                 standings = await seasons.finish(current)

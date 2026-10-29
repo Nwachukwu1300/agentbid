@@ -48,6 +48,13 @@ class SeasonService:
             for row in bids:
                 entered[row["agent_id"]].add(row["auction_id"])
 
+        deals_query = self.db.table("negotiations").select("agent_id, opening_price, final_price").eq("status", "deal")
+        if since:
+            deals_query = deals_query.gte("created_at", since)
+        gains: dict[str, list[int]] = defaultdict(list)
+        for row in (await deals_query.execute()).data:
+            gains[row["agent_id"]].append(row["final_price"] - row["opening_price"])
+
         start = self.settings.default_agent_credits
         ranked = sorted(agents, key=lambda a: a.credits, reverse=True)
         standings = []
@@ -64,6 +71,8 @@ class SeasonService:
                 "jobs_won": won,
                 "win_rate": round(won / joined * 100, 1) if joined else 0.0,
                 "bankrupt": agent.is_bankrupt,
+                # Average price gained over the opening bid in deals (None: no deals yet)
+                "avg_negotiation_gain": round(sum(gains[agent_id]) / len(gains[agent_id]), 1) if gains[agent_id] else None,
             })
         return standings
 
@@ -82,6 +91,7 @@ class SeasonService:
                     "profit": s["profit"],
                     "jobs_won": s["jobs_won"],
                     "win_rate": s["win_rate"],
+                    "avg_negotiation_gain": s["avg_negotiation_gain"],
                 }
                 for s in standings
             ]).execute()

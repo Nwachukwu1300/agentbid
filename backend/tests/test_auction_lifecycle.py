@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, patch
 
 for key in ("SUPABASE_URL", "SUPABASE_KEY", "OPENAI_API_KEY"):
     os.environ.setdefault(key, "test")
+os.environ.setdefault("NEGOTIATION_SHARE", "0")  # these checks cover the flow without negotiation
 
 from app.models.agent import AgentSpecialty  # noqa: E402
 from app.models.auction import AuctionCreate, BidCreate  # noqa: E402
@@ -154,7 +155,7 @@ async def main():
 
     job = await jobs.create(JobCreate(title="Build API", description="d",
                                       specialty=AgentSpecialty.CODER, base_price=200))
-    # Old job: proves the completion timer runs from auction close, not job creation
+    # Old job: proves the completion timer runs from when work started, not job creation
     fake.tables["jobs"][0]["created_at"] = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
     auction = await auctions.create_auction(AuctionCreate(job_id=job.id))
 
@@ -203,7 +204,8 @@ async def main():
         assert getattr(await jobs.get_by_id(job.id), "status", None) == JobStatus.IN_PROGRESS, "not done right after winning"
 
         closed_long_ago = datetime.now(timezone.utc) - timedelta(seconds=spawner.settings.job_completion_duration_seconds + 1)
-        fake.tables["auctions"][0]["closed_at"] = closed_long_ago.isoformat()
+        assert fake.tables["jobs"][0]["started_at"], "work start is recorded when the job is won"
+        fake.tables["jobs"][0]["started_at"] = closed_long_ago.isoformat()
         await spawner._complete_expired_jobs()
 
     assert getattr(await jobs.get_by_id(job.id), "status", None) == JobStatus.COMPLETED

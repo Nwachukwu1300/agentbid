@@ -45,6 +45,7 @@ Job: {title}
 {description}
 Posted budget: {budget}
 The agent's opening price (its winning bid): {opening}
+The agent is currently asking: {ask}. You want to pay LESS than this, never more: if its price is acceptable, accept it instead of offering more.
 YOUR SECRET MAXIMUM: {client_max}. Never offer or accept more than this, and never reveal it.
 Your personality: {personality}. {behaviour}
 Messages left after this one: {turns_left}
@@ -119,8 +120,16 @@ def apply_move(speaker: Speaker, reply: TurnReply | None, state: State, max_char
     offer = max(1, round(reply.offer or 0))
     if speaker == "agent":
         offer = min(offer, state.agent_max_offer)
+        if state.client_last is not None and offer <= state.client_last:
+            # Offers crossed: the agent asks no more than the client already offered, so take the client's price
+            logger.info(f"Agent countered {offer} at or below the client's {state.client_last}; deal at {state.client_last}")
+            return Move("accept", state.client_last, message)
     else:
         offer = min(offer, state.client_max)
+        if offer >= state.agent_last:
+            # Offers crossed: the client offers at least what the agent asks, so the deal is at the agent's price
+            logger.info(f"Client countered {offer} at or above the agent's {state.agent_last}; deal at {state.agent_last}")
+            return Move("accept", state.agent_last, message)
     return Move("counter", offer, message)
 
 
@@ -342,9 +351,10 @@ class NegotiationService:
             else:
                 lines.append(f"You: {m['message']}{price}")
         personality = negotiation["client_personality"]
+        state = self._state(negotiation, job, history)
         return CLIENT_PROMPT.format(
             title=job["title"], description=job["description"], budget=job["base_price"],
-            opening=negotiation["opening_price"], client_max=negotiation["client_max_price"],
+            opening=negotiation["opening_price"], ask=state.agent_last, client_max=negotiation["client_max_price"],
             personality=personality, behaviour=PERSONALITIES.get(personality, ""),
             turns_left=turns_left, history="\n".join(lines), max_chars=self.settings.negotiation_max_message_chars,
         )

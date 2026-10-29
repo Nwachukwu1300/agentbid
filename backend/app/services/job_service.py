@@ -91,8 +91,9 @@ class JobService:
             "assigned_agent_id": str(agent_id),
             "winning_bid": winning_bid,
             "work_cost": work_cost,
-            # Work starts as soon as the job is won; the completion timer runs from auction close
+            # Work starts as soon as the job is won (a negotiation, if any, moves this to the deal)
             "status": JobStatus.IN_PROGRESS.value,
+            "started_at": datetime.now(timezone.utc).isoformat(),
         }).eq("id", str(job_id)).execute()
 
         if not result.data:

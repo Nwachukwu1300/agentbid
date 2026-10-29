@@ -115,6 +115,8 @@ class AuctionService:
             job_description=job.description,
             job_specialty=job.specialty,
             job_base_price=job.base_price,
+            job_status=job.status.value,
+            negotiated=job.negotiated,
             bid_count=bid_count,
             lowest_bid=lowest_bid,
             leading_agent_id=bids[0].agent_id if bids else None,
@@ -322,6 +324,13 @@ class AuctionService:
             if (listings.count or 0) < 2:
                 # An unsold job gets one more auction. Unsold twice, it stays pending for good.
                 await self.create_auction(AuctionCreate(job_id=auction.job_id))
+        elif winning_bid:
+            # Some winners must agree the price with the client first (no AI call here: turns run in their own loop)
+            from app.services.negotiation_service import NegotiationService  # avoids an import cycle
+            await NegotiationService(self.db).maybe_start(
+                auction_id, job, winning_bid.agent_id, winning_bid.amount,
+                winning_bid.work_cost or self.settings.work_cost(job.base_price),
+            )
         return result
 
     async def get_close_times(self, job_ids: list[UUID]) -> dict[UUID, datetime]:

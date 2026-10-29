@@ -48,6 +48,7 @@ class LeaderboardEntry(BaseModel):
     jobs_won: int
     win_rate: float
     bankrupt: bool
+    avg_negotiation_gain: float | None = None  # "best negotiator": average gain over the opening bid
 
 
 class AnalyticsResponse(BaseModel):

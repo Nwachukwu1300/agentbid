@@ -164,6 +164,15 @@ async def code_enforces_the_ceiling():
     assert apply_move("agent", say("counter", 999), state, 400).offer == 400, "agent asks capped at 2x budget"
     assert apply_move("agent", say("counter", 141.6), state, 400).offer == 142, "offers are rounded"
     assert len(apply_move("agent", say("counter", 150, "x" * 900), state, 400).message) == 400, "messages truncated"
+
+    # Crossed offers: a client offering at least the agent's ask, or an agent asking no more than the
+    # client's offer, is a deal at the other side's price (seen live: client offered 150 against an 89 ask)
+    crossed = State(budget=200, opening_price=89, client_max=169, agent_last=89, client_last=None, agent_max_offer=400)
+    move = apply_move("client", say("counter", 150), crossed, 400)
+    assert move.action == "accept" and move.offer == 89
+    crossed = State(budget=200, opening_price=63, client_max=134, agent_last=63, client_last=80, agent_max_offer=400)
+    move = apply_move("agent", say("counter", 75), crossed, 400)
+    assert move.action == "accept" and move.offer == 80
     print("ceiling: all checks passed")
 
 
@@ -306,6 +315,154 @@ def explanations():
     print("explanations: all checks passed")
 
 
+class share:
+    """Temporarily set NEGOTIATION_SHARE (and optionally the AI cap) for code that reads global settings."""
+
+    def __init__(self, value, cap=None):
+        self.env = {"NEGOTIATION_SHARE": str(value)}
+        if cap is not None:
+            self.env["AI_DAILY_NEGOTIATION_CALLS"] = str(cap)
+
+    def __enter__(self):
+        self.saved = {k: os.environ.get(k) for k in self.env}
+        os.environ.update(self.env)
+        get_settings.cache_clear()
+
+    def __exit__(self, *_):
+        for k, v in self.saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+        get_settings.cache_clear()
+
+
+async def close_won_auction(a: Arena, bid=150):
+    """Run a real auction through AuctionService.close_auction; returns (agent, job_id, auction_id)."""
+    agent = a.agent()
+    jobs, auctions = JobService(a.db), AuctionService(a.db)
+    job = await jobs.create(JobCreate(title="Build API", description="d", specialty=AgentSpecialty.CODER, base_price=200))
+    auction = await auctions.create_auction(AuctionCreate(job_id=job.id))
+    await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=agent, amount=bid))
+    await auctions.close_auction(auction.id)
+    return agent, job.id, auction.id
+
+
+async def game_loop():
+    # Closing an auction starts a negotiation; the job waits, the slot is held, events in order
+    events: asyncio.Queue = asyncio.Queue()
+    await get_event_manager().subscribe(events)
+    a = Arena()
+    with share(1.0):
+        agent, job_id, auction_id = await close_won_auction(a)
+    await asyncio.sleep(0)
+    types = [e["type"] for e in [events.get_nowait() for _ in range(events.qsize())]]
+    await get_event_manager().unsubscribe(events)
+    assert types[-2:] == ["auction_closed", "negotiation_started"]
+    neg = a.fake.tables["negotiations"][0]
+    job = await a.job(job_id)
+    assert job.status == JobStatus.NEGOTIATING and job.negotiated and neg["opening_price"] == 150 and neg["work_cost"] == 100
+    assert (await a.agent_row(agent)).current_jobs == 1
+
+    # The tick advances only due turns; a deal starts the work clock and pays the agreed price
+    neg["client_max_price"] = 200
+    replies = {"client": [say("counter", 130), say("counter", 165)], "agent": [say("counter", 175), say("accept")]}
+
+    async def ask(self, speaker, prompt, prepaid=False):
+        return replies[speaker].pop(0)
+    with patch.object(NegotiationService, "_ask", new=ask):
+        await NegotiationService(a.db).advance_due(asyncio.Lock())
+        assert neg["turn_count"] == 0, "not due yet"
+        for _ in range(4):
+            neg["next_turn_at"] = "2000-01-01T00:00:00+00:00"
+            await NegotiationService(a.db).advance_due(asyncio.Lock())
+    assert neg["status"] == "deal" and neg["final_price"] == 165
+    spawner = JobSpawner()
+    with patch("app.services.job_spawner.get_database_service", new=AsyncMock(return_value=a.db)):
+        await spawner._complete_expired_jobs()
+        assert (await a.job(job_id)).status == JobStatus.IN_PROGRESS, "work runs ~5 minutes from the deal"
+        a.fake.tables["jobs"][0]["started_at"] = "2000-01-01T00:00:00+00:00"
+        await spawner._complete_expired_jobs()
+    paid = await a.agent_row(agent)
+    assert paid.credits == 1065 and paid.current_jobs == 0, "paid 165 agreed, minus 100 cost"
+
+    # Share 0 / cap reached: the job starts at the winning bid with no negotiation row
+    for ctx in (share(0.0), share(1.0, cap=0)):
+        a = Arena()
+        with ctx:
+            agent, job_id, _ = await close_won_auction(a)
+        job = await a.job(job_id)
+        assert job.status == JobStatus.IN_PROGRESS and job.winning_bid == 150 and not job.negotiated and job.started_at
+        assert a.fake.tables.get("negotiations", []) == []
+
+    # Seeded share 0.3 through real auctions: negotiated jobs wait, the rest start at their bid
+    a = Arena()
+    random.seed(3)
+    with share(0.3):
+        results = [await close_won_auction(a) for _ in range(100)]
+    negotiated_jobs = {r["job_id"] for r in a.fake.tables["negotiations"]}
+    assert 15 <= len(negotiated_jobs) <= 45, len(negotiated_jobs)
+    for _, job_id, _ in results:
+        job = await a.job(job_id)
+        if str(job_id) in negotiated_jobs:
+            assert job.status == JobStatus.NEGOTIATING
+        else:
+            assert job.status == JobStatus.IN_PROGRESS and job.winning_bid == 150 and not job.negotiated
+
+    # Season rollover in the game loop ends open negotiations first and releases their slots
+    a = Arena()
+    spawner = JobSpawner()
+    with patch("app.services.job_spawner.get_database_service", new=AsyncMock(return_value=a.db)):
+        await spawner._check_season()  # starts season 1
+        with share(1.0):
+            agent, job_id, _ = await close_won_auction(a)
+        neg = a.fake.tables["negotiations"][0]
+        assert neg["season_id"] == a.fake.tables["seasons"][0]["id"]
+        a.fake.tables["seasons"][0]["ends_at"] = "2000-01-01T00:00:00+00:00"
+        await spawner._check_season()
+    assert neg["status"] == "no_deal" and neg["end_reason"] == "season_ended"
+    assert (await a.job(job_id)).status == JobStatus.UNFILLED
+    assert (await a.agent_row(agent)).current_jobs == 0
+    print("game loop: all checks passed")
+
+
+async def api_views():
+    # Breakdown, agent stats and leaderboard show negotiations; secrets only after the end
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.services.database import get_database_service
+    from app.routes.agent_stats import get_agent_stats
+    from app.services.season_service import SeasonService
+    a = Arena()
+    with share(1.0):
+        agent, job_id, auction_id = await close_won_auction(a)
+    neg = a.fake.tables["negotiations"][0]
+    neg["client_max_price"], neg["client_personality"] = 193, "stingy"
+    app.dependency_overrides[get_database_service] = lambda: a.db
+    try:
+        client = TestClient(app)
+        body = client.get(f"/api/auctions/{auction_id}/breakdown").json()
+        assert body["auction"]["negotiated"] and body["auction"]["job_status"] == "negotiating"
+        assert body["negotiation"]["status"] == "active" and "193" not in str(body) and "stingy" not in str(body)
+
+        svc = a.service()
+        a.script(svc, [say("counter", 140), say("counter", 160)], [say("counter", 170), say("accept")])
+        await a.run(svc, neg)
+        body = client.get(f"/api/auctions/{auction_id}/breakdown").json()
+        n = body["negotiation"]
+        assert n["status"] == "deal" and n["final_price"] == 160 and len(n["messages"]) == 4
+        assert n["client_max_price"] == 193 and n["client_personality"] == "stingy"
+        assert n["explanation"].startswith("The client would have paid up to 193. You settled at 160")
+    finally:
+        app.dependency_overrides.clear()
+
+    stats = await get_agent_stats(agent, a.db)
+    assert stats.deals == 1 and stats.no_deals == 0 and stats.avg_negotiation_gain == 10.0  # 160 - 150
+    row = next(s for s in await SeasonService(a.db).standings(None) if s["agent_id"] == str(agent))
+    assert row["avg_negotiation_gain"] == 10.0
+    print("API views: all checks passed")
+
+
 async def main():
     await deals()
     await no_deals()
@@ -316,6 +473,8 @@ async def main():
     await secrets_stay_secret()
     await share_of_winners()
     explanations()
+    await game_loop()
+    await api_views()
 
 
 if __name__ == "__main__":
