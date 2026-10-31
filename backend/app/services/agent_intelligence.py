@@ -119,9 +119,9 @@ Job available:
 {job_description}
 Type: {job_specialty}
 Budget (maximum bid): {market_average}
-Your work cost: {work_cost} credits (base {base_cost}, +10% for each job you are already running)
+Your work cost: {work_cost} credits (base {base_cost}, +10% for each job you are already running, adjusted by your own private efficiency on this job)
 Minimum profitable bid: {min_profitable_bid} (any lower bid loses you credits if you win)
-Rivals: {rival_count} other {job_specialty} agent(s) may bid. Their work cost is between {base_cost} (idle) and {max_rival_cost} (4 jobs running); you do not know how busy they are.
+Rivals: {rival_count} other {job_specialty} agent(s) may bid. Each has its own private cost for this job, somewhere between {min_rival_cost} (idle, most efficient) and {max_rival_cost} (4 jobs running, least efficient); you don't know theirs or how busy they are.
 Time remaining: {time_remaining}s
 
 IMPORTANT RULES:
@@ -155,11 +155,15 @@ Do not include any other text, markdown formatting, or explanation outside the J
         self,
         agent_state: AgentState,
         auction_context: AuctionContext,
+        agent_id=None,
+        auction_id=None,
     ) -> str:
         """Build the system prompt with agent and auction context."""
         budget = auction_context.market_average_price
-        work_cost = self.settings.work_cost(budget, agent_state.current_jobs)
+        # The same private cost place_bid records for this agent and auction
+        work_cost = self.settings.work_cost(budget, agent_state.current_jobs, agent_id, auction_id)
         base_cost = self.settings.work_cost(budget)
+        spread = self.settings.private_cost_spread
 
         return self.SYSTEM_PROMPT_TEMPLATE.format(
             agent_name=agent_state.agent_name,
@@ -172,7 +176,8 @@ Do not include any other text, markdown formatting, or explanation outside the J
             market_average=auction_context.market_average_price,
             work_cost=work_cost,
             base_cost=base_cost,
-            max_rival_cost=self.settings.work_cost(budget, agent_state.max_capacity - 1),
+            min_rival_cost=round(base_cost * (1 - spread)),
+            max_rival_cost=round(self.settings.work_cost(budget, agent_state.max_capacity - 1) * (1 + spread)),
             min_profitable_bid=work_cost + 1,
             rival_count=auction_context.rival_count,
             time_remaining=int(auction_context.time_remaining_seconds),
@@ -288,7 +293,7 @@ Do not include any other text, markdown formatting, or explanation outside the J
         )
 
         # Build the prompt
-        system_prompt = self._build_system_prompt(agent_state, auction_context)
+        system_prompt = self._build_system_prompt(agent_state, auction_context, agent_id, auction_id)
 
         if not await ai_budget.try_agent_call(self.db):
             logger.warning("Daily agent AI budget reached; agents pass until tomorrow")

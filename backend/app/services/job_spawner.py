@@ -58,7 +58,7 @@ class JobSpawner:
         try:
             await self._check_season()
         except Exception as e:
-            logger.error(f"Error starting season: {e}")
+            logger.error(f"Error starting season: {e!r}")
 
         self._tasks = [
             asyncio.create_task(loop())
@@ -89,7 +89,7 @@ class JobSpawner:
             try:
                 await self._spawn_job_and_auction()
             except Exception as e:
-                logger.error(f"Error spawning job: {e}")
+                logger.error(f"Error spawning job: {e!r}")
 
             await asyncio.sleep(self.settings.job_spawn_interval_seconds)
 
@@ -126,7 +126,7 @@ class JobSpawner:
                 async with self._payout_lock:  # no job is assigned while a season rolls over
                     await self._close_expired_auctions()
             except Exception as e:
-                logger.error(f"Error closing auctions: {e}")
+                logger.error(f"Error closing auctions: {e!r}")
 
             await asyncio.sleep(5)
 
@@ -147,7 +147,7 @@ class JobSpawner:
                 else:
                     logger.info(f"Auction {auction.id} cancelled: no bids")
             except Exception as e:
-                logger.error(f"Error closing auction {auction.id}: {e}")
+                logger.error(f"Error closing auction {auction.id}: {e!r}")
 
     async def _job_completion_loop(self):
         """Check for and complete jobs after their duration expires."""
@@ -156,7 +156,7 @@ class JobSpawner:
                 async with self._payout_lock:
                     await self._complete_expired_jobs()
             except Exception as e:
-                logger.error(f"Error completing jobs: {e}")
+                logger.error(f"Error completing jobs: {e!r}")
 
             await asyncio.sleep(10)
 
@@ -196,7 +196,7 @@ class JobSpawner:
                         await agent_service.adjust(completed_job.assigned_agent_id, credits=profit, jobs=-1)
                         logger.info(f"Job {job.id} completed, agent profit {profit}")
                 except Exception as e:
-                    logger.error(f"Error completing job {job.id}: {e}")
+                    logger.error(f"Error completing job {job.id}: {e!r}")
 
 
     async def _negotiation_loop(self):
@@ -206,7 +206,7 @@ class JobSpawner:
                 # AI calls run outside the lock; each turn's result is applied under it
                 await NegotiationService(await get_database_service()).advance_due(self._payout_lock)
             except Exception as e:
-                logger.error(f"Error in negotiation loop: {e}")
+                logger.error(f"Error in negotiation loop: {e!r}")
             await asyncio.sleep(1)
 
     async def _season_loop(self):
@@ -216,7 +216,7 @@ class JobSpawner:
             try:
                 await self._check_season()
             except Exception as e:
-                logger.error(f"Error in season loop: {e}")
+                logger.error(f"Error in season loop: {e!r}")
 
     async def _check_season(self):
         """Start a season if none is running; finish and replace an expired one."""
@@ -243,7 +243,7 @@ class JobSpawner:
             try:
                 await self._trigger_agent_bids()
             except Exception as e:
-                logger.error(f"Error in agent bidding loop: {e}")
+                logger.error(f"Error in agent bidding loop: {e!r}")
 
             await asyncio.sleep(10)  # Check every 10 seconds
 
@@ -274,7 +274,7 @@ class JobSpawner:
                         f"{bid_count}/{len(decisions)} agents placed bids"
                     )
             except Exception as e:
-                logger.error(f"Error triggering bids for auction {auction.id}: {e}")
+                logger.error(f"Error triggering bids for auction {auction.id}: {e!r}")
 
 
 # Global spawner instance

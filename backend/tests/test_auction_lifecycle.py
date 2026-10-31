@@ -14,6 +14,7 @@ from unittest.mock import AsyncMock, patch
 for key in ("SUPABASE_URL", "SUPABASE_KEY", "OPENAI_API_KEY"):
     os.environ.setdefault(key, "test")
 os.environ.setdefault("NEGOTIATION_SHARE", "0")  # these checks cover the flow without negotiation
+os.environ.setdefault("PRIVATE_COST_SPREAD", "0")  # exact cost numbers; private costs have their own checks
 
 from app.models.agent import AgentSpecialty  # noqa: E402
 from app.models.auction import AuctionCreate, BidCreate  # noqa: E402
@@ -239,6 +240,7 @@ async def main():
     await losses_and_bankruptcy(db, fake, spawner)
     await season_rollover(db, fake, spawner)
     await money_guards(db, fake, spawner)
+    await private_costs(db, fake)
 
 
 def api_surface(db):
@@ -280,6 +282,11 @@ def api_surface(db):
         app.dependency_overrides[get_database_service] = lambda: fresh
         new = {"name": "A", "specialty": "writer", "auction_instructions": "x", "user_id": str(owner)}
         assert [client.post("/api/agents", json=new).status_code for _ in range(4)] == [201, 201, 201, 409]
+        # A busy agent can't be deleted: its running jobs and negotiations would lose their payout
+        busy = cast(FakeDB, fresh).tables["agents"][0]
+        busy["current_jobs"] = 2
+        r = client.delete(f"/api/agents/{busy['id']}")
+        assert r.status_code == 409 and "Pause it" in r.json()["detail"]
     finally:
         app.dependency_overrides.clear()
     print("API surface: all checks passed")
@@ -345,7 +352,7 @@ async def why_did_i_lose(db, fake, auction_id, cheap, early, late):
         job_title="t", job_description="d", job_specialty="designer", market_average_price=157,
         rival_count=1, time_remaining_seconds=60, total_bids=1))
     assert "Your work cost: 94 credits" in prompt and "Minimum profitable bid: 95" in prompt
-    assert "between 78 (idle) and 110 (4 jobs running)" in prompt and "SEALED AUCTION" in prompt
+    assert "between 78 (idle, most efficient) and 110 (4 jobs running, least efficient)" in prompt and "SEALED AUCTION" in prompt
     assert "leading" not in prompt.lower()
 
     history = await DecisionService(db).for_agent(early)
@@ -523,6 +530,66 @@ async def money_guards(db, fake, spawner):
     assert [a["status"] for a in listings] == ["cancelled", "cancelled"], "second time unsold: not relisted"
     assert getattr(await jobs.get_by_id(unsold.id), "status", None) == JobStatus.PENDING
     print("unsold jobs: all checks passed")
+
+    # The batched auction list matches the one-at-a-time lookup exactly, open and closed
+    for status in (AuctionStatus.ACTIVE, AuctionStatus.CLOSED, AuctionStatus.CANCELLED):
+        listed = await auctions.get_active_auctions(status=status, limit=100)
+        assert listed, f"fixture has {status.value} auctions"
+        for item in listed:
+            assert item == await auctions.get_auction_with_job(item.id), f"{status.value} auction {item.id} differs"
+    coders = await auctions.get_active_auctions(specialty=AgentSpecialty.CODER, status=AuctionStatus.CLOSED, limit=100)
+    assert coders and all(x.job_specialty == AgentSpecialty.CODER for x in coders)
+    print("auction list: all checks passed")
+
+    # Reads past Supabase's per-request row cap (page of 2 here) and the one-query bid trend
+    from app.services.database import fetch_all
+    from app.routes.analytics import get_bid_trend
+    every = await fetch_all(lambda: db.table("auctions").select("*").order("id"), page=2)
+    assert len(every) == len(fake.tables["auctions"]) > 2 and len({r["id"] for r in every}) == len(every)
+    today = datetime.now(timezone.utc).date().isoformat()
+    won = [r["winning_amount"] for r in fake.tables["auctions"]
+           if r["status"] == "closed" and r.get("winning_amount") and (r.get("closed_at") or "")[:10] == today]
+    trend = await get_bid_trend(days=3, db=db)
+    assert len(trend) == 3 and trend[-1].value == round(sum(won) / len(won), 2) and trend[0].value == 0
+    print("paged reads: all checks passed")
+
+
+async def private_costs(db, fake):
+    """Each agent's cost for each job is private and varies, so rivals' costs differ and margins can exist."""
+    from app.config import get_settings
+    os.environ["PRIVATE_COST_SPREAD"] = "0.2"
+    get_settings.cache_clear()
+    try:
+        settings = get_settings()
+        factors = [settings.private_cost_factor(uuid.uuid4(), uuid.uuid4()) for _ in range(2000)]
+        assert all(0.8 <= f < 1.2 for f in factors) and 0.98 < sum(factors) / len(factors) < 1.02
+        a, b, auction_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+        assert settings.private_cost_factor(a, auction_id) == settings.private_cost_factor(str(a), str(auction_id)), "stable"
+        assert settings.work_cost(200) == 100 and settings.work_cost(200, 0, a, auction_id) != settings.work_cost(200, 0, b, auction_id)
+
+        # The prompt, the stored bid and the explanation all use the same private cost
+        agents, jobs, auctions = AgentService(db), JobService(db), AuctionService(db)
+        bidder = (await agents.get_all())[0]
+        for row in fake.tables["agents"]:
+            if row["id"] == str(bidder.id):
+                row["current_jobs"], row["credits"] = 2, 1000
+        job = await jobs.create(JobCreate(title="P", description="d", specialty=AgentSpecialty.CODER, base_price=200))
+        auction = await AuctionService(db).create_auction(AuctionCreate(job_id=job.id))
+        private = settings.work_cost(200, 2, bidder.id, auction.id)
+        state = AgentState(agent_name="A", specialty="coder", auction_instructions="x", current_jobs=2, credits=1000)
+        prompt = AgentIntelligenceService(db)._build_system_prompt(state, AuctionContext(
+            job_title="t", job_description="d", job_specialty="coder", market_average_price=200,
+            rival_count=1, time_remaining_seconds=60, total_bids=0), bidder.id, auction.id)
+        assert f"Your work cost: {private} credits" in prompt and "between 80 (idle, most efficient) and 168" in prompt
+        await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=bidder.id, amount=199))
+        assert fake.tables["bids"][-1]["work_cost"] == private
+        label = DecisionService(db)._cost_label(private, 200, str(bidder.id), str(auction.id))
+        assert label == f"{private} (2 jobs running)", label
+        await auctions.close_auction(auction.id)
+    finally:
+        os.environ["PRIVATE_COST_SPREAD"] = "0"
+        get_settings.cache_clear()
+    print("private costs: all checks passed")
 
 
 if __name__ == "__main__":

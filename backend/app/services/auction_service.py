@@ -94,12 +94,10 @@ class AuctionService:
             await self.agent_service.get_by_id(auction.winning_agent_id)
             if auction.winning_agent_id else None
         )
+        return self._with_job(auction, job, await self.get_auction_bids(auction_id), winner.name if winner else None)
 
-        # Get bid stats (sorted lowest first, earliest on ties, so bids[0] is leading)
-        bids = await self.get_auction_bids(auction_id)
-        bid_count = len(bids)
-        lowest_bid = bids[0].amount if bids else None
-
+    def _with_job(self, auction: Auction, job: Job, bids: list[Bid], winner_name: str | None) -> AuctionWithJob:
+        """Auction plus job details and bid stats. Bids sorted lowest first, earliest on ties, so bids[0] leads."""
         return AuctionWithJob(
             id=auction.id,
             job_id=auction.job_id,
@@ -118,10 +116,10 @@ class AuctionService:
             job_status=job.status.value,
             negotiated=job.negotiated,
             deal_price=job.winning_bid if job.negotiated and job.status in (JobStatus.IN_PROGRESS, JobStatus.COMPLETED) else None,
-            bid_count=bid_count,
-            lowest_bid=lowest_bid,
+            bid_count=len(bids),
+            lowest_bid=bids[0].amount if bids else None,
             leading_agent_id=bids[0].agent_id if bids else None,
-            winning_agent_name=winner.name if winner else None,
+            winning_agent_name=winner_name,
         )
 
     async def get_active_auctions(
@@ -131,20 +129,41 @@ class AuctionService:
         offset: int = 0,
         status: AuctionStatus = AuctionStatus.ACTIVE,
     ) -> list[AuctionWithJob]:
-        """Auctions with job details: active ones ending soonest first, closed ones most recent first."""
-        query = self.auctions_table.select("id").eq("status", status.value)
+        """Auctions with job details: active ones ending soonest first, closed ones most recent first.
+
+        Four queries for the whole page (auctions, jobs, winner names, bids) instead of four per auction.
+        """
+        query = self.auctions_table.select("*").eq("status", status.value)
         if status == AuctionStatus.ACTIVE:
             query = query.order("ends_at")
         else:
             query = query.order("closed_at", desc=True)
-        result = await query.range(offset, offset + limit - 1).execute()
+        auctions = [self._to_auction(row) for row in (await query.range(offset, offset + limit - 1).execute()).data]
+        if not auctions:
+            return []
 
-        auctions_with_jobs = []
-        for row in result.data:
-            auction = await self.get_auction_with_job(row["id"])
-            if auction and (specialty is None or auction.job_specialty == specialty):
-                auctions_with_jobs.append(auction)
-        return auctions_with_jobs
+        job_rows = (await self.job_service.table.select("*").in_("id", [str(a.job_id) for a in auctions]).execute()).data
+        jobs = {str(row["id"]): self.job_service._to_job(row) for row in job_rows}
+        winner_ids = list({str(a.winning_agent_id) for a in auctions if a.winning_agent_id})
+        names = {
+            str(row["id"]): row["name"]
+            for row in ((await self.db.table("agents").select("id, name").in_("id", winner_ids).execute()).data if winner_ids else [])
+        }
+        bids: dict[str, list[Bid]] = {}
+        for row in (await self.bids_table.select("*").in_("auction_id", [str(a.id) for a in auctions]).order(
+            "amount"
+        ).order("created_at").execute()).data:
+            bids.setdefault(str(row["auction_id"]), []).append(self._to_bid(row))
+
+        result = []
+        for auction in auctions:
+            job = jobs.get(str(auction.job_id))
+            if job and (specialty is None or job.specialty == specialty):
+                result.append(self._with_job(
+                    auction, job, bids.get(str(auction.id), []),
+                    names.get(str(auction.winning_agent_id)) if auction.winning_agent_id else None,
+                ))
+        return result
 
     async def get_expired_auctions(self) -> list[Auction]:
         """Get all auctions that have passed their end time but are still active."""
@@ -198,7 +217,7 @@ class AuctionService:
             "auction_id": str(bid_data.auction_id),
             "agent_id": str(bid_data.agent_id),
             "amount": bid_data.amount,
-            "work_cost": self.settings.work_cost(job.base_price, agent.current_jobs),
+            "work_cost": self.settings.work_cost(job.base_price, agent.current_jobs, agent.id, bid_data.auction_id),
             "created_at": now,
             "is_winning": False,
         }

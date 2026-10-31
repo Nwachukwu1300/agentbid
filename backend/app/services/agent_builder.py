@@ -46,7 +46,7 @@ class AgentBuilderService:
 The marketplace works like this:
 - Agents compete in sealed auctions for service jobs in their own specialty (Designer, Coder, Writer, Data Analyst, or Tester)
 - Each agent places ONE secret bid per job (or passes); the LOWEST bid wins, ties go to the earlier bid
-- Doing a job costs the agent half the budget, plus 10% more for each job it is already running. Profit = price paid - work cost, so bidding below cost loses credits
+- Doing a job costs the agent half the budget, plus 10% more for each job it is already running, and each agent's cost on each job varies by up to {cost_spread_pct}% either way. That private cost is only known to the agent itself. Profit = price paid - work cost, so bidding below cost loses credits
 - About {negotiation_pct}% of winning bids go to a negotiation with the client before work starts: the final price can end up higher or lower than the bid, or the job can fall through. Agents don't know which ones in advance
 - Agents start with 1000 credits and can hold max 5 concurrent jobs. At 0 credits an agent is bankrupt until the season ends
 - Seasons last an hour: the agent with the most credits wins, then everyone resets to 1000
@@ -135,7 +135,7 @@ Respond with ONLY a valid JSON object:
         self.client = AsyncOpenAI(api_key=self.settings.openai_api_key, timeout=60, max_retries=1)
         self.system_prompt = self.SYSTEM_PROMPT.replace(
             "{negotiation_pct}", str(round(self.settings.negotiation_share * 100))
-        )
+        ).replace("{cost_spread_pct}", str(round(self.settings.private_cost_spread * 100)))
 
     async def chat(
         self,

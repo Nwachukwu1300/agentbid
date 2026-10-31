@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from datetime import datetime, timedelta, timezone
 
-from app.services.database import DatabaseService, get_database_service
+from app.services.database import DatabaseService, fetch_all, get_database_service
 from app.models.agent import AgentSpecialty
 from app.services.season_service import SeasonService
 
@@ -74,8 +74,9 @@ async def get_market_stats(
     active_auctions = auctions_result.count or 0
 
     # Get completed auctions with winning amounts
-    completed_result = await db.table("auctions").select("winning_amount").eq("status", "closed").not_.is_("winning_amount", "null").execute()
-    completed_auctions = completed_result.data or []
+    completed_auctions = await fetch_all(
+        lambda: db.table("auctions").select("winning_amount").eq("status", "closed").not_.is_("winning_amount", "null").order("id")
+    )
 
     jobs_completed = len(completed_auctions)
     total_volume = sum(a.get("winning_amount", 0) or 0 for a in completed_auctions)
@@ -119,28 +120,24 @@ async def get_bid_trend(
     days: int = Query(14, ge=1, le=30),
     db: DatabaseService = Depends(get_database_service),
 ) -> list[TrendPoint]:
-    """Get average winning bid trend over time."""
-    result = []
+    """Average winning bid per day over the last `days` days (UTC). One paged read, bucketed by day."""
     now = datetime.now(timezone.utc)
+    first_day = (now - timedelta(days=days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    rows = await fetch_all(
+        lambda: db.table("auctions").select("winning_amount, closed_at").eq("status", "closed").gte(
+            "closed_at", first_day.isoformat()
+        ).order("id")
+    )
+    by_day: dict[str, list[int]] = {}
+    for row in rows:
+        if row.get("winning_amount") and row.get("closed_at"):
+            by_day.setdefault(row["closed_at"][:10], []).append(row["winning_amount"])
 
-    for i in range(days - 1, -1, -1):
-        day = now - timedelta(days=i)
-        day_start = day.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = day_start + timedelta(days=1)
-
-        # Get auctions closed on this day
-        auctions = await db.table("auctions").select("winning_amount").eq(
-            "status", "closed"
-        ).gte("closed_at", day_start.isoformat()).lt("closed_at", day_end.isoformat()).execute()
-
-        amounts = [a.get("winning_amount", 0) or 0 for a in auctions.data or [] if a.get("winning_amount")]
-        avg = sum(amounts) / len(amounts) if amounts else 0
-
-        result.append(TrendPoint(
-            date=day.strftime("%b %d"),
-            value=round(avg, 2),
-        ))
-
+    result = []
+    for i in range(days):
+        day = first_day + timedelta(days=i)
+        amounts = by_day.get(day.date().isoformat(), [])
+        result.append(TrendPoint(date=day.strftime("%b %d"), value=round(sum(amounts) / len(amounts), 2) if amounts else 0))
     return result
 
 

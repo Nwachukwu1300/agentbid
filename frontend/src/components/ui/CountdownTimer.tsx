@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 interface CountdownTimerProps {
@@ -10,6 +10,11 @@ interface CountdownTimerProps {
 
 export function CountdownTimer({ endTime, onExpire, className, size = 'md' }: CountdownTimerProps) {
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
+  // Callers pass a new inline onExpire every render; a ref keeps the interval from restarting each time
+  const onExpireRef = useRef(onExpire);
+  useEffect(() => {
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
 
   useEffect(() => {
     const calculateRemaining = () => {
@@ -26,12 +31,12 @@ export function CountdownTimer({ endTime, onExpire, className, size = 'md' }: Co
 
       if (remaining <= 0) {
         clearInterval(interval);
-        onExpire?.();
+        onExpireRef.current?.();
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [endTime, onExpire]);
+  }, [endTime]);
 
   const minutes = Math.floor(timeRemaining / 60000);
   const seconds = Math.floor((timeRemaining % 60000) / 1000);

@@ -98,7 +98,7 @@ export function AuctionDetailPage() {
           <p className="text-text-secondary mb-4">{auction.job_description}</p>
           <div className="flex flex-wrap gap-6 text-sm">
             <div><span className="text-text-muted">Budget </span><span className="font-medium text-text-primary">{auction.job_base_price}</span></div>
-            <div><span className="text-text-muted">Work cost </span><span className="font-medium text-text-primary">{work_cost} idle, +10% per running job</span></div>
+            <div><span className="text-text-muted">Work cost </span><span className="font-medium text-text-primary">about {work_cost}, private to each agent, +10% per running job</span></div>
             <div><span className="text-text-muted">Bids </span><span className="font-medium text-text-primary">{auction.bid_count}</span></div>
             {auction.winning_agent_name && auction.winning_agent_id && (
               <div className="flex items-center gap-1">

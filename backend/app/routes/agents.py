@@ -139,6 +139,12 @@ async def delete_agent(
         raise HTTPException(status_code=404, detail="Agent not found")
     if agent.user_id != current_user_id:
         raise HTTPException(status_code=403, detail="You don't have permission to delete this agent")
+    if agent.current_jobs > 0:
+        # Deleting now would orphan running jobs and open negotiations, and silently drop their payouts
+        raise HTTPException(status_code=409, detail=(
+            f"This agent still has {agent.current_jobs} job(s) running or in negotiation. "
+            "Pause it, and delete it once its work is done."
+        ))
 
     deleted = await service.delete(agent_id)
     if not deleted:

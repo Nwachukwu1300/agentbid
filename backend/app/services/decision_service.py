@@ -100,11 +100,13 @@ class DecisionService:
         self.auction_service = AuctionService(db)
         self.settings = get_settings()
 
-    def _cost_label(self, cost: int | None, base_price: int) -> str | None:
-        """e.g. "86 (2 jobs running)", worked back from the cost formula; None for old bids."""
+    def _cost_label(self, cost: int | None, base_price: int, agent_id=None, auction_id=None) -> str | None:
+        """e.g. "86 (2 jobs running)", worked back from the cost formula (private factor included); None for old bids."""
         if cost is None:
             return None
-        idle = base_price * self.settings.work_cost_ratio
+        idle = base_price * self.settings.work_cost_ratio * (
+            self.settings.private_cost_factor(agent_id, auction_id) if agent_id and auction_id else 1.0
+        )
         jobs = round((cost / idle - 1) / self.settings.workload_cost_step) if idle else 0
         return f"{cost} (idle)" if jobs <= 0 else f"{cost} ({jobs} job{'s' if jobs > 1 else ''} running)"
 
@@ -151,7 +153,7 @@ class DecisionService:
         agent_ids = set(best) | set(last_reasoning)
         agents = await self._agents_by_id(agent_ids)
         winner_id = str(auction.winning_agent_id) if auction.winning_agent_id else None
-        label = {agent_id: self._cost_label(cost, base_price) for agent_id, cost in costs.items()}
+        label = {agent_id: self._cost_label(cost, base_price, agent_id, auction_id) for agent_id, cost in costs.items()}
 
         summaries = []
         for agent_id in agent_ids:

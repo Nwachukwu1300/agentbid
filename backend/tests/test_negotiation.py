@@ -443,7 +443,8 @@ async def api_views():
         client = TestClient(app)
         body = client.get(f"/api/auctions/{auction_id}/breakdown").json()
         assert body["auction"]["negotiated"] and body["auction"]["job_status"] == "negotiating"
-        assert body["negotiation"]["status"] == "active" and "193" not in str(body) and "stingy" not in str(body)
+        assert body["negotiation"]["status"] == "active" and "stingy" not in str(body)
+        assert not any(k in body["negotiation"] for k in SECRET_FIELDS), "the secret max and personality stay hidden"
 
         svc = a.service()
         a.script(svc, [say("counter", 140), say("counter", 160)], [say("counter", 170), say("accept")])

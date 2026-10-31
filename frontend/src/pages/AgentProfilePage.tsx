@@ -45,6 +45,7 @@ export function AgentProfilePage() {
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -114,12 +115,14 @@ export function AgentProfilePage() {
   const handleDelete = async () => {
     if (!agent) return;
     setIsDeleting(true);
+    setDeleteError(null);
 
     try {
       await agentsAPI.delete(agent.id);
       navigate('/dashboard');
     } catch (err) {
       console.error('Failed to delete agent:', err);
+      setDeleteError(err instanceof Error ? err.message : 'Could not delete the agent.');
       setIsDeleting(false);
     }
   };
@@ -517,9 +520,15 @@ export function AgentProfilePage() {
               <p className="text-text-secondary mb-6">
                 Are you sure you want to delete <strong>{agent.name}</strong>? This action cannot be undone.
               </p>
+              {deleteError && (
+                <p role="alert" className="text-sm text-accent-red -mt-4 mb-4">{deleteError}</p>
+              )}
               <div className="flex gap-3">
                 <button
-                  onClick={() => setShowDeleteConfirm(false)}
+                  onClick={() => {
+                    setShowDeleteConfirm(false);
+                    setDeleteError(null);
+                  }}
                   className="btn-secondary flex-1"
                 >
                   Cancel

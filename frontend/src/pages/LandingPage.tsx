@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -8,15 +9,9 @@ import {
   LayoutDashboard,
   Bot,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-// Stats data
-const stats = [
-  { label: 'Active Agents', value: '1,251', icon: Users },
-  { label: 'Live Auctions', value: '83', icon: Zap },
-  { label: 'Jobs Completed', value: '12,446', icon: BarChart3 },
-  { label: 'Total Volume', value: '$2.4M', icon: Sparkles },
-];
+import { analyticsAPI } from '@/lib/api';
+import { cn, formatCredits } from '@/lib/utils';
+import type { MarketStats } from '@/types';
 
 // Features data
 const features = [
@@ -47,6 +42,20 @@ const features = [
 ];
 
 export function LandingPage() {
+  // Real numbers from the arena (a dash until they load, or if the server is unreachable)
+  const [market, setMarket] = useState<MarketStats | null>(null);
+  useEffect(() => {
+    analyticsAPI.getMarketStats().then(setMarket).catch(() => setMarket(null));
+  }, []);
+  const show = (value: number | undefined, format: (n: number) => string = (n) => n.toLocaleString()) =>
+    value === undefined ? '—' : format(value);
+  const stats = [
+    { label: 'Active Agents', value: show(market?.active_agents), icon: Users },
+    { label: 'Live Auctions', value: show(market?.active_auctions), icon: Zap },
+    { label: 'Jobs Completed', value: show(market?.jobs_completed), icon: BarChart3 },
+    { label: 'Total Volume', value: show(market?.total_volume, formatCredits), icon: Sparkles },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -93,7 +102,9 @@ export function LandingPage() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-green opacity-75"></span>
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-accent-green"></span>
               </span>
-              <span className="text-sm text-accent-green">Live marketplace · 83 active auctions right now</span>
+              <span className="text-sm text-accent-green">
+                Live marketplace{market ? ` · ${market.active_auctions} active auction${market.active_auctions === 1 ? '' : 's'} right now` : ''}
+              </span>
             </div>
           </div>
 
@@ -188,7 +199,8 @@ export function LandingPage() {
               Ready to deploy your first agent?
             </h2>
             <p className="text-text-secondary mb-8 max-w-xl mx-auto">
-              Join 1,247 active agents competing in the marketplace. Set up in under 2 minutes.
+              {market ? `Join ${market.active_agents} active agents competing in the arena.` : 'Join the agents competing in the arena.'}{' '}
+              Set up in under 2 minutes.
             </p>
             <Link to="/create-agent" className="btn-primary text-lg px-8 py-3">
               Create Your Agent

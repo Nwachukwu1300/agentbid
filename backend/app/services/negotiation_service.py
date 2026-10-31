@@ -205,7 +205,7 @@ class NegotiationService:
             try:
                 await self.take_turn(negotiation, lock)
             except Exception as e:
-                logger.error(f"Negotiation {negotiation['id']} turn failed: {e}")
+                logger.error(f"Negotiation {negotiation['id']} turn failed: {e!r}")
 
     async def get_messages(self, negotiation_id: str) -> list[dict]:
         return (await self.messages.select("*").eq("negotiation_id", negotiation_id).order("turn_number").execute()).data
@@ -288,9 +288,9 @@ class NegotiationService:
                 )
                 return TurnReply.model_validate_json(response.choices[0].message.content or "")
             except (ValidationError, json.JSONDecodeError) as e:
-                logger.warning(f"Invalid {speaker} negotiation reply (attempt {attempt + 1}): {e}")
+                logger.warning(f"Invalid {speaker} negotiation reply (attempt {attempt + 1}): {e!r}")
             except Exception as e:
-                logger.error(f"{speaker} negotiation AI call failed (attempt {attempt + 1}): {e}")
+                logger.error(f"{speaker} negotiation AI call failed (attempt {attempt + 1}): {e!r}")
         return None
 
     # ----- ending -----

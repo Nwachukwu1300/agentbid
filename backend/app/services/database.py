@@ -40,5 +40,18 @@ async def get_supabase_client() -> AsyncClient:
     return client
 
 
+async def fetch_all(make_query, page: int = 1000) -> list[dict]:
+    """Every row of a query. Supabase returns at most 1000 rows per request, so a single read silently truncates.
+
+    make_query builds a fresh, stably ordered query each call (a query builder can only run once).
+    """
+    rows: list[dict] = []
+    while True:
+        batch = (await make_query().range(len(rows), len(rows) + page - 1).execute()).data
+        rows.extend(batch)
+        if len(batch) < page:
+            return rows
+
+
 async def get_database_service() -> DatabaseService:
     return DatabaseService(await get_supabase_client())
