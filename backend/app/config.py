@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 
 from pydantic_settings import BaseSettings
 from functools import lru_cache
@@ -41,6 +42,9 @@ class Settings(BaseSettings):
     # Each agent's cost for each job varies by up to this much either way, known only to that agent. Without it
     # every rival has the same cost, so everyone bids cost + 1 and wins pay almost nothing.
     private_cost_spread: float = 0.2
+    # Key for private costs. IDs are public, so an unkeyed hash would let anyone compute rivals' costs.
+    # Falls back to the OpenAI key, which is already a server-only secret.
+    private_cost_secret: str | None = None
     season_duration_seconds: int = 3600
 
     # Daily caps on paid AI calls
@@ -69,7 +73,8 @@ class Settings(BaseSettings):
     def private_cost_factor(self, agent_id, auction_id) -> float:
         """Stable per agent and auction, between 1 - spread and 1 + spread, so the prompt, the stored bid and
         the explanations all agree without storing it."""
-        digest = hashlib.sha256(f"{agent_id}:{auction_id}".encode()).digest()
+        key = (self.private_cost_secret or self.openai_api_key).encode()
+        digest = hmac.new(key, f"{agent_id}:{auction_id}".encode(), hashlib.sha256).digest()
         unit = int.from_bytes(digest[:8], "big") / 2**64  # uniform in [0, 1)
         return 1 + self.private_cost_spread * (2 * unit - 1)
 
