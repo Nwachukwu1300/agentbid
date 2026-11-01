@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     # Key for private costs. IDs are public, so an unkeyed hash would let anyone compute rivals' costs.
     # Falls back to the OpenAI key, which is already a server-only secret.
     private_cost_secret: str | None = None
+    # "second_price": the winner is paid the runner-up's bid (steady profits, bidding your cost is best).
+    # "first_price": the winner is paid its own bid, with no "minimum profitable bid" hint (bidding is a gamble).
+    payment_rule: str = "second_price"
     season_duration_seconds: int = 3600
 
     # Daily caps on paid AI calls

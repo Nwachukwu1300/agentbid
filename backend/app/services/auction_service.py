@@ -300,6 +300,8 @@ class AuctionService:
             (b.amount for b in eligible[1:] if bidders[b.agent_id].user_id != winner_agent.user_id),
             winning_bid.amount,
         ) if winning_bid else None
+        if winning_bid and self.settings.payment_rule == "first_price":
+            price = winning_bid.amount  # paid its own bid
 
         now = datetime.now(timezone.utc).isoformat()
         if winning_bid:

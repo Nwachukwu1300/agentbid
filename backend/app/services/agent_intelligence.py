@@ -39,7 +39,7 @@ def _openai_client() -> AsyncOpenAI:
     return _openai_clients[loop]
 
 
-NEGOTIATION_PROMPT_TEMPLATE = """You are {agent_name}, a {specialty} agent. You won the auction for this job at an auction price of {opening_price} (the runner-up's bid, or your own if you were the only bidder), and the client wants to negotiate the price before work starts.
+NEGOTIATION_PROMPT_TEMPLATE = """You are {agent_name}, a {specialty} agent. You won the auction for this job at an auction price of {opening_price} (what the auction pays you), and the client wants to negotiate the price before work starts.
 
 Your negotiation style:
 {style}
@@ -120,15 +120,14 @@ Job available:
 Type: {job_specialty}
 Budget (maximum bid): {market_average}
 Your work cost: {work_cost} credits (base {base_cost}, +10% for each job you are already running, adjusted by your own private efficiency on this job)
-Minimum profitable bid: {min_profitable_bid} (any lower bid loses you credits if you win)
-Rivals: {rival_count} other {job_specialty} agent(s) may bid. Each has its own private cost for this job, somewhere between {min_rival_cost} (idle, most efficient) and {max_rival_cost} (4 jobs running, least efficient); you don't know theirs or how busy they are.
+{min_bid_line}Rivals: {rival_count} other {job_specialty} agent(s) may bid. Each has its own private cost for this job, somewhere between {min_rival_cost} (idle, most efficient) and {max_rival_cost} (4 jobs running, least efficient); you don't know theirs or how busy they are.
 Time remaining: {time_remaining}s
 
 IMPORTANT RULES:
 1. Your personality and strategy instructions above are the MOST IMPORTANT factor in your decision
 2. SEALED AUCTION: you get exactly ONE bid (or pass) on this job and you cannot see anyone else's bids. All bids are revealed when the auction closes
 3. The lowest bid wins (ties go to the earlier bid). You can bid any positive amount up to the budget
-4. SECOND PRICE: if you win, you are paid the next-lowest bid (the runner-up's), or your own bid if nobody else bids. Profit = price paid - your work cost. Your bid decides WHETHER you win, not how much you are paid, so bidding higher only makes you more likely to lose. Never bid below {min_profitable_bid}: as the only bidder you are paid your own bid, and below that you LOSE credits
+4. {payment_rule_text}
 5. Agents at 0 credits are bankrupt and out until the next season. The agent with the most credits when the season ends wins
 6. Consider your workload, credits, and how cheap your rivals could be
 7. About {negotiation_pct}% of winning bids go to a negotiation with the client, where the final price can end up higher or lower than your bid, or the job can fall through. You won't know which ones in advance
@@ -178,11 +177,31 @@ Do not include any other text, markdown formatting, or explanation outside the J
             base_cost=base_cost,
             min_rival_cost=round(base_cost * (1 - spread)),
             max_rival_cost=round(self.settings.work_cost(budget, agent_state.max_capacity - 1) * (1 + spread)),
-            min_profitable_bid=work_cost + 1,
+            **self._payment_rule_text(work_cost),
             rival_count=auction_context.rival_count,
             time_remaining=int(auction_context.time_remaining_seconds),
             negotiation_pct=round(self.settings.negotiation_share * 100),
         )
+
+    def _payment_rule_text(self, work_cost: int) -> dict:
+        """Prompt lines for the payment rule in force (settings.payment_rule)."""
+        if self.settings.payment_rule == "first_price":
+            return {
+                "min_bid_line": "",
+                "payment_rule_text": (
+                    "If you win, you are paid your own bid. Profit = your bid - your work cost, so a bid below your "
+                    "work cost LOSES you credits. Bidding higher earns more per job but risks losing to a cheaper rival"
+                ),
+            }
+        return {
+            "min_bid_line": f"Minimum profitable bid: {work_cost + 1} (any lower bid loses you credits if you win)\n",
+            "payment_rule_text": (
+                "SECOND PRICE: if you win, you are paid the next-lowest bid (the runner-up's), or your own bid if "
+                "nobody else bids. Profit = price paid - your work cost. Your bid decides WHETHER you win, not how "
+                f"much you are paid, so bidding higher only makes you more likely to lose. Never bid below {work_cost + 1}: "
+                "as the only bidder you are paid your own bid, and below that you LOSE credits"
+            ),
+        }
 
     def _parse_decision(self, response_text: str) -> AgentDecision:
         """Parse the LLM response into an AgentDecision."""

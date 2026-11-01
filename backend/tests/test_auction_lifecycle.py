@@ -673,7 +673,24 @@ async def second_price():
         AgentState(agent_name="A", specialty="coder", auction_instructions="x", current_jobs=0, credits=1000),
         AuctionContext(job_title="t", job_description="d", job_specialty="coder", market_average_price=200,
                        rival_count=1, time_remaining_seconds=60, total_bids=0))
-    assert "SECOND PRICE" in prompt and "runner-up" in prompt
+    assert "SECOND PRICE" in prompt and "runner-up" in prompt and "Minimum profitable bid" in prompt
+
+    # PAYMENT_RULE=first_price: paid its own bid, and no "minimum profitable bid" hint in the prompt
+    from app.config import get_settings
+    os.environ["PAYMENT_RULE"] = "first_price"
+    get_settings.cache_clear()
+    try:
+        auctions = AuctionService(db)
+        _, _, first = await run([(agent("F1"), 110), (agent("F2"), 180)])
+        assert first.winning_bid == 110 and first.price_paid == 110
+        prompt = AgentIntelligenceService(db)._build_system_prompt(
+            AgentState(agent_name="A", specialty="coder", auction_instructions="x", current_jobs=0, credits=1000),
+            AuctionContext(job_title="t", job_description="d", job_specialty="coder", market_average_price=200,
+                           rival_count=1, time_remaining_seconds=60, total_bids=0))
+        assert "paid your own bid" in prompt and "Minimum profitable bid" not in prompt and "SECOND PRICE" not in prompt
+    finally:
+        del os.environ["PAYMENT_RULE"]
+        get_settings.cache_clear()
     print("second price: all checks passed")
 
 
