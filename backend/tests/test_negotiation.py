@@ -173,6 +173,15 @@ async def code_enforces_the_ceiling():
     crossed = State(budget=200, opening_price=63, client_max=134, agent_last=63, client_last=80, agent_max_offer=400)
     move = apply_move("agent", say("counter", 75), crossed, 400)
     assert move.action == "accept" and move.offer == 80
+
+    # No taking back: a client offer can't drop below its last one, an agent ask can't rise above its last counter
+    # (seen live: a friendly client went 63 -> 62). The agent's first counter may still exceed the opening price.
+    talks = State(budget=200, opening_price=150, client_max=180, agent_last=170, client_last=120, agent_max_offer=400,
+                  agent_countered=True)
+    assert apply_move("client", say("counter", 110), talks, 400).offer == 120
+    assert apply_move("agent", say("counter", 175), talks, 400).offer == 170
+    fresh = State(budget=200, opening_price=150, client_max=180, agent_last=150, client_last=120, agent_max_offer=400)
+    assert apply_move("agent", say("counter", 175), fresh, 400).offer == 175, "first counter can ask above the opening"
     print("ceiling: all checks passed")
 
 
@@ -223,6 +232,8 @@ async def prompt_injection():
     assert "180" not in agent_prompts[0], "agent never sees the client's max"
     assert all("friendly" not in p and "MAXIMUM" not in p for p in agent_prompts), "or its personality"
     assert "Hold firm." in agent_prompts[0], "agent sees its own negotiation style"
+    assert "FINAL MESSAGE" not in agent_prompts[0] and "FINAL MESSAGE: your only choices" in agent_prompts[-1]
+    assert "YOUR LAST message" in client_prompts[-1] and "YOUR LAST message" not in client_prompts[0]
     print("prompt injection: all checks passed")
 
 

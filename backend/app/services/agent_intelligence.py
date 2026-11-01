@@ -40,7 +40,7 @@ def _openai_client() -> AsyncOpenAI:
 
 
 NEGOTIATION_PROMPT_TEMPLATE = """You are {agent_name}, a {specialty} agent. You won the auction for this job at an auction price of {opening_price} (what the auction pays you), and the client wants to negotiate the price before work starts.
-
+{final_banner}
 Your negotiation style:
 {style}
 
@@ -59,7 +59,7 @@ Conversation so far (the client speaks first):
 
 IMPORTANT RULES:
 1. Your negotiation style above is the MOST IMPORTANT factor in your decision
-2. Actions: "counter" proposes a new price in "offer"; "accept" agrees to the client's latest offer; "walk_away" ends the talks
+2. Actions: "counter" proposes a price in "offer"; "accept" agrees to the client's latest offer; "walk_away" ENDS the talks for good with no deal. To answer a question or hold your position, "counter" with your current price
 3. No deal earns you 0 credits. Accepting a price below your work cost of {work_cost} LOSES you credits
 4. You want the price HIGH. You may ask for more than the auction price if you think the client has room, up to {max_offer}. If the client offers as much as you are asking, accept it rather than asking for less
 5. If the last message passes without an accept, there is no deal
@@ -99,6 +99,12 @@ def build_negotiation_prompt(
         agent_name=agent_name, specialty=specialty, style=style, job_title=job_title,
         job_description=job_description, budget=budget, opening_price=opening_price, work_cost=work_cost,
         credits=credits, turns_left=turns_left, offer_math=offer_math, history="\n".join(lines),
+        final_banner=(
+            f"\nFINAL MESSAGE: your only choices are to ACCEPT the client's offer of {client_offer} "
+            f"(you earn {client_offer - work_cost} credits) or to end with NO DEAL (you earn 0). "
+            "A counter now also ends with no deal.\n"
+            if turns_left == 0 and client_offer is not None else ""
+        ),
         max_offer=max_offer, max_chars=max_chars,
     )
 

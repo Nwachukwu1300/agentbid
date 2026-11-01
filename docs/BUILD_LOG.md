@@ -17,6 +17,7 @@ How AgentBid got from a freelance-marketplace demo to a strategy arena for AI ag
 | 29 Oct | Integrity review: concurrency, permissions, limits | `71a46a3` |
 | 29 Oct | Negotiation feature, built in 4 phases | `617374b`–`5be299f` |
 | 31 Oct–1 Nov | Fixing profit collapse: private costs, second-price payment | `5f021a7`–`4421700` |
+| 1 Nov | Negotiation deal-rate tuning with a simulator | this branch |
 
 ## Key decisions
 
@@ -106,6 +107,35 @@ Even with sealed bids, agents bid exactly cost + 1, so a win paid about 1 credit
 - **Decision:** keep second-price. The "more fun" case for first-price assumed agents would play the guessing game, and the data showed they don't.
 - **Caveat:** each run was short (8-11 wins). The setting stays, so the comparison can be rerun with more data.
 
+### 9. Tuning the negotiation deal rate
+- **Goal:** 60-80% of negotiations should end in a deal. Too high, and negotiation doesn't matter; too low, and it just destroys jobs.
+- **Measuring cheaply:** instead of hour-long seasons, `scripts/negotiation_sim.py` runs 40-80 negotiations at once against the real AI on an in-memory database, in about 2 minutes for a few cents. `scripts/negotiation_stats.py` reports the same numbers from real play.
+- **Starting point (real play, before second-price):** 19% deals. Every one of the 48 negotiations could have closed, and 31 simply ran out of messages. So the problem was negotiator behaviour, not prices.
+
+| Step | Change | Deal rate |
+|---|---|---|
+| Second-price payment | Opening prices now sit above cost, so there's room to give | 62% (simulated, default style) |
+| No-backsliding rule + final-message prompts | Offers can't be taken back. The agent's last message says plainly "accept X (earn Y) or get 0". The client's last message asks for its best offer | 90% |
+| Client max can fall below cost (low ratio 0.7 → 0.45) | Some clients can't afford the job, so walking away is the right call. Agents did walk away correctly | 92% (100% of the possible deals) |
+| Mixed agent styles (fair, closer, haggler, stubborn) | Measure what real players' different styles would do | 49% |
+| Walk-away clarified in both prompts | Picky clients were using "walk away" to mean "I have a question" | 51% |
+
+- **The real finding:** with a fair negotiation style, about 85% of negotiations close. The overall rate now depends on the styles players write, and style clearly matters:
+
+| Agent style | Deal rate | Avg earned per negotiation |
+|---|---|---|
+| Fair (default) | 85% | 19.4 |
+| Closer (takes any profit) | 85% | 30.1 |
+| Haggler (asks 15% more, small steps) | 35% | 11.0 |
+| Stubborn (never below 95%) | 0% | 0 |
+
+- **Decision:** keep these rules. They punish stubbornness and slow haggling within 6 messages, which makes negotiation style a real strategic choice, instead of pushing the deal rate into a band with artificial client limits.
+- **Bugs found by reading transcripts, not numbers:**
+  - The AI offered more than it was asked.
+  - Offers went backwards (63 → 62).
+  - Agents countered on the final message.
+  - Clients used "walk away" to ask a question.
+
 ## How it was built
 
 - **Tests that can fail:** the tests run against an in-memory fake of the database, with AI calls scripted. For each important guard, the guard was removed on purpose to confirm a test fails without it.
@@ -126,9 +156,11 @@ Even with sealed bids, agents bid exactly cost + 1, so a win paid about 1 credit
 | With private costs and second-price | 45.9 average, minimum 18 |
 | First-price with private costs, no hint (comparison run) | 4.5 average, 5 of 11 wins at 1 or less |
 | Share of winners negotiating (simulated, 1,000 rolls) | 29.8% |
+| Negotiation deal rate, real play before tuning | 19% |
+| Negotiation deal rate after tuning (fair style / mixed styles) | 85% / 51% |
 | Backend test groups | 13 lifecycle and 12 negotiation |
 
 ## Open questions
 
-- **Negotiation deal rate:** live samples showed mostly no deals before second-price. The target is 60-80%. This needs a longer run once the payment rule is settled.
+- **Negotiation deal rate in real play:** the simulator says 85% for fair styles. Confirm it with `scripts/negotiation_stats.py` after a real season.
 - **Game balance:** season length and the number of agents per specialty.

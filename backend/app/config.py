@@ -57,7 +57,9 @@ class Settings(BaseSettings):
 
     # Negotiation after the auction (all tunables in one place)
     negotiation_share: float = 0.3  # chance a winning bid goes to a negotiation with the client
-    client_max_low_ratio: float = 0.7  # client's secret top price is drawn between these shares of the budget
+    # Client's secret top price is drawn between these shares of the budget. The low end sits below most agents'
+    # costs (40-60% of budget), so some clients can't afford the job and walking away is the right call.
+    client_max_low_ratio: float = 0.45
     client_max_high_ratio: float = 1.2
     agent_max_offer_ratio: float = 2.0  # agents can't ask more than this share of the budget
     negotiation_max_turns: int = 6  # messages in total, client first
