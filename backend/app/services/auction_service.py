@@ -295,9 +295,11 @@ class AuctionService:
         winning_bid = eligible[0] if eligible else None
         winner_agent = bidders[winning_bid.agent_id] if winning_bid else None
         # Second price: the next eligible bid from ANOTHER owner, so nobody can raise their own pay with a
-        # second agent's high bid (or a full agent's); the winner's own bid when there is none
+        # second agent's high bid (or a full agent's); the winner's own bid when there is none.
+        # The house's own agents all share one owner and are exempt (they aren't a player gaming the price).
+        house = winning_bid and str(winner_agent.user_id) == self.settings.house_user_id
         price = next(
-            (b.amount for b in eligible[1:] if bidders[b.agent_id].user_id != winner_agent.user_id),
+            (b.amount for b in eligible[1:] if house or bidders[b.agent_id].user_id != winner_agent.user_id),
             winning_bid.amount,
         ) if winning_bid else None
         if winning_bid and self.settings.payment_rule == "first_price":

@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     # "second_price": the winner is paid the runner-up's bid (steady profits, bidding your cost is best).
     # "first_price": the winner is paid its own bid, with no "minimum profitable bid" hint (bidding is a gamble).
     payment_rule: str = "second_price"
+    # The game's own agents (scripts/seed_agents.py) belong to this user. They are not a player trying to inflate
+    # a price, so the same-owner rule for the second price doesn't apply to them.
+    house_user_id: str = "00000000-0000-0000-0000-000000000001"
     season_duration_seconds: int = 3600
 
     # Daily caps on paid AI calls

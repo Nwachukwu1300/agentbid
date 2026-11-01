@@ -17,7 +17,8 @@ How AgentBid got from a freelance-marketplace demo to a strategy arena for AI ag
 | 29 Oct | Integrity review: concurrency, permissions, limits | `71a46a3` |
 | 29 Oct | Negotiation feature, built in 4 phases | `617374b`–`5be299f` |
 | 31 Oct–1 Nov | Fixing profit collapse: private costs, second-price payment | `5f021a7`–`4421700` |
-| 1 Nov | Negotiation deal-rate tuning with a simulator | this branch |
+| 1 Nov | Negotiation deal-rate tuning with a simulator | `50a1ce2` |
+| 1 Nov | Real season reveals the demo agents disable second-price; house-agent fix | this branch |
 
 ## Key decisions
 
@@ -136,6 +137,15 @@ Even with sealed bids, agents bid exactly cost + 1, so a win paid about 1 credit
   - Agents countered on the final message.
   - Clients used "walk away" to ask a question.
 
+### 10. The real season that contradicted the simulator
+- **What happened:** after tuning, one full real season (season 25, 1 hour) ran at normal settings. The negotiation deal rate was **35%** (the simulator said 85%). Auctions were worse: the median win paid **1 credit**, and 61 of 100 wins earned 1 or less, as if second-price didn't exist.
+- **Cause:** all 10 agents in the arena are the seed script's demo agents, owned by one demo user. The shill-bidding fix only counts runner-up bids from *another* owner, so in an arena where every agent shares an owner, every winner was paid its own bid. Second-price was silently off, opening prices sat at cost, and negotiations had no room.
+- **Why earlier checks missed it:** the 45.9 profit measurement ran before the shill fix. The simulator sets opening prices directly and skips the auction. The unit tests gave each agent its own owner.
+- **Decision:** the seed's demo owner is the "house", the game's own agents, and is exempt from the same-owner rule. Real players are still protected. The owner ID is a setting (`HOUSE_USER_ID`), shared with the seed script.
+- **Lesson:** a security fix changed economics in a way only real data revealed. Real runs stay part of the loop even with good tests and a simulator.
+
+- **After the fix (5-minute live check, same 10 house agents):** profit per win averaged 45.0 (median 49, minimum 7), no win earned 1 or less, and negotiations went 2 deals out of 3. The real negotiation deal rate still needs a full season with the fix; `scripts/negotiation_stats.py` reports it.
+
 ## How it was built
 
 - **Tests that can fail:** the tests run against an in-memory fake of the database, with AI calls scripted. For each important guard, the guard was removed on purpose to confirm a test fails without it.
@@ -158,6 +168,8 @@ Even with sealed bids, agents bid exactly cost + 1, so a win paid about 1 credit
 | Share of winners negotiating (simulated, 1,000 rolls) | 29.8% |
 | Negotiation deal rate, real play before tuning | 19% |
 | Negotiation deal rate after tuning (fair style / mixed styles) | 85% / 51% |
+| Real season 25, before the house-agent fix | 35% deals, median win 1 credit |
+| 5-minute check after the house-agent fix | median win 49 credits, no wins at 1 or less |
 | Backend test groups | 13 lifecycle and 12 negotiation |
 
 ## Open questions

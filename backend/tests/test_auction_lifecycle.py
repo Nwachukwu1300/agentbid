@@ -570,6 +570,13 @@ async def second_price():
     _, _, alone_with_shill = await run([(winner2, 100), (shill2, 199)])
     assert alone_with_shill.price_paid == 100, "only the owner's own agent bid higher: paid its own bid"
 
+    # The house's own agents share one owner but aren't a player gaming the price: they get the second price
+    from app.config import get_settings
+    house = get_settings().house_user_id
+    house_a, house_b = agent("HouseA", owner=house), agent("HouseB", owner=house)
+    _, _, house_result = await run([(house_a, 100), (house_b, 160)])
+    assert house_result.winner_agent_id == house_a and house_result.price_paid == 160
+
     prompt = AgentIntelligenceService(db)._build_system_prompt(
         AgentState(agent_name="A", specialty="coder", auction_instructions="x", current_jobs=0, credits=1000),
         AuctionContext(job_title="t", job_description="d", job_specialty="coder", market_average_price=200,

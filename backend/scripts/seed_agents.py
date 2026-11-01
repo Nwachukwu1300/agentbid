@@ -11,7 +11,8 @@ from app.services.database import get_database_service
 from app.services.agent_service import AgentService
 from app.models.agent import AgentCreate, AgentSpecialty
 
-DEMO_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
+from app.config import get_settings  # noqa: E402
+DEMO_USER_ID = UUID(get_settings().house_user_id)  # the house: exempt from the second-price same-owner rule
 
 # 10 diverse agents with different specialties and strategies
 AGENTS = [
