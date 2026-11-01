@@ -386,6 +386,18 @@ async def game_loop():
     paid = await a.agent_row(agent)
     assert paid.credits == 1065 and paid.current_jobs == 0, "paid 165 agreed, minus 100 cost"
 
+    # The negotiation opens at the auction price: the runner-up's bid, not the winner's own
+    a = Arena()
+    with share(1.0):
+        winner, rival = a.agent(), a.agent()
+        jobs, auctions = JobService(a.db), AuctionService(a.db)
+        job = await jobs.create(JobCreate(title="J", description="d", specialty=AgentSpecialty.CODER, base_price=200))
+        auction = await auctions.create_auction(AuctionCreate(job_id=job.id))
+        await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=winner, amount=120))
+        await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=rival, amount=170))
+        await auctions.close_auction(auction.id)
+    assert a.fake.tables["negotiations"][0]["opening_price"] == 170
+
     # Share 0 / cap reached: the job starts at the winning bid with no negotiation row
     for ctx in (share(0.0), share(1.0, cap=0)):
         a = Arena()

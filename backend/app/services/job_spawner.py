@@ -142,7 +142,7 @@ class JobSpawner:
                 if result.winner_agent_id:
                     logger.info(
                         f"Auction {auction.id} closed: winner {result.winner_agent_name} "
-                        f"with bid ${result.winning_bid}"
+                        f"with bid ${result.winning_bid}, paid ${result.price_paid}"
                     )
                 else:
                     logger.info(f"Auction {auction.id} cancelled: no bids")

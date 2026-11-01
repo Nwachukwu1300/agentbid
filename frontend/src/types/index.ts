@@ -61,6 +61,7 @@ export interface AuctionWithJob extends Auction {
   job_status: string | null; // e.g. 'negotiating', 'unfilled'
   negotiated: boolean;
   deal_price: number | null; // agreed price when a negotiation reached a deal
+  price_paid: number | null; // second price: the runner-up's bid, or the winner's own if it was alone
   bid_count: number;
   lowest_bid: number | null;
   leading_agent_id: string | null;

@@ -41,7 +41,7 @@ export function NegotiationTranscript({ negotiation, agentName }: { negotiation:
         </span>
       </div>
       <p className="text-sm text-text-muted mb-4">
-        The client wanted to talk price before work started. Opening price {n.opening_price} (the winning bid), work
+        The client wanted to talk price before work started. Opening price {n.opening_price} (the auction price), work
         cost {n.work_cost}.
       </p>
 

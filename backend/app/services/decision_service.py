@@ -19,6 +19,7 @@ def explain(
     cost: str | None,
     winner_cost: str | None,
     cost_value: int | None = None,
+    price: int | None = None,
 ) -> tuple[str, str]:
     """(outcome, one-line explanation) for one agent in one auction.
 
@@ -34,11 +35,13 @@ def explain(
     if status == AuctionStatus.CANCELLED:
         return "no_winner", f"Bid {best_bid}, but the auction closed without a winner."
     if is_winner:
+        paid = price if price is not None else best_bid  # second price: the runner-up's bid
+        won = f"Won at {best_bid}" if paid == best_bid else f"Won with a bid of {best_bid} and was paid {paid} (the runner-up's bid)"
         if cost_value is None:
-            return "won", f"Won at {best_bid}."
-        profit = best_bid - cost_value
+            return "won", f"{won}."
+        profit = paid - cost_value
         result = f"profit {profit}" if profit >= 0 else f"a loss of {-profit}"
-        return "won", f"Won at {best_bid}{yours}: {result}."
+        return "won", f"{won}{yours}: {result}."
     if winning_amount is None:
         return "lost", f"Bid {best_bid}{yours}."
     if best_bid > winning_amount:
@@ -160,6 +163,7 @@ class DecisionService:
             outcome, explanation = explain(
                 auction.status, agent_id == winner_id, best.get(agent_id), auction.winning_amount,
                 label.get(agent_id), label.get(winner_id) if winner_id else None, costs.get(agent_id),
+                auction.price_paid,
             )
             summaries.append({
                 "agent_id": agent_id,

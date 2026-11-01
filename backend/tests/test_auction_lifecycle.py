@@ -241,6 +241,7 @@ async def main():
     await season_rollover(db, fake, spawner)
     await money_guards(db, fake, spawner)
     await private_costs(db, fake)
+    await second_price()
 
 
 def api_surface(db):
@@ -590,6 +591,75 @@ async def private_costs(db, fake):
         os.environ["PRIVATE_COST_SPREAD"] = "0"
         get_settings.cache_clear()
     print("private costs: all checks passed")
+
+
+async def second_price():
+    """The lowest bid wins and is paid the runner-up's bid (its own when alone); a separate fake database."""
+    db = cast(DatabaseService, FakeDB())
+    fake = cast(FakeDB, db)
+    agents, jobs, auctions = AgentService(db), JobService(db), AuctionService(db)
+
+    def agent(name, current_jobs=0):
+        now = datetime.now(timezone.utc).isoformat()
+        row = {"id": str(uuid.uuid4()), "user_id": str(uuid.uuid4()), "name": name, "specialty": "coder",
+               "auction_instructions": "x", "credits": 1000, "current_jobs": current_jobs, "is_active": True,
+               "created_at": now, "updated_at": now}
+        fake.tables.setdefault("agents", []).append(row)
+        return uuid.UUID(row["id"])
+
+    async def run(bids):
+        job = await jobs.create(JobCreate(title="J", description="d", specialty=AgentSpecialty.CODER, base_price=200))
+        auction = await auctions.create_auction(AuctionCreate(job_id=job.id))
+        for who, amount in bids:
+            await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=who, amount=amount))
+        return job.id, auction.id, await auctions.close_auction(auction.id)
+
+    events: asyncio.Queue = asyncio.Queue()
+    await get_event_manager().subscribe(events)
+    a, b, c = agent("A"), agent("B"), agent("C")
+    job_id, auction_id, result = await run([(b, 150), (a, 120), (c, 170)])
+    assert result.winner_agent_id == a and result.winning_bid == 120 and result.price_paid == 150
+    assert getattr(await jobs.get_by_id(job_id), "winning_bid", None) == 150, "the job pays the runner-up's bid"
+    listed = await auctions.get_auction_with_job(auction_id)
+    assert listed and listed.winning_amount == 120 and listed.price_paid == 150
+    await asyncio.sleep(0)
+    closed = [e for e in [events.get_nowait() for _ in range(events.qsize())] if e["type"] == "auction_closed"]
+    await get_event_manager().unsubscribe(events)
+    assert closed[-1]["data"]["winning_bid"] == 120 and closed[-1]["data"]["price_paid"] == 150
+
+    breakdown = await DecisionService(db).auction_breakdown(auction_id)
+    lines = {x["agent_name"]: x["explanation"] for x in breakdown["agents"]}
+    assert lines["A"] == "Won with a bid of 120 and was paid 150 (the runner-up's bid) with a work cost of 100 (idle): profit 50."
+    assert lines["B"].startswith("Bid 150 with a work cost of 100 (idle). The winner bid 120, 30 lower")
+
+    spawner = JobSpawner()
+    with patch("app.services.job_spawner.get_database_service", new=AsyncMock(return_value=db)):
+        await spawner._complete_expired_jobs(settle_all=True)
+    assert getattr(await agents.get_by_id(a), "credits", None) == 1050, "paid 150 minus cost 100"
+
+    # Alone: paid its own bid. Tie: the earlier bid wins and is paid the same amount.
+    _, _, alone = await run([(b, 130)])
+    assert alone.price_paid == 130
+    _, _, tie = await run([(c, 140), (a, 140)])
+    assert tie.winner_agent_id == c and tie.price_paid == 140
+
+    # A cheaper bidder that filled up is skipped and can't drag the price below the winner's bid
+    full, d, e = agent("Full", current_jobs=4), agent("D"), agent("E")
+    job = await jobs.create(JobCreate(title="J", description="d", specialty=AgentSpecialty.CODER, base_price=200))
+    auction = await auctions.create_auction(AuctionCreate(job_id=job.id))
+    await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=full, amount=90))
+    await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=d, amount=120))
+    await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=e, amount=160))
+    await agents.adjust(full, jobs=1)
+    skipped = await auctions.close_auction(auction.id)
+    assert skipped.winner_agent_id == d and skipped.price_paid == 160
+
+    prompt = AgentIntelligenceService(db)._build_system_prompt(
+        AgentState(agent_name="A", specialty="coder", auction_instructions="x", current_jobs=0, credits=1000),
+        AuctionContext(job_title="t", job_description="d", job_specialty="coder", market_average_price=200,
+                       rival_count=1, time_remaining_seconds=60, total_bids=0))
+    assert "SECOND PRICE" in prompt and "runner-up" in prompt
+    print("second price: all checks passed")
 
 
 if __name__ == "__main__":

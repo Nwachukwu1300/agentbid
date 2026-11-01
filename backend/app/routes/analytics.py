@@ -79,8 +79,13 @@ async def get_market_stats(
     )
 
     jobs_completed = len(completed_auctions)
-    total_volume = sum(a.get("winning_amount", 0) or 0 for a in completed_auctions)
-    avg_winning_bid = total_volume / jobs_completed if jobs_completed > 0 else 0
+    bids_total = sum(a.get("winning_amount", 0) or 0 for a in completed_auctions)
+    avg_winning_bid = bids_total / jobs_completed if jobs_completed > 0 else 0
+    # Volume is what was actually paid: second prices and negotiated deals, not the winning bids
+    paid = await fetch_all(
+        lambda: db.table("jobs").select("winning_bid").in_("status", ["in_progress", "completed"]).order("id")
+    )
+    total_volume = sum(j.get("winning_bid") or 0 for j in paid)
 
     return MarketStats(
         total_volume=total_volume,

@@ -55,6 +55,7 @@ class AuctionWithJob(Auction):
     job_status: str | None = None  # e.g. "negotiating", "unfilled"
     negotiated: bool = False  # the winner had to negotiate the price with the client
     deal_price: int | None = None  # the agreed price, once a negotiation reached a deal
+    price_paid: int | None = None  # what the winner is paid: the runner-up's bid, or its own if it was alone
     bid_count: int = 0
     lowest_bid: int | None = None
     leading_agent_id: UUID | None = None
@@ -93,5 +94,6 @@ class AuctionResult(BaseModel):
     winner_agent_id: UUID | None
     winner_agent_name: str | None
     winning_bid: int | None
+    price_paid: int | None = None  # second price: the runner-up's bid, or the winner's own if it was alone
     total_bids: int
     status: AuctionStatus

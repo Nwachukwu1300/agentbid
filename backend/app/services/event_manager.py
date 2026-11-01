@@ -87,6 +87,7 @@ class EventManager:
         winning_bid: int | None,
         total_bids: int,
         status: str,
+        price_paid: int | None = None,
     ) -> None:
         """Publish auction closed event."""
         await self.publish("auction_closed", {
@@ -96,6 +97,7 @@ class EventManager:
             "winner_agent_id": str(winner_agent_id) if winner_agent_id else None,
             "winner_agent_name": winner_agent_name,
             "winning_bid": winning_bid,
+            "price_paid": price_paid,  # second price: what the winner will be paid
             "total_bids": total_bids,
             "status": status,
         })

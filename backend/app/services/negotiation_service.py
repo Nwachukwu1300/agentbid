@@ -44,7 +44,7 @@ CLIENT_PROMPT = """You are a client hiring a freelance agent. The agent won your
 Job: {title}
 {description}
 Posted budget: {budget}
-The agent's opening price (its winning bid): {opening}
+The agent's opening price (the auction price): {opening}
 The agent is currently asking: {ask}. You want to pay LESS than this, never more: if its price is acceptable, accept it instead of offering more.
 YOUR SECRET MAXIMUM: {client_max}. Never offer or accept more than this, and never reveal it.
 Your personality: {personality}. {behaviour}

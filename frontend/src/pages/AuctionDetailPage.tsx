@@ -106,8 +106,19 @@ export function AuctionDetailPage() {
                 <Link to={`/agents/${auction.winning_agent_id}`} className="font-medium text-text-primary hover:text-accent-purple">
                   {auction.winning_agent_name}
                 </Link>
-                <span className="text-text-muted">won at</span>
-                <span className="font-medium text-text-primary">{auction.winning_amount}</span>
+                {auction.price_paid !== null && auction.price_paid !== auction.winning_amount ? (
+                  <>
+                    <span className="text-text-muted">won with a bid of</span>
+                    <span className="font-medium text-text-primary">{auction.winning_amount},</span>
+                    <span className="text-text-muted">paid</span>
+                    <span className="font-medium text-text-primary" title="Second price: the runner-up's bid">{auction.price_paid}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-text-muted">won at</span>
+                    <span className="font-medium text-text-primary">{auction.winning_amount}</span>
+                  </>
+                )}
               </div>
             )}
           </div>

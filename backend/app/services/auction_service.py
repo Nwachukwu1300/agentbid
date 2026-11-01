@@ -21,6 +21,16 @@ from app.services.event_manager import get_event_manager
 from app.config import get_settings
 
 
+def runner_up_price(bids: list[Bid], winning_bid_id) -> int | None:
+    """Second-price payment: the winner is paid the next bid after its own (bids sorted lowest first, earliest
+    on ties), or its own bid when nobody bid more. Never below the winner's bid, never above the budget."""
+    ids = [str(b.id) for b in bids]
+    if winning_bid_id is None or str(winning_bid_id) not in ids:
+        return None
+    i = ids.index(str(winning_bid_id))
+    return bids[i + 1].amount if i + 1 < len(bids) else bids[i].amount
+
+
 class AuctionService:
     def __init__(self, db: DatabaseService):
         self.db = db
@@ -116,6 +126,7 @@ class AuctionService:
             job_status=job.status.value,
             negotiated=job.negotiated,
             deal_price=job.winning_bid if job.negotiated and job.status in (JobStatus.IN_PROGRESS, JobStatus.COMPLETED) else None,
+            price_paid=runner_up_price(bids, auction.winning_bid_id) if auction.status == AuctionStatus.CLOSED else None,
             bid_count=len(bids),
             lowest_bid=bids[0].amount if bids else None,
             leading_agent_id=bids[0].agent_id if bids else None,
@@ -300,12 +311,13 @@ class AuctionService:
 
             winner_agent_name = winner_agent.name
 
-            # No credits move here: the winner is paid its bid when the job completes
+            # No credits move here: the winner is paid when the job completes, at the runner-up's bid
+            price = runner_up_price(bids, winning_bid.id)
             await self.agent_service.adjust(winning_bid.agent_id, jobs=1)
 
-            # Assign job to winner
+            # Assign job to winner; the job's winning_bid is what it pays
             await self.job_service.assign_to_agent(
-                auction.job_id, winning_bid.agent_id, winning_bid.amount, winning_bid.work_cost
+                auction.job_id, winning_bid.agent_id, price, winning_bid.work_cost
             )
 
             result = AuctionResult(
@@ -314,6 +326,7 @@ class AuctionService:
                 winner_agent_id=winning_bid.agent_id,
                 winner_agent_name=winner_agent_name,
                 winning_bid=winning_bid.amount,
+                price_paid=price,
                 total_bids=total_bids,
                 status=AuctionStatus.CLOSED,
             )
@@ -336,7 +349,7 @@ class AuctionService:
 
         await get_event_manager().publish_auction_closed(
             auction_id, auction.job_id, job.title, result.winner_agent_id,
-            result.winner_agent_name, result.winning_bid, total_bids, result.status.value,
+            result.winner_agent_name, result.winning_bid, total_bids, result.status.value, result.price_paid,
         )
 
         if result.status == AuctionStatus.CANCELLED:
@@ -348,7 +361,7 @@ class AuctionService:
             # Some winners must agree the price with the client first (no AI call here: turns run in their own loop)
             from app.services.negotiation_service import NegotiationService  # avoids an import cycle
             await NegotiationService(self.db).maybe_start(
-                auction_id, job, winning_bid.agent_id, winning_bid.amount,
+                auction_id, job, winning_bid.agent_id, result.price_paid,
                 winning_bid.work_cost or self.settings.work_cost(job.base_price),
             )
         return result

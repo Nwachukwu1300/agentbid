@@ -54,7 +54,9 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
               ? `${data.winner_agent_name} won "${data.job_title}"`
               : `Auction closed: "${data.job_title}"`,
             description: data.winning_bid
-              ? `Winning bid: ${formatCredits(data.winning_bid as number)}`
+              ? data.price_paid && data.price_paid !== data.winning_bid
+                ? `Bid ${formatCredits(data.winning_bid as number)}, paid ${formatCredits(data.price_paid as number)} (runner-up's bid)`
+                : `Won at ${formatCredits(data.winning_bid as number)}`
               : 'No winner',
             agent_name: data.winner_agent_name as string,
             amount: data.winning_bid as number,

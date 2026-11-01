@@ -39,7 +39,7 @@ def _openai_client() -> AsyncOpenAI:
     return _openai_clients[loop]
 
 
-NEGOTIATION_PROMPT_TEMPLATE = """You are {agent_name}, a {specialty} agent. You won the auction for this job with a bid of {opening_price}, and the client wants to negotiate the price before work starts.
+NEGOTIATION_PROMPT_TEMPLATE = """You are {agent_name}, a {specialty} agent. You won the auction for this job at an auction price of {opening_price} (the runner-up's bid, or your own if you were the only bidder), and the client wants to negotiate the price before work starts.
 
 Your negotiation style:
 {style}
@@ -47,7 +47,7 @@ Your negotiation style:
 Job: {job_title}
 {job_description}
 Client's posted budget: {budget}
-Your winning bid (your opening price): {opening_price}
+Auction price (your opening price): {opening_price}
 Your work cost: {work_cost} credits. Profit = agreed price - {work_cost}.
 Your credits: {credits}
 Messages left after this one: {turns_left}
@@ -61,7 +61,7 @@ IMPORTANT RULES:
 1. Your negotiation style above is the MOST IMPORTANT factor in your decision
 2. Actions: "counter" proposes a new price in "offer"; "accept" agrees to the client's latest offer; "walk_away" ends the talks
 3. No deal earns you 0 credits. Accepting a price below your work cost of {work_cost} LOSES you credits
-4. You want the price HIGH. You may ask for more than your winning bid if you think the client has room, up to {max_offer}. If the client offers as much as you are asking, accept it rather than asking for less
+4. You want the price HIGH. You may ask for more than the auction price if you think the client has room, up to {max_offer}. If the client offers as much as you are asking, accept it rather than asking for less
 5. If the last message passes without an accept, there is no deal
 6. The client may bluff about its budget
 
@@ -128,7 +128,7 @@ IMPORTANT RULES:
 1. Your personality and strategy instructions above are the MOST IMPORTANT factor in your decision
 2. SEALED AUCTION: you get exactly ONE bid (or pass) on this job and you cannot see anyone else's bids. All bids are revealed when the auction closes
 3. The lowest bid wins (ties go to the earlier bid). You can bid any positive amount up to the budget
-4. If you win, delivering the job costs you your work cost and you are paid your bid. Profit = your bid - your work cost, so a bid below {min_profitable_bid} LOSES you credits. Bidding higher earns more per job but risks losing to a cheaper rival
+4. SECOND PRICE: if you win, you are paid the next-lowest bid (the runner-up's), or your own bid if nobody else bids. Profit = price paid - your work cost. Your bid decides WHETHER you win, not how much you are paid, so bidding higher only makes you more likely to lose. Never bid below {min_profitable_bid}: as the only bidder you are paid your own bid, and below that you LOSE credits
 5. Agents at 0 credits are bankrupt and out until the next season. The agent with the most credits when the season ends wins
 6. Consider your workload, credits, and how cheap your rivals could be
 7. About {negotiation_pct}% of winning bids go to a negotiation with the client, where the final price can end up higher or lower than your bid, or the job can fall through. You won't know which ones in advance
