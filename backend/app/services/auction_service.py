@@ -21,16 +21,6 @@ from app.services.event_manager import get_event_manager
 from app.config import get_settings
 
 
-def runner_up_price(bids: list[Bid], winning_bid_id) -> int | None:
-    """Second-price payment: the winner is paid the next bid after its own (bids sorted lowest first, earliest
-    on ties), or its own bid when nobody bid more. Never below the winner's bid, never above the budget."""
-    ids = [str(b.id) for b in bids]
-    if winning_bid_id is None or str(winning_bid_id) not in ids:
-        return None
-    i = ids.index(str(winning_bid_id))
-    return bids[i + 1].amount if i + 1 < len(bids) else bids[i].amount
-
-
 class AuctionService:
     def __init__(self, db: DatabaseService):
         self.db = db
@@ -104,9 +94,22 @@ class AuctionService:
             await self.agent_service.get_by_id(auction.winning_agent_id)
             if auction.winning_agent_id else None
         )
-        return self._with_job(auction, job, await self.get_auction_bids(auction_id), winner.name if winner else None)
+        opening = await self._opening_prices([auction.id]) if job.negotiated else {}
+        return self._with_job(
+            auction, job, await self.get_auction_bids(auction_id), winner.name if winner else None,
+            opening.get(str(auction.id)),
+        )
 
-    def _with_job(self, auction: Auction, job: Job, bids: list[Bid], winner_name: str | None) -> AuctionWithJob:
+    async def _opening_prices(self, auction_ids: list) -> dict[str, int]:
+        """A negotiated job's winning_bid becomes the deal price; the auction's price stays on the negotiation."""
+        rows = (await self.db.table("negotiations").select("auction_id, opening_price").in_(
+            "auction_id", [str(i) for i in auction_ids]
+        ).execute()).data
+        return {str(row["auction_id"]): row["opening_price"] for row in rows}
+
+    def _with_job(
+        self, auction: Auction, job: Job, bids: list[Bid], winner_name: str | None, opening_price: int | None = None,
+    ) -> AuctionWithJob:
         """Auction plus job details and bid stats. Bids sorted lowest first, earliest on ties, so bids[0] leads."""
         return AuctionWithJob(
             id=auction.id,
@@ -126,7 +129,8 @@ class AuctionService:
             job_status=job.status.value,
             negotiated=job.negotiated,
             deal_price=job.winning_bid if job.negotiated and job.status in (JobStatus.IN_PROGRESS, JobStatus.COMPLETED) else None,
-            price_paid=runner_up_price(bids, auction.winning_bid_id) if auction.status == AuctionStatus.CLOSED else None,
+            # The second price set at closing: on the job, or on the negotiation once that replaced it
+            price_paid=(opening_price if job.negotiated else job.winning_bid) if auction.status == AuctionStatus.CLOSED else None,
             bid_count=len(bids),
             lowest_bid=bids[0].amount if bids else None,
             leading_agent_id=bids[0].agent_id if bids else None,
@@ -166,6 +170,9 @@ class AuctionService:
         ).order("created_at").execute()).data:
             bids.setdefault(str(row["auction_id"]), []).append(self._to_bid(row))
 
+        negotiated = [a.id for a in auctions if (j := jobs.get(str(a.job_id))) and j.negotiated]
+        opening = await self._opening_prices(negotiated) if negotiated else {}
+
         result = []
         for auction in auctions:
             job = jobs.get(str(auction.job_id))
@@ -173,6 +180,7 @@ class AuctionService:
                 result.append(self._with_job(
                     auction, job, bids.get(str(auction.id), []),
                     names.get(str(auction.winning_agent_id)) if auction.winning_agent_id else None,
+                    opening.get(str(auction.id)),
                 ))
         return result
 
@@ -275,14 +283,23 @@ class AuctionService:
         total_bids = len(bids)
 
         # Determine winner: bids are sorted lowest first, earliest on ties.
-        # Skip agents that filled up (won other jobs), went bankrupt or were deactivated since bidding.
-        winning_bid = None
-        winner_agent = None
+        # Only agents that can still take the job count: not full (won other jobs), bankrupt or deactivated.
+        bidders = {}
         for bid in bids:
-            agent = await self.agent_service.get_by_id(bid.agent_id)
-            if agent and agent.is_active and not agent.is_at_capacity and not agent.is_bankrupt:
-                winning_bid, winner_agent = bid, agent
-                break
+            if bid.agent_id not in bidders:
+                bidders[bid.agent_id] = await self.agent_service.get_by_id(bid.agent_id)
+        eligible = [
+            b for b in bids
+            if (a := bidders[b.agent_id]) and a.is_active and not a.is_at_capacity and not a.is_bankrupt
+        ]
+        winning_bid = eligible[0] if eligible else None
+        winner_agent = bidders[winning_bid.agent_id] if winning_bid else None
+        # Second price: the next eligible bid from ANOTHER owner, so nobody can raise their own pay with a
+        # second agent's high bid (or a full agent's); the winner's own bid when there is none
+        price = next(
+            (b.amount for b in eligible[1:] if bidders[b.agent_id].user_id != winner_agent.user_id),
+            winning_bid.amount,
+        ) if winning_bid else None
 
         now = datetime.now(timezone.utc).isoformat()
         if winning_bid:
@@ -311,8 +328,7 @@ class AuctionService:
 
             winner_agent_name = winner_agent.name
 
-            # No credits move here: the winner is paid when the job completes, at the runner-up's bid
-            price = runner_up_price(bids, winning_bid.id)
+            # No credits move here: the winner is paid the second price when the job completes
             await self.agent_service.adjust(winning_bid.agent_id, jobs=1)
 
             # Assign job to winner; the job's winning_bid is what it pays

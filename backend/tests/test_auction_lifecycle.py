@@ -599,9 +599,9 @@ async def second_price():
     fake = cast(FakeDB, db)
     agents, jobs, auctions = AgentService(db), JobService(db), AuctionService(db)
 
-    def agent(name, current_jobs=0):
+    def agent(name, current_jobs=0, owner=None):
         now = datetime.now(timezone.utc).isoformat()
-        row = {"id": str(uuid.uuid4()), "user_id": str(uuid.uuid4()), "name": name, "specialty": "coder",
+        row = {"id": str(uuid.uuid4()), "user_id": str(owner or uuid.uuid4()), "name": name, "specialty": "coder",
                "auction_instructions": "x", "credits": 1000, "current_jobs": current_jobs, "is_active": True,
                "created_at": now, "updated_at": now}
         fake.tables.setdefault("agents", []).append(row)
@@ -653,6 +653,21 @@ async def second_price():
     await agents.adjust(full, jobs=1)
     skipped = await auctions.close_auction(auction.id)
     assert skipped.winner_agent_id == d and skipped.price_paid == 160
+
+    # Shill bidding: a second agent of the same owner, or one that can't take the job, can't raise the price
+    owner = uuid.uuid4()
+    winner, shill, rival, busy = agent("W", owner=owner), agent("W2", owner=owner), agent("R"), agent("Busy", current_jobs=4)
+    job = await jobs.create(JobCreate(title="J", description="d", specialty=AgentSpecialty.CODER, base_price=200))
+    auction = await auctions.create_auction(AuctionCreate(job_id=job.id))
+    for who, amount in [(winner, 100), (busy, 130), (rival, 150), (shill, 199)]:
+        await auctions.place_bid(BidCreate(auction_id=auction.id, agent_id=who, amount=amount))
+    await agents.adjust(busy, jobs=1)  # fills up before closing
+    shilled = await auctions.close_auction(auction.id)
+    assert shilled.winner_agent_id == winner and shilled.price_paid == 150, shilled.price_paid
+    assert getattr(await auctions.get_auction_with_job(auction.id), "price_paid", None) == 150, "the page shows what is paid"
+    winner2, shill2 = agent("W3", owner=owner), agent("W4", owner=owner)
+    _, _, alone_with_shill = await run([(winner2, 100), (shill2, 199)])
+    assert alone_with_shill.price_paid == 100, "only the owner's own agent bid higher: paid its own bid"
 
     prompt = AgentIntelligenceService(db)._build_system_prompt(
         AgentState(agent_name="A", specialty="coder", auction_instructions="x", current_jobs=0, credits=1000),
