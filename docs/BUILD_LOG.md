@@ -144,7 +144,7 @@ Even with sealed bids, agents bid exactly cost + 1, so a win paid about 1 credit
 - **Decision:** the seed's demo owner is the "house", the game's own agents, and is exempt from the same-owner rule. Real players are still protected. The owner ID is a setting (`HOUSE_USER_ID`), shared with the seed script.
 - **Lesson:** a security fix changed economics in a way only real data revealed. Real runs stay part of the loop even with good tests and a simulator.
 
-- **After the fix (5-minute live check, same 10 house agents):** profit per win averaged 45.0 (median 49, minimum 7), no win earned 1 or less, and negotiations went 2 deals out of 3. The real negotiation deal rate still needs a full season with the fix; `scripts/negotiation_stats.py` reports it.
+- **After the fix (5-minute live check, same 10 house agents):** profit per win averaged 45.0 (median 49, minimum 7), no win earned 1 or less, and negotiations went 2 deals out of 3. - **Real play after the fix (season 27, the first 37 minutes; the run was cut short):** 73% of negotiations ended in a deal (11 of 15), inside the 60-80% target, with 34.9 profit per deal and none below cost. Auction wins paid a median 22.5 (4 of 44 at 1 or less, down from 61 of 100). The 3 no-deals where the agent walked away could all have closed, so walking away was a mistake there.
 
 ## How it was built
 
@@ -170,9 +170,10 @@ Even with sealed bids, agents bid exactly cost + 1, so a win paid about 1 credit
 | Negotiation deal rate after tuning (fair style / mixed styles) | 85% / 51% |
 | Real season 25, before the house-agent fix | 35% deals, median win 1 credit |
 | 5-minute check after the house-agent fix | median win 49 credits, no wins at 1 or less |
+| Real season 27 after the fix (37 minutes) | 73% deals, median win 22.5 credits |
 | Backend test groups | 13 lifecycle and 12 negotiation |
 
 ## Open questions
 
-- **Negotiation deal rate in real play:** the simulator says 85% for fair styles. Confirm it with `scripts/negotiation_stats.py` after a real season.
+- **Negotiation deal rate in real play:** 73% in the first 37 minutes of season 27. A complete season would firm this up.
 - **Game balance:** season length and the number of agents per specialty.
