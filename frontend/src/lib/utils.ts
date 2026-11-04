@@ -6,14 +6,15 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Credits are game money, never dollars
 export function formatCredits(amount: number): string {
   if (amount >= 1000000) {
-    return `$${(amount / 1000000).toFixed(1)}M`;
+    return `${(amount / 1000000).toFixed(1)}M cr`;
   }
   if (amount >= 1000) {
-    return `$${(amount / 1000).toFixed(1)}K`;
+    return `${(amount / 1000).toFixed(1)}K cr`;
   }
-  return `$${amount}`;
+  return `${Math.round(amount)} cr`;
 }
 
 export function formatPercentage(value: number): string {
@@ -64,15 +65,4 @@ export function getSpecialtyLabel(specialty: AgentSpecialty): string {
     tester: 'Tester',
   };
   return labels[specialty];
-}
-
-export function getSpecialtyIcon(specialty: AgentSpecialty): string {
-  const icons: Record<AgentSpecialty, string> = {
-    coder: '💻',
-    designer: '🎨',
-    writer: '✍️',
-    data_analyst: '📊',
-    tester: '🧪',
-  };
-  return icons[specialty];
 }

@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+// The Rulebook: AgentBid as a strategy board game. A pale printed board carries white card-stock
+// pieces outlined in ink; the five specialties are the five wooden player colours.
 export default {
   content: [
     "./index.html",
@@ -7,66 +9,77 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Primary dark theme colors
+        // The board and the pieces laid on it
         background: {
-          DEFAULT: '#0B0F1A',
-          secondary: '#111827',
-          tertiary: '#1F2937',
-          card: '#151B2B',
-          hover: '#1E2538',
+          DEFAULT: '#E7EDE6', // printed board
+          secondary: '#DCE4DA', // board margin (sidebar, bands)
+          tertiary: '#F1F4F0', // inset areas inside a card
+          card: '#FDFDFB', // card stock
+          hover: '#E9EFE8',
         },
-        // Accent colors
+        // The box lid (landing page) and its gold foil, also the primary action
+        box: {
+          DEFAULT: '#14402F',
+          deep: '#0F3123',
+          ink: '#F5F4EE',
+          muted: '#B8CBBF',
+        },
+        gold: {
+          DEFAULT: '#F0B93A',
+          hover: '#E3A925',
+          ink: '#2B2105',
+        },
+        ink: '#18201B',
+        // Interface accents, all readable as text on card stock
         accent: {
-          purple: '#8B5CF6',
-          blue: '#3B82F6',
-          green: '#22C55E',
-          orange: '#F97316',
-          red: '#EF4444',
-          cyan: '#06B6D4',
-          pink: '#EC4899',
+          purple: '#1F5C43', // the primary interactive accent: box green
+          blue: '#2B5CB0',
+          green: '#1E7A47',
+          orange: '#A3561A',
+          red: '#B4382E',
+          cyan: '#2B5CB0',
+          pink: '#A8326E',
         },
-        // Specialty colors (matching UI design)
+        // Player colours: one per specialty
         specialty: {
-          coder: '#3B82F6',
-          designer: '#8B5CF6',
-          writer: '#22C55E',
-          data_analyst: '#F97316',
-          tester: '#EF4444',
+          coder: '#2B5CB0',
+          designer: '#7D3C98',
+          writer: '#C2362C',
+          data_analyst: '#E0A21C',
+          tester: '#2E8452',
         },
-        // Text colors
         text: {
-          primary: '#F9FAFB',
-          secondary: '#9CA3AF',
-          muted: '#6B7280',
+          primary: '#18201B',
+          secondary: '#3F4A43',
+          muted: '#5D6A62',
         },
-        // Border colors
         border: {
-          DEFAULT: '#1F2937',
-          light: '#374151',
+          DEFAULT: '#C9D3C8',
+          light: '#AEBBAD',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        sans: ['Archivo', 'system-ui', 'sans-serif'],
+        mono: ['Archivo', 'system-ui', 'sans-serif'], // numbers use tabular figures, not a mono costume
+      },
+      boxShadow: {
+        // card stock lying on the board
+        piece: '0 1px 0 rgba(24, 32, 27, 0.06), 0 8px 16px -10px rgba(24, 32, 27, 0.35)',
+        lifted: '0 2px 0 rgba(24, 32, 27, 0.08), 0 14px 28px -14px rgba(24, 32, 27, 0.45)',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'slide-in': 'slideIn 0.3s ease-out',
+        'slide-in': 'slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         'fade-in': 'fadeIn 0.2s ease-out',
-        'glow': 'glow 2s ease-in-out infinite alternate',
       },
       keyframes: {
         slideIn: {
-          '0%': { transform: 'translateX(100%)', opacity: '0' },
+          '0%': { transform: 'translateX(12px)', opacity: '0' },
           '100%': { transform: 'translateX(0)', opacity: '1' },
         },
         fadeIn: {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
-        },
-        glow: {
-          '0%': { boxShadow: '0 0 5px rgba(139, 92, 246, 0.5)' },
-          '100%': { boxShadow: '0 0 20px rgba(139, 92, 246, 0.8)' },
         },
       },
     },

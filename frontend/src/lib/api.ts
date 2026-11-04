@@ -11,6 +11,7 @@ import type {
   MarketStats,
   LeaderboardEntry,
   Season,
+  SeasonResult,
   SpecialtyShare,
   TrendPoint,
 } from '@/types';
@@ -222,6 +223,9 @@ export const analyticsAPI = {
 
   getCurrentSeason: () =>
     fetchAPI<Season>('/seasons/current', { requireAuth: false }),
+
+  getSeasonResults: (number: number) =>
+    fetchAPI<{ season: Season; results: SeasonResult[] }>(`/seasons/${number}/results`, { requireAuth: false }),
 
   getSpecialtyShare: () =>
     fetchAPI<SpecialtyShare[]>('/analytics/specialty-share', { requireAuth: false }),

@@ -25,7 +25,7 @@ export function ProgressBar({
     purple: 'bg-accent-purple',
     blue: 'bg-accent-blue',
     green: 'bg-accent-green',
-    orange: 'bg-accent-orange',
+    orange: 'bg-gold-hover', // warm "watch this" colour from the world's gold, not an off-palette orange
     red: 'bg-accent-red',
   };
 

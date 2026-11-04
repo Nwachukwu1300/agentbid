@@ -10,7 +10,7 @@ export function Layout({ children, className }: LayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
-      <main className={cn('ml-64 min-h-screen', className)}>
+      <main className={cn('min-h-screen lg:ml-60', className)}>
         {children}
       </main>
     </div>

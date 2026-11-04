@@ -14,14 +14,14 @@ import {
   MessagesSquare,
 } from 'lucide-react';
 import { Layout } from '@/components/layout';
-import { SpecialtyBadge } from '@/components/ui';
+import { SpecialtyBadge, PlayerToken } from '@/components/ui';
 import {
   agentBuilderAPI,
   agentsAPI,
   ConversationMessage,
   GeneratedInstructions,
 } from '@/lib/api';
-import { cn, getSpecialtyIcon } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import type { AgentSpecialty } from '@/types';
 
 type CreationStep = 'specialty' | 'chat' | 'preview' | 'finalize';
@@ -215,7 +215,7 @@ export function CreateAgentPage() {
                 className={cn(
                   'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-colors',
                   step === s
-                    ? 'bg-accent-purple text-white'
+                    ? 'bg-ink text-background-card'
                     : ['specialty', 'chat', 'preview', 'finalize'].indexOf(step) > i
                     ? 'bg-accent-green text-white'
                     : 'bg-background-tertiary text-text-muted'
@@ -246,7 +246,7 @@ export function CreateAgentPage() {
                   className="card p-6 text-left hover:border-accent-purple/50 transition-all group disabled:opacity-50"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="text-4xl">{getSpecialtyIcon(spec.value)}</div>
+                    <PlayerToken specialty={spec.value} size="lg" />
                     <div className="flex-1">
                       <h3 className="text-lg font-semibold text-text-primary group-hover:text-accent-purple transition-colors">
                         {spec.label}
@@ -322,10 +322,10 @@ export function CreateAgentPage() {
                       <Bot className="h-4 w-4 text-accent-purple" />
                     </div>
                     <div className="bg-background-tertiary rounded-2xl px-4 py-3">
-                      <div className="flex gap-1">
-                        <span className="w-2 h-2 bg-text-muted rounded-full animate-bounce" />
-                        <span className="w-2 h-2 bg-text-muted rounded-full animate-bounce [animation-delay:0.1s]" />
-                        <span className="w-2 h-2 bg-text-muted rounded-full animate-bounce [animation-delay:0.2s]" />
+                      <div className="flex gap-1" role="status" aria-label="The builder is writing">
+                        <span className="w-2 h-2 bg-text-muted rounded-full animate-pulse" />
+                        <span className="w-2 h-2 bg-text-muted rounded-full animate-pulse [animation-delay:0.2s]" />
+                        <span className="w-2 h-2 bg-text-muted rounded-full animate-pulse [animation-delay:0.4s]" />
                       </div>
                     </div>
                   </div>
@@ -360,7 +360,7 @@ export function CreateAgentPage() {
                   <button
                     onClick={handleGenerate}
                     disabled={isLoading}
-                    className="w-full mt-4 btn-primary bg-gradient-to-r from-accent-purple to-accent-cyan"
+                    className="w-full mt-4 btn-primary"
                   >
                     <Sparkles className="mr-2 h-4 w-4" />
                     Generate Agent Instructions
@@ -425,7 +425,7 @@ export function CreateAgentPage() {
                 <div className="card p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-accent-orange" />
+                      <Zap className="h-5 w-5 text-ink" />
                       Auction Strategy
                     </h3>
                     <button
@@ -506,7 +506,7 @@ export function CreateAgentPage() {
                   <button
                     onClick={handleCreateAgent}
                     disabled={!agentName.trim() || isCreating}
-                    className="btn-primary flex-1 bg-gradient-to-r from-accent-green to-accent-cyan"
+                    className="btn-primary flex-1"
                   >
                     {isCreating ? (
                       <>

@@ -18,7 +18,8 @@ How AgentBid got from a freelance-marketplace demo to a strategy arena for AI ag
 | 29 Oct | Negotiation feature, built in 4 phases | `617374b`–`5be299f` |
 | 31 Oct–1 Nov | Fixing profit collapse: private costs, second-price payment | `5f021a7`–`4421700` |
 | 1 Nov | Negotiation deal-rate tuning with a simulator | `50a1ce2` |
-| 1 Nov | Real season reveals the demo agents disable second-price; house-agent fix | this branch |
+| 1 Nov | Real season reveals the demo agents disable second-price; house-agent fix | `36e2620` |
+| 3-4 Nov | Design: critique, then "The Rulebook" redesign of the whole app | this branch |
 
 ## Key decisions
 
@@ -144,7 +145,21 @@ Even with sealed bids, agents bid exactly cost + 1, so a win paid about 1 credit
 - **Decision:** the seed's demo owner is the "house", the game's own agents, and is exempt from the same-owner rule. Real players are still protected. The owner ID is a setting (`HOUSE_USER_ID`), shared with the seed script.
 - **Lesson:** a security fix changed economics in a way only real data revealed. Real runs stay part of the loop even with good tests and a simulator.
 
-- **After the fix (5-minute live check, same 10 house agents):** profit per win averaged 45.0 (median 49, minimum 7), no win earned 1 or less, and negotiations went 2 deals out of 3. - **Real play after the fix (season 27, the first 37 minutes; the run was cut short):** 73% of negotiations ended in a deal (11 of 15), inside the 60-80% target, with 34.9 profit per deal and none below cost. Auction wins paid a median 22.5 (4 of 44 at 1 or less, down from 61 of 100). The 3 no-deals where the agent walked away could all have closed, so walking away was a mistake there.
+- **After the fix (5-minute live check, same 10 house agents):** profit per win averaged 45.0 (median 49, minimum 7), no win earned 1 or less, and negotiations went 2 deals out of 3.
+- **Real play after the fix (season 27, the first 37 minutes; the run was cut short):** 73% of negotiations ended in a deal (11 of 15), inside the 60-80% target, with 34.9 profit per deal and none below cost. Auction wins paid a median 22.5 (4 of 44 at 1 or less, down from 61 of 100). The 3 no-deals where the agent walked away could all have closed, so walking away was a mistake there.
+
+### 11. Redesign: the game should look like a game
+- **Problem:** a design critique of the landing page scored it **15 of 36**. It looked like a generic dark AI dashboard (purple gradients, glowing cards, emoji icons). It never showed the game itself, and the people most likely to read it (people judging the work) couldn't tell what AgentBid was within a few seconds.
+- **Decision:** a new look for the whole app, called **The Rulebook**: AgentBid presented as a strategy board game.
+  - A pale printed board, white card-stock pieces outlined in ink, and a bottle-green box lid with gold. Gold is used only for the main action.
+  - The five specialties became five player colours, shown as flat tokens, replacing the emoji.
+  - One self-hosted font (Archivo), set wide and heavy for titles, with tabular numbers so the credits line up.
+  - The landing page leads with the hook, a "How to play" card, and **"Play one round"**: a real finished auction stepped through like a rulebook example (the job, the sealed bids, the reveal, second price, the client's call, the score). The winner's token moves onto the job card at the end; that is the page's one animation.
+  - "Designer's notes" puts three decisions from this log on the page, with their numbers.
+- **Why:** the strongest thing AgentBid has is the round itself, so the page shows a real one instead of describing it. A board-game look explains bidding, turns and seasons without extra words.
+- **Trade-off:** a light, playful look over the "serious AI tool" look. Rebuilding every page at once was more work, but avoided two looks living side by side.
+- **Checks:** an independent design review against the brief found 8 fixes (among them the token not travelling, a tied season crowning a winner at 1,000 credits, and two note numbers that didn't match this log). A second round found 3 small phone issues. All were fixed and confirmed in screenshots at 1440 and 390 pixels wide. Typecheck, lint and the production build pass.
+- **Honesty rules on the page:** every number on the landing page comes from this log or live data, and the example round is labelled "Sample round, not live data" when the arena has no finished round yet.
 
 ## How it was built
 
@@ -171,6 +186,7 @@ Even with sealed bids, agents bid exactly cost + 1, so a win paid about 1 credit
 | Real season 25, before the house-agent fix | 35% deals, median win 1 credit |
 | 5-minute check after the house-agent fix | median win 49 credits, no wins at 1 or less |
 | Real season 27 after the fix (37 minutes) | 73% deals, median win 22.5 credits |
+| Landing page design critique, before the redesign | 15 of 36 |
 | Backend test groups | 13 lifecycle and 12 negotiation |
 
 ## Open questions

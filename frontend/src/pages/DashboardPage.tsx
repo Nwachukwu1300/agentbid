@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, DollarSign, Trophy, TrendingUp, Zap, LogOut } from 'lucide-react';
+import { Plus, Coins, Trophy, TrendingUp, Zap, LogOut } from 'lucide-react';
 import { Layout } from '@/components/layout';
 import { AgentCard } from '@/components/agent';
 import { StatCard } from '@/components/ui';
@@ -119,14 +119,14 @@ export function DashboardPage() {
           <StatCard
             label="Total Earnings"
             value={formatCredits(totalEarnings)}
-            icon={DollarSign}
+            icon={Coins}
             iconColor="text-accent-green"
           />
           <StatCard
             label="Jobs Won"
             value={totalJobsWon.toString()}
             icon={Trophy}
-            iconColor="text-accent-orange"
+            iconColor="text-ink"
           />
           <StatCard
             label="Avg Win Rate"
@@ -144,7 +144,7 @@ export function DashboardPage() {
 
         {/* Error state */}
         {error && (
-          <div className="card bg-red-500/10 border-red-500/30 text-red-400 mb-6">
+          <div className="card bg-accent-red/10 border-accent-red/40 text-accent-red mb-6">
             <p>{error}</p>
             <button
               onClick={() => window.location.reload()}

@@ -7,7 +7,11 @@ import { cn } from '@/lib/utils';
 type AuthMode = 'login' | 'signup';
 
 export function AuthPage() {
-  const [mode, setMode] = useState<AuthMode>('login');
+  const location = useLocation();
+  // "Sign up and build an agent" links here with ?mode=signup; everything else opens sign-in
+  const [mode, setMode] = useState<AuthMode>(
+    new URLSearchParams(location.search).get('mode') === 'signup' ? 'signup' : 'login'
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -17,7 +21,6 @@ export function AuthPage() {
 
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const from = (location.state as { from?: string })?.from || '/dashboard';
 
@@ -97,14 +100,13 @@ export function AuthPage() {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Back to home */}
-        <Link
-          to="/"
-          className="flex items-center gap-2 text-text-secondary hover:text-text-primary mb-8 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to home
-        </Link>
+        <div className="mb-8 flex items-center justify-between">
+          <Link to="/" className="title-wide text-2xl text-ink">AgentBid</Link>
+          <Link to="/" className="flex items-center gap-1.5 text-sm font-semibold text-text-secondary hover:text-text-primary transition-colors">
+            <ArrowLeft className="w-4 h-4" />
+            Home
+          </Link>
+        </div>
 
         {/* Auth card */}
         <div className="card">
@@ -115,14 +117,14 @@ export function AuthPage() {
             </h1>
             <p className="text-text-secondary">
               {mode === 'login'
-                ? 'Sign in to manage your AI agents'
-                : 'Join the AI Agent Marketplace'}
+                ? 'Sign in to manage your agents'
+                : 'Build an agent and join the season'}
             </p>
           </div>
 
           {/* Error message */}
           {error && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm mb-6">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-accent-red/10 border border-accent-red/40 text-accent-red text-sm mb-6">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               {error}
             </div>
@@ -194,8 +196,8 @@ export function AuthPage() {
               className={cn(
                 'w-full py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2',
                 loading
-                  ? 'bg-accent-purple/50 text-white/70 cursor-not-allowed'
-                  : 'bg-accent-purple text-white hover:bg-accent-purple/90'
+                  ? 'bg-gold/60 text-gold-ink/70 border border-ink/40 cursor-not-allowed'
+                  : 'bg-gold text-gold-ink border border-ink/80 hover:bg-gold-hover'
               )}
             >
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -219,11 +221,6 @@ export function AuthPage() {
             </button>
           </div>
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-text-muted text-sm mt-6">
-          By continuing, you agree to our Terms of Service and Privacy Policy
-        </p>
       </div>
     </div>
   );

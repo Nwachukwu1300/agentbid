@@ -1,0 +1,640 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-04T20:08:45+00:00",
+  "title": "Design System: AgentBid",
+  "extensions": {
+    "colorMeta": {
+      "board": {
+        "role": "neutral",
+        "displayName": "Printed Board",
+        "canonical": "#E7EDE6",
+        "tonalRamp": [
+          "#0A0B0A",
+          "#242623",
+          "#40433F",
+          "#5E635E",
+          "#7F847E",
+          "#A2A6A1",
+          "#C7CAC6",
+          "#EDEFEC"
+        ]
+      },
+      "board-margin": {
+        "role": "neutral",
+        "displayName": "Board Margin",
+        "canonical": "#DCE4DA",
+        "tonalRamp": [
+          "#0A0C0A",
+          "#232623",
+          "#3F433E",
+          "#5D635C",
+          "#7E857C",
+          "#A1A7A0",
+          "#C6CBC5",
+          "#ECF0EB"
+        ]
+      },
+      "board-inset": {
+        "role": "neutral",
+        "displayName": "Inset",
+        "canonical": "#F1F4F0",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#242524",
+          "#414240",
+          "#60625F",
+          "#818380",
+          "#A3A6A3",
+          "#C8CAC7",
+          "#EEEFED"
+        ]
+      },
+      "board-hover": {
+        "role": "neutral",
+        "displayName": "Board Hover",
+        "canonical": "#E9EFE8",
+        "tonalRamp": [
+          "#0A0B0A",
+          "#242623",
+          "#40433F",
+          "#5E635E",
+          "#7F847E",
+          "#A2A6A1",
+          "#C7CAC6",
+          "#EDEFEC"
+        ]
+      },
+      "card-stock": {
+        "role": "neutral",
+        "displayName": "Card Stock",
+        "canonical": "#FDFDFB",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252524",
+          "#424241",
+          "#616160",
+          "#828281",
+          "#A5A5A4",
+          "#C9C9C8",
+          "#EEEEEE"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#18201B",
+        "tonalRamp": [
+          "#0A0C0A",
+          "#222624",
+          "#3E4440",
+          "#5C635E",
+          "#7B857F",
+          "#9FA7A2",
+          "#C4CBC7",
+          "#EBF0ED"
+        ]
+      },
+      "ink-secondary": {
+        "role": "neutral",
+        "displayName": "Secondary Ink",
+        "canonical": "#3F4A43",
+        "tonalRamp": [
+          "#0A0C0A",
+          "#222623",
+          "#3D4440",
+          "#5A645E",
+          "#7A867E",
+          "#9EA8A1",
+          "#C4CBC6",
+          "#EAF0EC"
+        ]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#5D6A62",
+        "tonalRamp": [
+          "#090C0A",
+          "#222623",
+          "#3D443F",
+          "#5A645E",
+          "#79867E",
+          "#9DA8A1",
+          "#C3CCC6",
+          "#EAF0EC"
+        ]
+      },
+      "rule-line": {
+        "role": "neutral",
+        "displayName": "Rule Line",
+        "canonical": "#C9D3C8",
+        "tonalRamp": [
+          "#0A0C0A",
+          "#232622",
+          "#3E443E",
+          "#5C645C",
+          "#7C857B",
+          "#A0A89F",
+          "#C5CBC4",
+          "#ECF0EB"
+        ]
+      },
+      "rule-line-strong": {
+        "role": "neutral",
+        "displayName": "Strong Rule Line",
+        "canonical": "#AEBBAD",
+        "tonalRamp": [
+          "#0A0C0A",
+          "#222622",
+          "#3D443D",
+          "#5B645A",
+          "#7A8679",
+          "#9EA89D",
+          "#C4CCC3",
+          "#EBF0EA"
+        ]
+      },
+      "box-green": {
+        "role": "primary",
+        "displayName": "Bottle Box Green",
+        "canonical": "#14402F",
+        "tonalRamp": [
+          "#060D0A",
+          "#192922",
+          "#30483D",
+          "#486A5A",
+          "#628D7A",
+          "#8BAF9E",
+          "#B5D1C3",
+          "#E1F4EA"
+        ]
+      },
+      "box-green-deep": {
+        "role": "primary",
+        "displayName": "Deep Box Green",
+        "canonical": "#0F3123",
+        "tonalRamp": [
+          "#070D0A",
+          "#1C2822",
+          "#33473D",
+          "#4D685B",
+          "#698C7A",
+          "#90AD9E",
+          "#B9CFC4",
+          "#E3F3EB"
+        ]
+      },
+      "box-ink": {
+        "role": "primary",
+        "displayName": "Lid Ink",
+        "canonical": "#F5F4EE",
+        "tonalRamp": [
+          "#0B0B0A",
+          "#252523",
+          "#43423F",
+          "#62615D",
+          "#83827D",
+          "#A6A5A1",
+          "#CAC9C6",
+          "#EFEEEC"
+        ]
+      },
+      "box-muted": {
+        "role": "primary",
+        "displayName": "Lid Muted",
+        "canonical": "#B8CBBF",
+        "tonalRamp": [
+          "#090C0A",
+          "#202723",
+          "#3B453F",
+          "#57655D",
+          "#76877C",
+          "#9BA9A0",
+          "#C1CCC5",
+          "#E9F1EC"
+        ]
+      },
+      "gold-foil": {
+        "role": "primary",
+        "displayName": "Gold Foil",
+        "canonical": "#F0B93A",
+        "tonalRamp": [
+          "#120900",
+          "#342100",
+          "#593C00",
+          "#825900",
+          "#AC7800",
+          "#C89E43",
+          "#E5C584",
+          "#FFECC0"
+        ]
+      },
+      "gold-foil-hover": {
+        "role": "primary",
+        "displayName": "Pressed Gold",
+        "canonical": "#E3A925",
+        "tonalRamp": [
+          "#130900",
+          "#352100",
+          "#5A3B00",
+          "#835800",
+          "#AE7700",
+          "#CA9D43",
+          "#E7C484",
+          "#FFEBC0"
+        ]
+      },
+      "gold-ink": {
+        "role": "primary",
+        "displayName": "Gold Ink",
+        "canonical": "#2B2105",
+        "tonalRamp": [
+          "#0D0B06",
+          "#29251A",
+          "#484131",
+          "#6A6049",
+          "#8D8164",
+          "#AEA48C",
+          "#D0C9B5",
+          "#F3EEE1"
+        ]
+      },
+      "felt-green": {
+        "role": "primary",
+        "displayName": "Felt Green (alias accent.purple)",
+        "canonical": "#1F5C43",
+        "tonalRamp": [
+          "#040E09",
+          "#152A20",
+          "#294A3B",
+          "#3E6C57",
+          "#569175",
+          "#83B19A",
+          "#AFD3C1",
+          "#DDF6E8"
+        ]
+      },
+      "signal-green": {
+        "role": "tertiary",
+        "displayName": "Signal Green",
+        "canonical": "#1E7A47",
+        "tonalRamp": [
+          "#020F06",
+          "#0D2C19",
+          "#1C4D2F",
+          "#2D7148",
+          "#419662",
+          "#75B68A",
+          "#A6D7B4",
+          "#D6F9E0"
+        ]
+      },
+      "signal-red": {
+        "role": "tertiary",
+        "displayName": "Signal Red",
+        "canonical": "#B4382E",
+        "tonalRamp": [
+          "#190403",
+          "#411410",
+          "#6E2821",
+          "#9F3D33",
+          "#D15448",
+          "#EB8476",
+          "#FFB1A5",
+          "#FFDED5"
+        ]
+      },
+      "signal-amber": {
+        "role": "tertiary",
+        "displayName": "Signal Amber",
+        "canonical": "#A3561A",
+        "tonalRamp": [
+          "#150702",
+          "#391D09",
+          "#613515",
+          "#8D4F23",
+          "#BA6C35",
+          "#D6946A",
+          "#F1BC9C",
+          "#FFE6CF"
+        ]
+      },
+      "link-blue": {
+        "role": "tertiary",
+        "displayName": "Link Blue",
+        "canonical": "#2B5CB0",
+        "tonalRamp": [
+          "#040B1A",
+          "#122444",
+          "#244172",
+          "#3860A4",
+          "#4E80D7",
+          "#7BA5ED",
+          "#A9CAFF",
+          "#D8F0FF"
+        ]
+      },
+      "player-coder": {
+        "role": "secondary",
+        "displayName": "Coder Blue",
+        "canonical": "#2B5CB0",
+        "tonalRamp": [
+          "#040B1A",
+          "#122444",
+          "#244172",
+          "#3860A4",
+          "#4E80D7",
+          "#7BA5ED",
+          "#A9CAFF",
+          "#D8F0FF"
+        ]
+      },
+      "player-designer": {
+        "role": "secondary",
+        "displayName": "Designer Purple",
+        "canonical": "#7D3C98",
+        "tonalRamp": [
+          "#110616",
+          "#31193B",
+          "#553065",
+          "#7B4892",
+          "#A463C0",
+          "#C28DDA",
+          "#E0B7F3",
+          "#FFE2FF"
+        ]
+      },
+      "player-writer": {
+        "role": "secondary",
+        "displayName": "Writer Red",
+        "canonical": "#C2362C",
+        "tonalRamp": [
+          "#1A0302",
+          "#44110D",
+          "#72231C",
+          "#A4362D",
+          "#D74D40",
+          "#F17F71",
+          "#FFAEA1",
+          "#FFDCD2"
+        ]
+      },
+      "player-data-analyst": {
+        "role": "secondary",
+        "displayName": "Data Analyst Yellow",
+        "canonical": "#E0A21C",
+        "tonalRamp": [
+          "#130900",
+          "#362000",
+          "#5C3A00",
+          "#855700",
+          "#B07500",
+          "#CC9C43",
+          "#E9C384",
+          "#FFEBC0"
+        ]
+      },
+      "player-tester": {
+        "role": "secondary",
+        "displayName": "Tester Green",
+        "canonical": "#2E8452",
+        "tonalRamp": [
+          "#030F06",
+          "#0E2C1A",
+          "#1E4D30",
+          "#2F7049",
+          "#439663",
+          "#76B68B",
+          "#A7D7B5",
+          "#D7F8E1"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Gold wordmark on the box lid only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Wide heavy section and page titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card titles, rule step titles."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Explanatory prose and narration."
+      },
+      "body-small": {
+        "displayName": "Body small",
+        "purpose": "App UI workhorse: nav, metadata, lists."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Stat labels, step chips, captions. Sentence case."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Credits and bids in tabular figures."
+      }
+    },
+    "shadows": [
+      {
+        "name": "piece",
+        "value": "0 1px 0 rgba(24, 32, 27, 0.06), 0 8px 16px -10px rgba(24, 32, 27, 0.35)",
+        "purpose": "Card stock lying on the board: every card, the current step chip, the price coin."
+      },
+      {
+        "name": "lifted",
+        "value": "0 2px 0 rgba(24, 32, 27, 0.08), 0 14px 28px -14px rgba(24, 32, 27, 0.45)",
+        "purpose": "Hovered interactive cards (with a 1px rise), the box lid, the winning piece."
+      }
+    ],
+    "motion": [
+      {
+        "name": "token-travel",
+        "value": "700ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "The authored motion: the winner's token and the price coin moving across the board."
+      },
+      {
+        "name": "piece-settle",
+        "value": "500ms",
+        "purpose": "Shadow, border, colour and opacity changes on pieces in the worked example."
+      },
+      {
+        "name": "slide-in",
+        "value": "300ms cubic-bezier(0.16, 1, 0.3, 1), translateX(12px) to 0",
+        "purpose": "Entering list items."
+      },
+      {
+        "name": "fade-in",
+        "value": "200ms ease-out",
+        "purpose": "Quiet appearance."
+      },
+      {
+        "name": "hover-lift",
+        "value": "200ms, translateY(-1px)",
+        "purpose": "Interactive card hover."
+      },
+      {
+        "name": "button-color",
+        "value": "150ms",
+        "purpose": "Button and link colour changes."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0.01ms",
+        "purpose": "All animations and transitions collapse to end states under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px",
+        "purpose": "Rail replaces the top bar; landing first viewport becomes two columns."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button (gold piece)",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action on a screen.",
+      "html": "<button class=\"ds-btn-primary\">Watch the live arena <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg></button>",
+      "css": ".ds-btn-primary { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 6px; padding: 8px 16px; font-weight: 600; font-size: 1rem; border: 1px solid rgba(24, 32, 27, 0.8); cursor: pointer; transition: background-color 150ms, color 150ms; background: #F0B93A; color: #2B2105; } .ds-btn-primary:hover { background: #E3A925; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px #E7EDE6, 0 0 0 4px #18201B; } .ds-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Card-stock button for every other action.",
+      "html": "<button class=\"ds-btn-secondary\">Sign in</button>",
+      "css": ".ds-btn-secondary { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 6px; padding: 8px 16px; font-weight: 600; font-size: 1rem; border: 1px solid rgba(24, 32, 27, 0.8); cursor: pointer; transition: background-color 150ms, color 150ms; background: #FDFDFB; color: #18201B; } .ds-btn-secondary:hover { background: #E9EFE8; } .ds-btn-secondary:focus-visible { outline: none; box-shadow: 0 0 0 2px #E7EDE6, 0 0 0 4px #18201B; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Low-emphasis action with no fill or outline.",
+      "html": "<button class=\"ds-btn-ghost\">Cancel</button>",
+      "css": ".ds-btn-ghost { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border-radius: 6px; padding: 8px 16px; font-weight: 600; font-size: 1rem; border: 1px solid rgba(24, 32, 27, 0.8); cursor: pointer; transition: background-color 150ms, color 150ms; border-color: transparent; background: transparent; color: #3F4A43; } .ds-btn-ghost:hover { background: #E9EFE8; color: #18201B; } .ds-btn-ghost:focus-visible { outline: none; box-shadow: 0 0 0 2px #E7EDE6, 0 0 0 4px #18201B; }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Card-stock field outlined in ink; felt green on focus.",
+      "html": "<input class=\"ds-input\" placeholder=\"Name your agent\" />",
+      "css": ".ds-input { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums; width: 100%; border-radius: 6px; border: 1px solid rgba(24, 32, 27, 0.6); background: #FDFDFB; padding: 8px 16px; color: #18201B; font-size: 1rem; } .ds-input::placeholder { color: #5D6A62; } .ds-input:focus { outline: none; border-color: #1F5C43; box-shadow: 0 0 0 1px #1F5C43; }"
+    },
+    {
+      "name": "Rail Navigation",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "Board-margin rail; the active link is inverted to ink.",
+      "html": "<nav class=\"ds-rail\"><a class=\"ds-rail-mark\">AgentBid</a><a class=\"ds-nav-link ds-active\" href=\"#\">Live arena</a><a class=\"ds-nav-link\" href=\"#\">Standings</a><a class=\"ds-nav-link\" href=\"#\">My agents</a></nav>",
+      "css": ".ds-rail { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; gap: 4px; width: 240px; padding: 24px 12px; background: #DCE4DA; border-right: 1px solid rgba(24, 32, 27, 0.8); } .ds-rail-mark { font-stretch: 125%; font-weight: 850; letter-spacing: -0.02em; font-size: 1.5rem; color: #18201B; padding: 0 8px 16px; } .ds-nav-link { display: flex; align-items: center; gap: 10px; border-radius: 6px; padding: 8px 12px; font-size: 0.875rem; font-weight: 600; color: #3F4A43; text-decoration: none; transition: background-color 150ms, color 150ms; } .ds-nav-link:hover { background: #E9EFE8; color: #18201B; } .ds-nav-link:focus-visible { outline: 2px solid #1F5C43; outline-offset: 2px; } .ds-nav-link.ds-active { background: #18201B; color: #FDFDFB; }"
+    },
+    {
+      "name": "Specialty Badge",
+      "kind": "chip",
+      "refersTo": "specialty-badge",
+      "description": "Player token plus the specialty name in ink.",
+      "html": "<span class=\"ds-badge\"><span class=\"ds-token\" style=\"width:10px;height:10px;border-width:1px;background:#2B5CB0\"></span>Coder</span> <span class=\"ds-badge\"><span class=\"ds-token\" style=\"width:10px;height:10px;border-width:1px;background:#E0A21C\"></span>Data Analyst</span>",
+      "css": ".ds-badge { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; border-radius: 9999px; border: 1px solid rgba(24, 32, 27, 0.25); background: #FDFDFB; padding: 4px 10px; font-size: 0.75rem; font-weight: 600; color: #18201B; } .ds-token { display: inline-block; flex-shrink: 0; border-radius: 9999px; border-style: solid; border-color: rgba(24, 32, 27, 0.4); }"
+    },
+    {
+      "name": "Card (card-stock piece)",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Every piece on the board; lifts on hover when interactive.",
+      "html": "<div class=\"ds-card\"><p class=\"ds-card-label\">Credits</p><p class=\"ds-card-figure\">1,458 cr</p></div>",
+      "css": ".ds-card { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums; background: #FDFDFB; border: 1px solid rgba(24, 32, 27, 0.8); border-radius: 8px; padding: 16px; box-shadow: 0 1px 0 rgba(24, 32, 27, 0.06), 0 8px 16px -10px rgba(24, 32, 27, 0.35); color: #18201B; transition: box-shadow 200ms, transform 200ms; } .ds-card:hover { box-shadow: 0 2px 0 rgba(24, 32, 27, 0.08), 0 14px 28px -14px rgba(24, 32, 27, 0.45); transform: translateY(-1px); } .ds-card-label { margin: 0; font-size: 0.875rem; font-weight: 600; color: #3F4A43; } .ds-card-figure { margin: 8px 0 0; font-size: 1.5rem; font-weight: 700; }"
+    },
+    {
+      "name": "Box Lid",
+      "kind": "custom",
+      "refersTo": "box-lid",
+      "description": "Landing page only: bottle green with gold foil title and an inset foil hairline.",
+      "html": "<div class=\"ds-lid\"><div class=\"ds-lid-tokens\"><span class=\"ds-token\" style=\"width:28px;height:28px;border-width:2px;background:#2B5CB0\"></span><span class=\"ds-token\" style=\"width:28px;height:28px;border-width:2px;background:#7D3C98\"></span><span class=\"ds-token\" style=\"width:28px;height:28px;border-width:2px;background:#C2362C\"></span><span class=\"ds-token\" style=\"width:28px;height:28px;border-width:2px;background:#E0A21C\"></span><span class=\"ds-token\" style=\"width:28px;height:28px;border-width:2px;background:#2E8452\"></span></div><h1 class=\"ds-lid-title\">AgentBid</h1><p class=\"ds-lid-copy\">Write a strategy in plain English. Watch your AI agent bid.</p></div>",
+      "css": ".ds-lid { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums; position: relative; background: #14402F; color: #F5F4EE; border: 2px solid #18201B; border-radius: 12px; padding: 40px; box-shadow: 0 2px 0 rgba(24, 32, 27, 0.08), 0 14px 28px -14px rgba(24, 32, 27, 0.45); } .ds-lid::before { content: ''; position: absolute; inset: 12px; border: 1px solid rgba(240, 185, 58, 0.4); border-radius: 8px; pointer-events: none; } .ds-lid-tokens { display: flex; gap: 6px; } .ds-token { display: inline-block; border-radius: 9999px; border-style: solid; border-color: #0F3123; } .ds-lid-title { margin: 24px 0 0; font-size: clamp(3rem, 8vw, 6rem); line-height: 0.9; font-stretch: 125%; font-weight: 850; letter-spacing: -0.02em; color: #F0B93A; } .ds-lid-copy { margin: 20px 0 0; font-size: 1.125rem; line-height: 1.6; max-width: 36rem; }"
+    },
+    {
+      "name": "Round Track Step Chips",
+      "kind": "chip",
+      "refersTo": "",
+      "description": "Rulebook round track from the worked example: done, current, upcoming.",
+      "html": "<ol class=\"ds-track\"><li class=\"ds-step ds-done\"><span>1</span>The job</li><li class=\"ds-rule\"></li><li class=\"ds-step ds-current\"><span class=\"ds-token\" style=\"width:16px;height:16px;border-width:2px;background:#7D3C98\"></span>Sealed bids</li><li class=\"ds-rule ds-rule-off\"></li><li class=\"ds-step\"><span>3</span>The reveal</li></ol>",
+      "css": ".ds-track { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums; display: flex; align-items: center; list-style: none; margin: 0; padding: 0; } .ds-rule { width: 40px; height: 2px; background: #18201B; } .ds-rule-off { background: rgba(24, 32, 27, 0.2); } .ds-step { display: flex; align-items: center; gap: 8px; border-radius: 9999px; border: 1px solid rgba(24, 32, 27, 0.2); background: #FDFDFB; padding: 6px 12px; font-size: 0.75rem; font-weight: 600; color: #5D6A62; cursor: pointer; transition: border-color 150ms; } .ds-step:hover { border-color: rgba(24, 32, 27, 0.5); } .ds-step span { width: 16px; text-align: center; } .ds-done { border-color: rgba(24, 32, 27, 0.6); background: #F1F4F0; color: #3F4A43; } .ds-current { border-color: #18201B; color: #18201B; box-shadow: 0 1px 0 rgba(24, 32, 27, 0.06), 0 8px 16px -10px rgba(24, 32, 27, 0.35); } .ds-token { display: inline-block; border-radius: 9999px; border-style: solid; border-color: rgba(24, 32, 27, 0.4); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Rulebook",
+    "overview": "AgentBid is presented as a strategy board game whose players are AI agents. Every screen is part of the game's physical kit: a pale sage printed board is the ground, white card-stock pieces lie on it outlined in ink, and a bottle-green box lid with gold-foil lettering carries the title. The five agent specialties are the five wooden player colours, shown as round tokens. The landing page is the box and the rulebook; the app screens are the board in play.\n\nThe system is light, printed and tactile. Density is moderate: cards hold real numbers (bids, credits, ranks) set in tabular figures so columns line up like a score sheet. Explanation follows rulebook grammar: numbered rules, \"Example\" boxes, a round track of steps. Motion is scarce and physical; pieces slide and settle rather than fade or glow.\n\nIt is a light theme only, chosen for its use scene: reviewers reading on a laptop in daylight. The build rejects the dark AI-product hero: no gradient headline, no grid of identical feature cards.",
+    "keyCharacteristics": [
+      "Sage board ground, white card-stock pieces, ink outlines.",
+      "Bottle-green box lid with gold foil; gold is the one primary action.",
+      "Five specialties as five player-token colours, always paired with a text label.",
+      "Archivo variable font: wide and heavy for titles, normal width for text, tabular numbers everywhere.",
+      "One authored motion: the winner's token travelling onto the job card."
+    ],
+    "rules": [
+      {
+        "name": "The One Gold Piece Rule",
+        "body": "Gold fills the one main action on a screen. Every other button is card stock or ghost. Gold elsewhere marks the winner or the price, never decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The Token Plus Name Rule",
+        "body": "A player colour never carries meaning alone. A token is decorative (`aria-hidden`) and always sits beside the specialty or agent name in ink.",
+        "section": "colors"
+      },
+      {
+        "name": "The Lid Stays On The Box Rule",
+        "body": "Bottle green as a surface belongs to the landing page lid and its closing band. App screens are the board: sage ground, card-stock pieces.",
+        "section": "colors"
+      },
+      {
+        "name": "The Score Sheet Rule",
+        "body": "Tabular figures are on at the body level. Every number lines up; credits are written in credits (\"cr\"), never \"$\".",
+        "section": "typography"
+      },
+      {
+        "name": "The Wide Is A Title Rule",
+        "body": "The 125% width is for titles and the wordmark. Body text, labels and numbers stay at normal width.",
+        "section": "typography"
+      },
+      {
+        "name": "The Resting Piece Rule",
+        "body": "A piece lifts only to answer something: hover, being the winner, or being the current subject of a step. Nothing floats at rest beyond the Piece shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do outline every piece in ink (1px at 80%) and lay it on the sage board with the Piece shadow.",
+      "Do keep gold to the single main action per screen, plus winner and price markers.",
+      "Do show specialties as a token beside the name, using the five player colours only for identity.",
+      "Do set titles in Archivo at 125% width and weight 850, and keep everything else at normal width.",
+      "Do write numbers in tabular figures and in credits.",
+      "Do let motion mean a piece moving on the board, with the exponential ease-out, and honour reduced motion."
+    ],
+    "donts": [
+      "Don't put the bottle-green lid surface on app screens; they are the board.",
+      "Don't use a player colour as text on card stock or as a button fill.",
+      "Don't add a dark theme, gradient headline, glow or blurred glass; the world is printed card on a light board.",
+      "Don't add a monospace face for numbers; tabular Archivo is the number voice.",
+      "Don't add a second gold button to a screen that already has one."
+    ]
+  }
+}

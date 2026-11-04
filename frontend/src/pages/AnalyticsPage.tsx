@@ -13,20 +13,20 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { DollarSign, TrendingUp, Users, CheckCircle, Trophy, BarChart3 } from 'lucide-react';
+import { Coins, TrendingUp, Users, CheckCircle, Trophy, BarChart3 } from 'lucide-react';
 import { Layout } from '@/components/layout';
-import { StatCard, SpecialtyBadge, ProgressBar, CountdownTimer } from '@/components/ui';
+import { StatCard, SpecialtyBadge, ProgressBar, CountdownTimer, PlayerToken } from '@/components/ui';
 import { analyticsAPI } from '@/lib/api';
 import { cn, formatCredits, getSpecialtyLabel } from '@/lib/utils';
 import type { AgentSpecialty, LeaderboardEntry, MarketStats, Season, SpecialtyShare, TrendPoint } from '@/types';
 
 // Chart colors
 const SPECIALTY_COLORS: Record<AgentSpecialty, string> = {
-  coder: '#3B82F6',
-  designer: '#8B5CF6',
-  data_analyst: '#F97316',
-  writer: '#22C55E',
-  tester: '#EF4444',
+  coder: '#2B5CB0',
+  designer: '#7D3C98',
+  data_analyst: '#E0A21C',
+  writer: '#C2362C',
+  tester: '#2E8452',
 };
 
 type TimeRange = '7D' | '14D' | '30D';
@@ -70,7 +70,8 @@ export function AnalyticsPage() {
   useEffect(() => {
     Promise.all([analyticsAPI.getBidTrend(days), analyticsAPI.getVolumeTrend(days)])
       .then(([bids, volume]) => {
-        setBidTrend(bids);
+        // A day with no finished rounds has no average: plot a gap, not a fake zero
+        setBidTrend(bids.map((p) => ({ ...p, value: p.value === 0 ? null : p.value })));
         setVolumeTrend(volume);
       })
       .catch((error) => console.warn('Could not load trends (server unreachable?)', error));
@@ -96,196 +97,15 @@ export function AnalyticsPage() {
       <div className="p-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-text-primary mb-1">Market Analytics</h1>
-          <p className="text-text-secondary">Real-time market insights and performance trends</p>
-        </div>
-
-        {/* Stats Overview */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard
-            label="Total Volume"
-            value={marketStats ? formatCredits(marketStats.total_volume) : '$0'}
-            icon={DollarSign}
-            iconColor="text-accent-green"
-          />
-          <StatCard
-            label="Avg Winning Bid"
-            value={marketStats ? formatCredits(marketStats.avg_winning_bid) : '$0'}
-            icon={TrendingUp}
-            iconColor="text-accent-purple"
-          />
-          <StatCard
-            label="Active Agents"
-            value={marketStats?.active_agents?.toString() || '0'}
-            icon={Users}
-            iconColor="text-accent-cyan"
-          />
-          <StatCard
-            label="Jobs Completed"
-            value={marketStats?.jobs_completed?.toString() || '0'}
-            icon={CheckCircle}
-            iconColor="text-accent-orange"
-          />
-        </div>
-
-        {/* Empty State Banner */}
-        {!loading && !hasData && (
-          <div className="card bg-accent-purple/5 border-accent-purple/20 mb-8">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-accent-purple/10">
-                <BarChart3 className="h-6 w-6 text-accent-purple" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-text-primary">No market activity yet</h3>
-                <p className="text-sm text-text-secondary">
-                  Charts will populate as agents start bidding on jobs. Create an agent and let the auctions begin!
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Charts Row */}
-        <div className="grid lg:grid-cols-2 gap-6 mb-8">
-          {/* Avg Winning Bid Trend */}
-          <div className="card">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="font-semibold text-text-primary">Avg Winning Bid Trend</h3>
-                <p className="text-sm text-text-muted">Market average over time</p>
-              </div>
-              <div className="flex items-center gap-1 bg-background-tertiary rounded-lg p-1">
-                {(['7D', '14D', '30D'] as TimeRange[]).map((range) => (
-                  <button
-                    key={range}
-                    onClick={() => setTimeRange(range)}
-                    className={cn(
-                      'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
-                      timeRange === range
-                        ? 'bg-accent-purple text-white'
-                        : 'text-text-muted hover:text-text-primary'
-                    )}
-                  >
-                    {range}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={bidTrend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
-                <XAxis dataKey="date" stroke="#6B7280" fontSize={12} />
-                <YAxis stroke="#6B7280" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#151B2B',
-                    border: '1px solid #1F2937',
-                    borderRadius: '8px',
-                  }}
-                  labelStyle={{ color: '#9CA3AF' }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  name="Avg winning bid"
-                  stroke="#8B5CF6"
-                  strokeWidth={2}
-                  dot={{ fill: '#8B5CF6', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Market Share by Specialty */}
-          <div className="card">
-            <div className="mb-6">
-              <h3 className="font-semibold text-text-primary">Market Share by Specialty</h3>
-              <p className="text-sm text-text-muted">% of jobs won</p>
-            </div>
-            <div className="flex items-center gap-8">
-              <ResponsiveContainer width="50%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={marketShare}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={2}
-                    dataKey="slice"
-                  >
-                    {marketShare.map((entry) => (
-                      <Cell
-                        key={entry.specialty}
-                        fill={hasShares ? SPECIALTY_COLORS[entry.specialty] : '#374151'}
-                      />
-                    ))}
-                  </Pie>
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex-1 space-y-3">
-                {marketShare.map((entry) => (
-                  <div key={entry.name} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: hasShares ? SPECIALTY_COLORS[entry.specialty] : '#374151' }}
-                      />
-                      <span className="text-sm text-text-secondary">{entry.name}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <ProgressBar
-                        value={entry.percentage}
-                        showPercentage={false}
-                        color={
-                          entry.specialty === 'coder' ? 'blue' :
-                          entry.specialty === 'designer' ? 'purple' :
-                          entry.specialty === 'data_analyst' ? 'orange' :
-                          entry.specialty === 'writer' ? 'green' : 'red'
-                        }
-                        size="sm"
-                        className="w-20"
-                      />
-                      <span className="text-sm font-medium text-text-primary w-10 text-right">
-                        {entry.percentage}%
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Daily Job Volume */}
-        <div className="card mb-8">
-          <div className="mb-6">
-            <h3 className="font-semibold text-text-primary">Daily Job Volume</h3>
-            <p className="text-sm text-text-muted">Jobs posted per day, last {days} days</p>
-          </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={volumeTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
-              <XAxis dataKey="date" stroke="#6B7280" fontSize={12} />
-              <YAxis stroke="#6B7280" fontSize={12} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#151B2B',
-                  border: '1px solid #1F2937',
-                  borderRadius: '8px',
-                }}
-                labelStyle={{ color: '#9CA3AF' }}
-              />
-              <Bar dataKey="value" name="Jobs" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <h1 className="title-wide text-3xl text-text-primary mb-1">Standings</h1>
+          <p className="text-text-secondary">The season scoreboard, and how the market has played over time.</p>
         </div>
 
         {/* Leaderboard */}
-        <div className="card">
+        <div className="card mb-8">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
             <div className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-accent-orange" />
+              <Trophy className="h-5 w-5 text-ink" />
               <div>
                 <h3 className="font-semibold text-text-primary">
                   {season ? `Season ${season.number} Leaderboard` : 'Agent Leaderboard'}
@@ -336,13 +156,7 @@ export function AnalyticsPage() {
                       <td className="py-3 text-sm text-text-muted">{entry.rank}</td>
                       <td className="py-3">
                         <div className="flex items-center gap-2">
-                          <span className="text-lg">
-                            {entry.specialty === 'coder' && '💻'}
-                            {entry.specialty === 'designer' && '🎨'}
-                            {entry.specialty === 'writer' && '✍️'}
-                            {entry.specialty === 'data_analyst' && '📊'}
-                            {entry.specialty === 'tester' && '🧪'}
-                          </span>
+                          <PlayerToken specialty={entry.specialty} size="sm" />
                           <span className="text-sm font-medium text-text-primary">{entry.agent_name}</span>
                           {entry.bankrupt && (
                             <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-accent-red/20 text-accent-red">Bankrupt</span>
@@ -384,7 +198,7 @@ export function AnalyticsPage() {
                               entry.avg_negotiation_gain >= 0 ? 'text-accent-green' : 'text-accent-red'
                             )}
                           >
-                            {entry.avg_negotiation_gain === bestGain && <Trophy className="inline h-3.5 w-3.5 mr-1 text-accent-orange" aria-label="Best negotiator" />}
+                            {entry.avg_negotiation_gain === bestGain && <Trophy className="inline h-3.5 w-3.5 mr-1 text-ink" aria-label="Best negotiator" />}
                             {entry.avg_negotiation_gain >= 0 ? '+' : ''}{entry.avg_negotiation_gain}
                           </span>
                         )}
@@ -396,6 +210,179 @@ export function AnalyticsPage() {
             </div>
           )}
         </div>
+
+        {/* Stats Overview */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <StatCard
+            label="Total Volume"
+            value={marketStats ? formatCredits(marketStats.total_volume) : '$0'}
+            icon={Coins}
+            iconColor="text-accent-green"
+          />
+          <StatCard
+            label="Avg Winning Bid"
+            value={marketStats ? formatCredits(marketStats.avg_winning_bid) : '$0'}
+            icon={TrendingUp}
+            iconColor="text-accent-purple"
+          />
+          <StatCard
+            label="Active Agents"
+            value={marketStats?.active_agents?.toString() || '0'}
+            icon={Users}
+            iconColor="text-accent-cyan"
+          />
+          <StatCard
+            label="Jobs Completed"
+            value={marketStats?.jobs_completed?.toString() || '0'}
+            icon={CheckCircle}
+            iconColor="text-ink"
+          />
+        </div>
+
+        {/* Empty State Banner */}
+        {!loading && !hasData && (
+          <div className="card bg-accent-purple/5 border-accent-purple/20 mb-8">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-full bg-accent-purple/10">
+                <BarChart3 className="h-6 w-6 text-accent-purple" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-text-primary">No market activity yet</h3>
+                <p className="text-sm text-text-secondary">
+                  Charts will populate as agents start bidding on jobs. Create an agent and let the auctions begin!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Charts Row */}
+        <div className="grid lg:grid-cols-2 gap-6 mb-8">
+          {/* Avg Winning Bid Trend */}
+          <div className="card">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="font-semibold text-text-primary">Avg Winning Bid Trend</h3>
+                <p className="text-sm text-text-muted">Market average over time</p>
+              </div>
+              <div className="flex items-center gap-1 bg-background-tertiary rounded-lg p-1">
+                {(['7D', '14D', '30D'] as TimeRange[]).map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => setTimeRange(range)}
+                    className={cn(
+                      'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                      timeRange === range
+                        ? 'bg-ink text-background-card'
+                        : 'text-text-muted hover:text-text-primary'
+                    )}
+                  >
+                    {range}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={bidTrend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#C9D3C8" />
+                <XAxis dataKey="date" stroke="#5D6A62" fontSize={12} />
+                <YAxis stroke="#5D6A62" fontSize={12} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#FDFDFB',
+                    border: '1px solid #18201B',
+                    borderRadius: '8px',
+                  }}
+                  labelStyle={{ color: '#3F4A43' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  name="Avg winning bid"
+                  stroke="#1F5C43"
+                  strokeWidth={2}
+                  dot={{ fill: '#1F5C43', strokeWidth: 2 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Market Share by Specialty */}
+          <div className="card">
+            <div className="mb-6">
+              <h3 className="font-semibold text-text-primary">Market Share by Specialty</h3>
+              <p className="text-sm text-text-muted">% of jobs won</p>
+            </div>
+            <div className="flex items-center gap-8">
+              <ResponsiveContainer width="50%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={marketShare}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="slice"
+                  >
+                    {marketShare.map((entry) => (
+                      <Cell
+                        key={entry.specialty}
+                        fill={hasShares ? SPECIALTY_COLORS[entry.specialty] : '#C9D3C8'}
+                      />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex-1 space-y-3">
+                {marketShare.map((entry) => (
+                  <div key={entry.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="h-3 w-3 rounded-full"
+                        style={{ backgroundColor: hasShares ? SPECIALTY_COLORS[entry.specialty] : '#C9D3C8' }}
+                      />
+                      <span className="text-sm text-text-secondary">{entry.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-background-tertiary" aria-hidden>
+                        <div className="h-full rounded-full" style={{ width: `${entry.percentage}%`, backgroundColor: SPECIALTY_COLORS[entry.specialty] }} />
+                      </div>
+                      <span className="text-sm font-medium text-text-primary w-10 text-right">
+                        {entry.percentage}%
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Daily Job Volume */}
+        <div className="card mb-8">
+          <div className="mb-6">
+            <h3 className="font-semibold text-text-primary">Daily Job Volume</h3>
+            <p className="text-sm text-text-muted">Jobs posted per day, last {days} days</p>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={volumeTrend}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#C9D3C8" />
+              <XAxis dataKey="date" stroke="#5D6A62" fontSize={12} />
+              <YAxis stroke="#5D6A62" fontSize={12} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#FDFDFB',
+                  border: '1px solid #18201B',
+                  borderRadius: '8px',
+                }}
+                labelStyle={{ color: '#3F4A43' }}
+              />
+              <Bar dataKey="value" name="Jobs" fill="#1F5C43" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
       </div>
     </Layout>
   );

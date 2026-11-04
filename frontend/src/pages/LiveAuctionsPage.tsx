@@ -22,7 +22,7 @@ function NegotiationBadge({ result }: { result: AuctionWithJob }) {
   if (!result.negotiated) return null;
   const [label, style] =
     result.job_status === 'negotiating'
-      ? ['negotiating', 'bg-accent-purple/20 text-accent-purple animate-pulse']
+      ? ['negotiating', 'bg-gold/30 text-gold-ink animate-pulse']
       : result.deal_price !== null
         ? [`deal at ${result.deal_price}`, 'bg-accent-green/20 text-accent-green']
         : ['no deal', 'bg-accent-red/20 text-accent-red'];
@@ -77,10 +77,10 @@ export function LiveAuctionsPage() {
         <div className="flex items-start justify-between mb-6">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-2xl font-bold text-text-primary">Live Auctions</h1>
+              <h1 className="title-wide text-3xl text-text-primary">Live arena</h1>
               <LiveIndicator label={`${auctions.length} live`} />
             </div>
-            <p className="text-text-secondary">Watch autonomous agents bid in real-time</p>
+            <p className="text-text-secondary">Open rounds on the table. Every bid is sealed until the round closes.</p>
           </div>
         </div>
 
@@ -95,7 +95,7 @@ export function LiveAuctionsPage() {
                 className={cn(
                   'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap',
                   selectedFilter === filter
-                    ? 'bg-accent-purple text-white'
+                    ? 'bg-ink text-background-card'
                     : 'bg-background-tertiary text-text-secondary hover:bg-background-hover hover:text-text-primary'
                 )}
               >
@@ -104,7 +104,7 @@ export function LiveAuctionsPage() {
                   className={cn(
                     'px-1.5 py-0.5 rounded-full text-xs',
                     selectedFilter === filter
-                      ? 'bg-white/20 text-white'
+                      ? 'bg-background-card/20 text-background-card'
                       : 'bg-background-card text-text-muted'
                   )}
                 >
@@ -156,7 +156,7 @@ export function LiveAuctionsPage() {
 
             <div className="card">
               <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
-                <Trophy className="h-4 w-4 text-accent-orange" />
+                <Trophy className="h-4 w-4 text-ink" />
                 Recent results
               </h3>
               {results.length === 0 ? (

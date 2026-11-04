@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Lock, Users } from 'lucide-react';
 import { AuctionWithJob } from '@/types';
-import { cn, formatCredits, getSpecialtyBorderColor } from '@/lib/utils';
+import { cn, formatCredits } from '@/lib/utils';
 import { SpecialtyBadge, CountdownTimer } from '@/components/ui';
 
 interface AuctionCardProps {
@@ -14,8 +14,7 @@ export function AuctionCard({ auction, onExpire, className }: AuctionCardProps) 
   return (
     <div
       className={cn(
-        'card-hover relative overflow-hidden border-l-4',
-        getSpecialtyBorderColor(auction.job_specialty),
+        'card-hover relative overflow-hidden',
         className
       )}
     >

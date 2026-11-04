@@ -21,13 +21,9 @@ export function StatCard({
   return (
     <div className={cn('card flex flex-col gap-2', className)}>
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {Icon && (
-            <div className={cn('rounded-lg bg-background-tertiary p-2', iconColor)}>
-              <Icon className="h-4 w-4" />
-            </div>
-          )}
-          <span className="text-sm text-text-secondary">{label}</span>
+        <div className="flex items-center gap-1.5">
+          {Icon && <Icon className={cn('h-4 w-4', iconColor)} aria-hidden />}
+          <span className="text-sm font-semibold text-text-secondary">{label}</span>
         </div>
         {change !== undefined && (
           <span
@@ -40,7 +36,7 @@ export function StatCard({
           </span>
         )}
       </div>
-      <p className="text-2xl font-semibold text-text-primary">{value}</p>
+      <p className="text-2xl font-bold tabular-nums text-text-primary">{value}</p>
     </div>
   );
 }

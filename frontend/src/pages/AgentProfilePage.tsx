@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
-  DollarSign,
+  Coins,
   Trophy,
   TrendingUp,
   Zap,
@@ -18,9 +18,9 @@ import {
   MessagesSquare,
 } from 'lucide-react';
 import { Layout } from '@/components/layout';
-import { SpecialtyBadge, StatCard, ProgressBar } from '@/components/ui';
+import { SpecialtyBadge, StatCard, ProgressBar, PlayerToken } from '@/components/ui';
 import { agentsAPI, agentStatsAPI } from '@/lib/api';
-import { cn, formatCredits, formatTimeAgo, getSpecialtyIcon } from '@/lib/utils';
+import { cn, formatCredits, formatTimeAgo } from '@/lib/utils';
 import type { Agent, AgentDecisionHistoryItem, AgentFullStats, AgentStats } from '@/types';
 import { useAuth } from '@/context/useAuth';
 
@@ -174,9 +174,7 @@ export function AgentProfilePage() {
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl bg-background-tertiary flex items-center justify-center text-4xl">
-                {getSpecialtyIcon(agent.specialty)}
-              </div>
+              <PlayerToken specialty={agent.specialty} size="lg" className="h-14 w-14 border-4" />
               <div>
                 {isEditing ? (
                   <input
@@ -186,7 +184,7 @@ export function AgentProfilePage() {
                     className="text-2xl font-bold bg-background-tertiary border border-border rounded px-3 py-1 text-text-primary focus:outline-none focus:border-accent-purple"
                   />
                 ) : (
-                  <h1 className="text-2xl font-bold text-text-primary">{agent.name}</h1>
+                  <h1 className="title-wide text-3xl text-text-primary">{agent.name}</h1>
                 )}
                 <div className="flex items-center gap-3 mt-1">
                   <SpecialtyBadge specialty={agent.specialty} />
@@ -260,7 +258,7 @@ export function AgentProfilePage() {
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="btn-ghost text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                  className="btn-ghost text-accent-red hover:text-accent-red hover:bg-accent-red/10"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -275,14 +273,14 @@ export function AgentProfilePage() {
           <StatCard
             label="Credits"
             value={formatCredits(agent.credits)}
-            icon={DollarSign}
+            icon={Coins}
             iconColor="text-accent-cyan"
           />
           <StatCard
             label="Jobs Won"
             value={(stats?.jobs_won ?? 0).toString()}
             icon={Trophy}
-            iconColor="text-accent-orange"
+            iconColor="text-ink"
           />
           <StatCard
             label="Win Rate"
@@ -305,7 +303,7 @@ export function AgentProfilePage() {
             {/* Auction Instructions */}
             <div className="card p-6">
               <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
-                <Zap className="h-5 w-5 text-accent-orange" />
+                <Zap className="h-5 w-5 text-ink" />
                 Auction Strategy
               </h3>
               {isEditing ? (
@@ -462,7 +460,7 @@ export function AgentProfilePage() {
             {!!fullStats?.recent_wins.length && (
               <div className="card p-6">
                 <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
-                  <Trophy className="h-5 w-5 text-accent-orange" />
+                  <Trophy className="h-5 w-5 text-ink" />
                   Recent Wins
                 </h3>
                 <div className="space-y-3">
@@ -514,7 +512,7 @@ export function AgentProfilePage() {
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-ink/50 flex items-center justify-center z-50">
             <div className="card p-6 max-w-md mx-4">
               <h3 className="text-lg font-semibold text-text-primary mb-2">Delete Agent?</h3>
               <p className="text-text-secondary mb-6">
@@ -536,7 +534,7 @@ export function AgentProfilePage() {
                 <button
                   onClick={handleDelete}
                   disabled={isDeleting}
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-lg px-4 py-2 font-medium transition-colors"
+                  className="flex-1 bg-accent-red hover:bg-accent-red/90 text-white rounded-md border border-ink/80 px-4 py-2 font-medium transition-colors"
                 >
                   {isDeleting ? 'Deleting...' : 'Delete'}
                 </button>

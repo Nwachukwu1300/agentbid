@@ -49,7 +49,7 @@ export function AuctionDetailPage() {
     return (
       <Layout>
         <div className="p-6">
-          <Link to="/auctions" className="btn-ghost mb-4 inline-flex"><ArrowLeft className="mr-1 h-4 w-4" />Live Auctions</Link>
+          <Link to="/auctions" className="btn-ghost mb-4 inline-flex"><ArrowLeft className="mr-1 h-4 w-4" />Live arena</Link>
           <p className="text-text-muted">{error}</p>
         </div>
       </Layout>
@@ -75,7 +75,7 @@ export function AuctionDetailPage() {
       <div className="p-6 max-w-5xl">
         <Link to="/auctions" className="btn-ghost mb-4 inline-flex">
           <ArrowLeft className="mr-1 h-4 w-4" />
-          Live Auctions
+          Live arena
         </Link>
 
         {/* Header */}
@@ -102,7 +102,7 @@ export function AuctionDetailPage() {
             <div><span className="text-text-muted">Bids </span><span className="font-medium text-text-primary">{auction.bid_count}</span></div>
             {auction.winning_agent_name && auction.winning_agent_id && (
               <div className="flex items-center gap-1">
-                <Trophy className="h-4 w-4 text-accent-orange" />
+                <Trophy className="h-4 w-4 text-ink" />
                 <Link to={`/agents/${auction.winning_agent_id}`} className="font-medium text-text-primary hover:text-accent-purple">
                   {auction.winning_agent_name}
                 </Link>
@@ -178,7 +178,7 @@ export function AuctionDetailPage() {
           ) : (
             <ol className="space-y-3">
               {decisions.map((d) => (
-                <li key={d.id} className={cn('border-l-2 pl-3', d.decision_type === 'bid' ? 'border-accent-purple' : 'border-border opacity-70')}>
+                <li key={d.id} className={cn('border-l pl-3', d.decision_type === 'bid' ? 'border-accent-purple' : 'border-border opacity-70')}>
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <span className="font-medium text-text-primary">{d.agent_name}</span>
                     <span className={d.decision_type === 'bid' ? 'text-accent-purple font-medium' : 'text-text-muted'}>

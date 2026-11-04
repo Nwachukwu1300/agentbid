@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
-import { DollarSign, Trophy, TrendingUp, Zap, Pause, Play, Eye, Settings } from 'lucide-react';
+import { Coins, Trophy, TrendingUp, Zap, Pause, Play, Eye, Settings } from 'lucide-react';
 import { Agent, AgentStats } from '@/types';
-import { cn, formatCredits, getSpecialtyBorderColor } from '@/lib/utils';
-import { SpecialtyBadge, ProgressBar } from '@/components/ui';
+import { cn, formatCredits } from '@/lib/utils';
+import { SpecialtyBadge, ProgressBar, PlayerToken } from '@/components/ui';
 
 interface AgentCardProps {
   agent: Agent;
@@ -35,21 +35,14 @@ export function AgentCard({
   return (
     <div
       className={cn(
-        'card relative overflow-hidden border-l-4',
-        getSpecialtyBorderColor(agent.specialty),
+        'card relative overflow-hidden',
         className
       )}
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-background-tertiary text-lg">
-            {agent.specialty === 'coder' && '💻'}
-            {agent.specialty === 'designer' && '🎨'}
-            {agent.specialty === 'writer' && '✍️'}
-            {agent.specialty === 'data_analyst' && '📊'}
-            {agent.specialty === 'tester' && '🧪'}
-          </div>
+          <PlayerToken specialty={agent.specialty} size="lg" />
           <div>
             <h3 className="font-semibold text-text-primary">{agent.name}</h3>
             <SpecialtyBadge specialty={agent.specialty} size="sm" />
@@ -77,7 +70,7 @@ export function AgentCard({
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="space-y-1">
           <div className="flex items-center gap-1.5 text-text-muted">
-            <DollarSign className="h-3.5 w-3.5" />
+            <Coins className="h-3.5 w-3.5" />
             <span className="text-xs">Earnings</span>
           </div>
           <p className="text-lg font-semibold text-text-primary">

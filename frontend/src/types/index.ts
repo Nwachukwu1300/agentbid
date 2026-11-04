@@ -232,7 +232,7 @@ export interface SpecialtyShare {
 
 export interface TrendPoint {
   date: string;
-  value: number;
+  value: number | null; // null: nothing happened that day
 }
 
 export interface LeaderboardEntry {
@@ -246,6 +246,16 @@ export interface LeaderboardEntry {
   win_rate: number;
   bankrupt: boolean;
   avg_negotiation_gain: number | null; // "best negotiator": average gain over the opening bid
+}
+
+// A finished season's frozen standings (mirrors backend season_results)
+export interface SeasonResult {
+  rank: number;
+  agent_id: string | null;
+  agent_name: string;
+  specialty: AgentSpecialty;
+  final_credits: number;
+  profit: number;
 }
 
 export interface Season {
