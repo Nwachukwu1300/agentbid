@@ -223,7 +223,7 @@ export function AnalyticsPage() {
             label="Avg Winning Bid"
             value={marketStats ? formatCredits(marketStats.avg_winning_bid) : '$0'}
             icon={TrendingUp}
-            iconColor="text-accent-purple"
+            iconColor="text-accent-felt"
           />
           <StatCard
             label="Active Agents"
@@ -241,10 +241,10 @@ export function AnalyticsPage() {
 
         {/* Empty State Banner */}
         {!loading && !hasData && (
-          <div className="card bg-accent-purple/5 border-accent-purple/20 mb-8">
+          <div className="card bg-accent-felt/5 border-accent-felt/20 mb-8">
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-full bg-accent-purple/10">
-                <BarChart3 className="h-6 w-6 text-accent-purple" />
+              <div className="p-3 rounded-full bg-accent-felt/10">
+                <BarChart3 className="h-6 w-6 text-accent-felt" />
               </div>
               <div>
                 <h3 className="font-semibold text-text-primary">No market activity yet</h3>

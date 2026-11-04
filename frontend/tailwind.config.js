@@ -32,7 +32,7 @@ export default {
         ink: '#18201B',
         // Interface accents, all readable as text on card stock
         accent: {
-          purple: '#1F5C43', // the primary interactive accent: box green
+          felt: '#1F5C43', // the primary interactive accent: felt green
           blue: '#2B5CB0',
           green: '#1E7A47',
           orange: '#A3561A',

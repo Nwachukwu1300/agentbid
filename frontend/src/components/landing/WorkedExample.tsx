@@ -1,6 +1,6 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Lock } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Lock, Pause, RotateCcw } from 'lucide-react';
 import { PlayerToken } from '@/components/ui';
 import { cn, formatTimeAgo, getSpecialtyLabel } from '@/lib/utils';
 import type { Round } from './round';
@@ -10,57 +10,148 @@ const EASE = 'ease-[cubic-bezier(0.16,1,0.3,1)]';
 // Board geometry (rem): the job card sits above the row of player mats
 const JOB_H = 6;
 const GAP = 0.75;
+const AUTOPLAY_MS = 2600;
+
+const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** A real round stepped through like a rulebook example: the page's signature interaction. */
 export function WorkedExample({ round }: { round: Round }) {
   const [step, setStep] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const trackRef = useRef<HTMLElement>(null);
+  const autoplayed = useRef(false);
+
   const last = STEPS.length - 1;
   const revealed = step >= 2;
+  const scored = step === last;
   const n = round.bids.length;
   const winnerIndex = round.bids.findIndex((b) => b.won);
   const winner = round.bids[winnerIndex];
+  const call = round.call;
+  // A failed haggle leaves the job unfilled: the winner is paid nothing and keeps its token
+  const taken = !call || call.deal;
+  const finalPay = call ? (call.deal ? call.finalPrice ?? round.pricePaid : 0) : round.pricePaid;
+  const profit = finalPay - winner.cost;
   // The coin starts on the mat whose bid set the price (the winner's own when nobody bid more);
   // the second-price step moves it to the winner
   const priceSetter = round.bids.findIndex((b, i) => i > winnerIndex && b.bid === round.pricePaid);
   const coinIndex = step >= 3 || priceSetter === -1 ? winnerIndex : priceSetter;
+  const coinLabel = scored && call ? (call.deal ? finalPay : null) : round.pricePaid;
   const colLeft = (i: number) => `calc(${i} * ((100% - ${(n - 1) * GAP}rem) / ${n} + ${GAP}rem))`;
   const colCenter = (i: number) => `calc(${colLeft(i)} + (100% - ${(n - 1) * GAP}rem) / ${n} / 2)`;
-  const scored = step === last;
 
-  const go = (s: number) => setStep(Math.max(0, Math.min(last, s)));
+  const go = (s: number) => {
+    autoplayed.current = true;
+    setPlaying(false);
+    setStep(Math.max(0, Math.min(last, s)));
+  };
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'ArrowRight') go(step + 1);
     if (e.key === 'ArrowLeft') go(step - 1);
   };
 
+  // Play the round once when it first comes into view; any click or key takes over
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el || reducedMotion()) return;
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !autoplayed.current) {
+        autoplayed.current = true;
+        setPlaying(true);
+        io.disconnect();
+      }
+    }, { threshold: 0.3 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!playing) return;
+    if (step === last) return setPlaying(false);
+    const t = setTimeout(() => setStep((s) => s + 1), step === 0 ? AUTOPLAY_MS / 2 : AUTOPLAY_MS);
+    return () => clearTimeout(t);
+  }, [playing, step, last]);
+
+  // Keep the current space of the track in view on narrow screens
+  useEffect(() => {
+    const track = trackRef.current;
+    const current = track?.querySelector<HTMLElement>('[aria-current="step"]');
+    if (!track || !current) return;
+    track.scrollTo({ left: current.offsetLeft - (track.clientWidth - current.offsetWidth) / 2, behavior: reducedMotion() ? 'auto' : 'smooth' });
+  }, [step]);
+
+  // Reaching the end removes the Next button; keep keyboard focus on a live control
+  useEffect(() => {
+    const active = document.activeElement;
+    if (scored && !playing && (active === document.body || sectionRef.current?.contains(active))) {
+      // Two copies of the controls exist (rail and phone bar); focus the one on screen
+      const replay = [...(sectionRef.current?.querySelectorAll<HTMLElement>('[data-replay]') ?? [])].find((el) => el.offsetParent);
+      replay?.focus({ preventScroll: true });
+    }
+  }, [scored, playing]);
+
+  const priceSetterName = priceSetter === -1 ? null : round.bids[priceSetter].name;
   const narration = [
-    <>A <strong>{getSpecialtyLabel(round.specialty)}</strong> job goes on the board with a budget of <strong>{round.budget} credits</strong>. Only {getSpecialtyLabel(round.specialty).toLowerCase()} agents may bid.</>,
-    <>Each agent bids once, in secret, following its owner's written strategy. Nobody sees a rival's bid. Each agent knows only its own cost for the job.</>,
-    <>The bids are revealed. The lowest bid wins: <strong>{winner.name}</strong> at <strong>{winner.bid}</strong>.</>,
+    <>A <strong>{getSpecialtyLabel(round.specialty)}</strong> job goes on the board with a budget of <strong>{round.budget} credits</strong>. Only {getSpecialtyLabel(round.specialty).toLowerCase()} agents may bid. Each mat shows that agent&rsquo;s private work cost; rivals never see it.</>,
+    <>Each agent bids once, in secret, following its owner&rsquo;s written strategy. Nobody sees a rival&rsquo;s bid.</>,
+    <>The bids are revealed. The lowest bid wins: <strong>{winner.name}</strong> at <strong>{winner.bid}</strong>.{priceSetterName && <> The gold coin on {priceSetterName}&rsquo;s bid is the price the winner will be paid; the next step explains why.</>}</>,
     round.pricePaid > winner.bid
-      ? <>The winner is paid the runner-up's bid, not its own: <strong>{round.pricePaid} credits</strong>, against a work cost of {winner.cost}. Bidding your true cost is safe; you can't raise your own pay by bidding higher.</>
-      : <>Nobody bid above the winner, so it is paid its own bid: <strong>{round.pricePaid} credits</strong>, against a work cost of {winner.cost}.</>,
-    round.call
-      ? <>This round, the client wanted to haggle. It has a secret limit and a personality; the agent follows its owner's negotiation style. {round.call.outcome}</>
+      ? <>The winner is paid the runner-up&rsquo;s bid, not its own: <strong>{round.pricePaid} credits</strong>, against a work cost of {winner.cost}. Bidding your true cost is safe; you can&rsquo;t raise your own pay by bidding higher.{call && <> This client wants to haggle first, so {round.pricePaid} is only the opening price.</>}</>
+      : <>Nobody bid above the winner, so it is paid its own bid: <strong>{round.pricePaid} credits</strong>, against a work cost of {winner.cost}.{call && <> This client wants to haggle first, so that is only the opening price.</>}</>,
+    call
+      ? <>The client has a secret limit and a personality; the agent follows its owner&rsquo;s negotiation style. <strong>{call.outcome}</strong></>
       : <>No call this round: the job went straight to work. About 3 in 10 wins go to a negotiation with the client first.</>,
-    <><strong>{winner.name}</strong> takes the job. Every result is explained from the data, for every agent in the round.</>,
+    taken
+      ? <><strong>{winner.name}</strong> takes the job at <strong>{finalPay} credits</strong> against a work cost of {winner.cost}: a profit of <strong>{profit}</strong>. Every result is explained from the data, for every agent in the round.</>
+      : <>No deal, so the job goes unfilled and <strong>{winner.name}</strong> earns nothing this round. Every result is explained from the data, for every agent in the round.</>,
   ];
 
+  const controls = (
+    <div className="flex flex-wrap items-center gap-2">
+      {scored ? (
+        <>
+          <Link to="/auctions" className="btn-primary h-11 min-w-fit flex-1 whitespace-nowrap">
+            Watch the live arena <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
+          </Link>
+          <button data-replay type="button" className="btn-secondary h-11 min-w-11 px-3 sm:px-4" onClick={() => go(0)} aria-label="Replay the round">
+            <RotateCcw className="h-4 w-4 sm:mr-2" aria-hidden /><span className="hidden sm:inline">Replay</span>
+          </button>
+        </>
+      ) : (
+        <>
+          <button type="button" className="btn-secondary h-11 w-11 px-0" onClick={() => go(step - 1)} disabled={step === 0} aria-label="Previous step">
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          {playing && (
+            <button type="button" className="btn-secondary h-11 w-11 px-0" onClick={() => go(step)} aria-label="Pause the round">
+              <Pause className="h-4 w-4" />
+            </button>
+          )}
+          <button type="button" className="btn-primary h-11 flex-1" onClick={() => go(step + 1)}>
+            Next: {STEPS[step + 1]}
+            <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
+          </button>
+        </>
+      )}
+    </div>
+  );
+
   return (
-    <section aria-labelledby="example-title" className="card p-0 overflow-hidden" onKeyDown={onKey}>
+    <section ref={sectionRef} aria-labelledby="example-title" className="card overflow-clip p-0" onKeyDown={onKey}>
       <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-ink/80 bg-background-tertiary px-5 py-4 sm:px-7">
-        <h2 id="example-title" className="text-xl font-bold sm:text-2xl">
+        <h3 id="example-title" className="text-xl font-bold sm:text-2xl">
           Example: <span className="font-semibold">{round.jobTitle}</span>
-        </h2>
+        </h3>
         <p className="text-sm text-text-muted">
           {round.id
             ? <>A real round from the live arena{round.closedAt ? `, ${formatTimeAgo(round.closedAt)}` : ''}</>
-            : <strong className="text-accent-red">Sample round, not live data. A real one appears once the arena plays.</strong>}
+            : <strong className="text-accent-red">Sample round, not live data.</strong>}
         </p>
       </header>
 
       {/* The round track: one row of spaces, the job's token on the current one */}
-      <nav aria-label="Steps of the round" className="overflow-x-auto border-b border-ink/20 px-5 py-4 sm:px-7">
+      <nav ref={trackRef} aria-label="Steps of the round" className="relative overflow-x-auto border-b border-ink/20 px-5 py-4 sm:px-7">
         <ol className="flex min-w-max items-center">
           {STEPS.map((label, i) => (
             <li key={label} className="flex items-center">
@@ -70,7 +161,7 @@ export function WorkedExample({ round }: { round: Round }) {
                 onClick={() => go(i)}
                 aria-current={i === step ? 'step' : undefined}
                 className={cn(
-                  'flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+                  'flex min-h-11 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition-colors sm:min-h-0 sm:py-1.5',
                   i === step ? 'border-ink bg-background-card text-text-primary shadow-piece' : i < step ? 'border-ink/60 bg-background-tertiary text-text-secondary' : 'border-ink/20 bg-background-card text-text-muted hover:border-ink/50'
                 )}
               >
@@ -104,8 +195,10 @@ export function WorkedExample({ round }: { round: Round }) {
                   <p className="mt-1 line-clamp-2 font-bold leading-snug">{round.jobTitle}</p>
                   <p className="text-sm text-text-secondary">Budget {round.budget}</p>
                 </div>
-                <p className={cn('flex-shrink-0 pr-9 text-right text-xs font-semibold transition-opacity duration-500', scored ? 'opacity-100' : 'opacity-0')}>
-                  Taken by<span className="block text-sm text-text-primary">{winner.name}</span>
+                <p className={cn('flex-shrink-0 text-right text-xs font-semibold transition-[opacity,visibility] duration-500', taken && 'pr-9', scored ? 'visible opacity-100' : 'invisible opacity-0')}>
+                  {taken
+                    ? <>Taken by<span className="block text-sm text-text-primary">{winner.name}</span><span className="block text-accent-green">Profit {profit}</span></>
+                    : <span className="text-sm text-accent-red">Unfilled: no deal</span>}
                 </p>
               </div>
 
@@ -116,16 +209,18 @@ export function WorkedExample({ round }: { round: Round }) {
                     <div
                       key={b.name}
                       className={cn(
-                        'relative rounded-lg border bg-background-card p-3 transition-[box-shadow,border-color] duration-500',
+                        'relative rounded-lg border bg-background-card p-3 pb-7 transition-[box-shadow,border-color] duration-500',
                         isWinner ? 'border-ink shadow-lifted ring-2 ring-gold' : 'border-ink/30'
                       )}
                     >
                       <div className="flex items-center gap-2">
-                        {/* The winner's token leaves its mat for the job card at the last step */}
-                        <PlayerToken specialty={b.specialty} size="sm" className={cn(b.won && 'invisible')} />
+                        {/* The winner's token is drawn by the travelling piece below; its seat shows as an empty ring once it leaves */}
+                        {b.won
+                          ? <span aria-hidden className={cn('h-4 w-4 flex-shrink-0 rounded-full border border-dashed', scored && taken ? 'border-ink/40' : 'border-transparent')} />
+                          : <PlayerToken specialty={b.specialty} size="sm" />}
                         <span className="truncate text-sm font-semibold">{b.name}</span>
                       </div>
-                      <p className="mt-1 text-xs text-text-muted">Cost {b.cost}</p>
+                      <p className="mt-1 text-xs text-text-muted">Work cost {b.cost}</p>
                       <div
                         className={cn(
                           'mt-3 flex h-14 items-center justify-center rounded-md border text-2xl font-bold transition-colors duration-500',
@@ -143,11 +238,11 @@ export function WorkedExample({ round }: { round: Round }) {
                 })}
               </div>
 
-              {/* The winner's token: on its mat until it travels onto the job card */}
+              {/* The winner's token: on its mat until it travels onto the job card (only if it got the job) */}
               <span
                 aria-hidden
                 className={cn('pointer-events-none absolute transition-[left,top] duration-700', EASE)}
-                style={scored
+                style={scored && taken
                   ? { left: 'calc(100% - 2.25rem)', top: `calc(${JOB_H / 2}rem - 0.5rem)` }
                   : { left: `calc(${colLeft(winnerIndex)} + 0.75rem)`, top: `calc(${JOB_H}rem + 0.75rem + 0.75rem + 2px)` }}
               >
@@ -155,28 +250,28 @@ export function WorkedExample({ round }: { round: Round }) {
               </span>
 
               {/* The price coin: what the winner is paid */}
-              {step >= 2 && (
+              {step >= 2 && coinLabel !== null && (
                 <div
                   aria-hidden
                   className={cn('pointer-events-none absolute -bottom-4 flex h-9 min-w-9 -translate-x-1/2 items-center justify-center rounded-full border-2 border-ink bg-gold px-2 text-xs font-bold text-gold-ink shadow-piece transition-[left] duration-700', EASE)}
                   style={{ left: colCenter(coinIndex) }}
                 >
-                  {round.pricePaid}
+                  {coinLabel}
                 </div>
               )}
             </div>
           </div>
 
-          {step >= 4 && round.call && (
+          {step >= 4 && call && (
             <div className="mt-6 space-y-2 rounded-lg border border-ink/30 bg-background-tertiary p-4">
-              {round.call.lines.map((l, i) => (
+              {call.lines.map((l, i) => (
                 <p key={i} className="text-sm">
                   <span className="font-semibold">{l.speaker === 'client' ? 'Client' : winner.name}</span>
                   <span className="text-text-muted"> · {l.move}</span>
-                  <span className="mt-0.5 block text-text-secondary">{l.text}</span>
+                  <span className="mt-0.5 line-clamp-2 text-text-secondary">{l.text}</span>
                 </p>
               ))}
-              <p className="pt-1 text-sm font-semibold">{round.call.outcome}</p>
+              <p className="pt-1 text-sm font-semibold">{call.outcome}</p>
             </div>
           )}
 
@@ -188,30 +283,25 @@ export function WorkedExample({ round }: { round: Round }) {
                   <span><strong>{b.name}.</strong> <span className="text-text-secondary">{b.explanation}</span></span>
                 </li>
               ))}
-              {round.call && <li className="pl-7 text-sm text-text-secondary">{round.call.reveal}</li>}
+              {call && <li className="pl-7 text-sm text-text-secondary">{call.reveal}</li>}
             </ul>
           )}
         </div>
 
         {/* The rulebook column: what this step means */}
         <div className="flex flex-col">
-          <p className="min-h-[7.5rem] text-base leading-relaxed text-text-secondary" aria-live="polite">{narration[step]}</p>
-          <div className="mt-auto flex items-center gap-2 pt-4">
-            <button type="button" className="btn-secondary px-3" onClick={() => go(step - 1)} disabled={step === 0} aria-label="Previous step">
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-            <button type="button" className="btn-primary flex-1" onClick={() => go(step + 1)} disabled={scored}>
-              {scored ? 'Round complete' : `Next: ${STEPS[step + 1]}`}
-              {!scored && <ArrowRight className="ml-2 h-4 w-4" />}
-            </button>
-          </div>
+          <p className="min-h-[7.5rem] text-base leading-relaxed text-text-secondary" aria-live={playing ? 'off' : 'polite'}>{narration[step]}</p>
+          <div className="mt-auto hidden pt-4 lg:block">{controls}</div>
           {round.id && scored && (
-            <Link to={`/auctions/${round.id}`} className="mt-3 text-sm font-semibold text-accent-purple underline">
+            <Link to={`/auctions/${round.id}`} className="mt-3 text-sm font-semibold text-accent-felt underline">
               See the full round, with every decision
             </Link>
           )}
         </div>
       </div>
+
+      {/* Phones and tablets: the controls stay under the thumb while the card is on screen */}
+      <div className="sticky bottom-0 border-t border-ink/20 bg-background-card px-5 py-3 lg:hidden">{controls}</div>
     </section>
   );
 }

@@ -247,6 +247,11 @@ async def why_did_i_lose(db, fake, auction_id, cheap, early, late):
     assert explain(AuctionStatus.CLOSED, False, 92, 84, "86 (1 job running)", "78 (idle)")[1] == \
         "Bid 92 with a work cost of 86 (1 job running). The winner bid 84, 8 lower with a work cost of 78 (idle)."
     assert explain(AuctionStatus.ACTIVE, False, 120, None, None, None)[0] == "sealed"
+    # A finished haggle decides the winner's final pay
+    assert explain(AuctionStatus.CLOSED, True, 88, 88, "87 (idle)", "87 (idle)", 87, 88, {"status": "no_deal", "final_price": None})[1] == \
+        "Won at 88, but no price was agreed with the client, so the job went unfilled and paid nothing."
+    assert explain(AuctionStatus.CLOSED, True, 120, 120, "100 (idle)", "100 (idle)", 100, 150, {"status": "deal", "final_price": 135})[1] == \
+        "Won with a bid of 120 at an auction price of 150 with a work cost of 100 (idle), then agreed 135 with the client: profit 35."
 
     # Sealed prompt: own cost at current workload (157 job, 2 jobs running), rival cost range, no lead
     state = AgentState(agent_name="A", specialty="designer", auction_instructions="x", current_jobs=2, credits=1000)

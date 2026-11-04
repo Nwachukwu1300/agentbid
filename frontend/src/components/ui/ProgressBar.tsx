@@ -22,7 +22,7 @@ export function ProgressBar({
   const percentage = Math.min(100, Math.max(0, (value / max) * 100));
 
   const colorClasses = {
-    purple: 'bg-accent-purple',
+    purple: 'bg-accent-felt',
     blue: 'bg-accent-blue',
     green: 'bg-accent-green',
     orange: 'bg-gold-hover', // warm "watch this" colour from the world's gold, not an off-palette orange

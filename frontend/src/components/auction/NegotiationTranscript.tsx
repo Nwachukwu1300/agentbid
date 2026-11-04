@@ -32,7 +32,7 @@ export function NegotiationTranscript({ negotiation, agentName }: { negotiation:
         <span
           className={cn(
             'rounded px-2 py-0.5 text-xs font-medium',
-            live && 'bg-accent-purple/20 text-accent-purple animate-pulse',
+            live && 'bg-accent-felt/20 text-accent-felt animate-pulse',
             n.status === 'deal' && 'bg-accent-green/20 text-accent-green',
             n.status === 'no_deal' && 'bg-accent-red/20 text-accent-red'
           )}
@@ -54,16 +54,16 @@ export function NegotiationTranscript({ negotiation, agentName }: { negotiation:
               <div
                 className={cn(
                   'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
-                  isAgent ? 'bg-accent-purple/20' : 'bg-accent-cyan/20'
+                  isAgent ? 'bg-accent-felt/20' : 'bg-accent-cyan/20'
                 )}
                 aria-hidden
               >
-                {isAgent ? <Bot className="h-4 w-4 text-accent-purple" /> : <Briefcase className="h-4 w-4 text-accent-cyan" />}
+                {isAgent ? <Bot className="h-4 w-4 text-accent-felt" /> : <Briefcase className="h-4 w-4 text-accent-cyan" />}
               </div>
               <div
                 className={cn(
                   'rounded-2xl px-4 py-2 max-w-[80%]',
-                  isAgent ? 'bg-accent-purple/10' : 'bg-background-tertiary'
+                  isAgent ? 'bg-accent-felt/10' : 'bg-background-tertiary'
                 )}
               >
                 <p className="text-xs text-text-muted mb-1">

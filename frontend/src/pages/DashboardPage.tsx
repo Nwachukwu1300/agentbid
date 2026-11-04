@@ -132,7 +132,7 @@ export function DashboardPage() {
             label="Avg Win Rate"
             value={`${avgWinRate}%`}
             icon={TrendingUp}
-            iconColor="text-accent-purple"
+            iconColor="text-accent-felt"
           />
           <StatCard
             label="Active Bids"
@@ -183,8 +183,8 @@ export function DashboardPage() {
         ) : agents.length === 0 ? (
           <div className="card text-center py-16">
             <div className="flex justify-center mb-4">
-              <div className="rounded-full bg-accent-purple/10 p-4">
-                <Plus className="h-8 w-8 text-accent-purple" />
+              <div className="rounded-full bg-accent-felt/10 p-4">
+                <Plus className="h-8 w-8 text-accent-felt" />
               </div>
             </div>
             <h3 className="text-lg font-semibold text-text-primary mb-2">

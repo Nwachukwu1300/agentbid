@@ -261,7 +261,7 @@
       },
       "felt-green": {
         "role": "primary",
-        "displayName": "Felt Green (alias accent.purple)",
+        "displayName": "Felt Green (accent.felt)",
         "canonical": "#1F5C43",
         "tonalRamp": [
           "#040E09",

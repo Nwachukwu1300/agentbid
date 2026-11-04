@@ -12,7 +12,7 @@ import type { AgentOutcomeKind, AuctionBreakdown } from '@/types';
 const OUTCOME_STYLES: Record<AgentOutcomeKind, { label: string; className: string }> = {
   won: { label: 'Won', className: 'bg-accent-green/20 text-accent-green' },
   lost: { label: 'Lost', className: 'bg-accent-red/20 text-accent-red' },
-  sealed: { label: 'Sealed bid', className: 'bg-accent-purple/20 text-accent-purple' },
+  sealed: { label: 'Sealed bid', className: 'bg-accent-felt/20 text-accent-felt' },
   passed: { label: 'Passed', className: 'bg-background-tertiary text-text-muted' },
   no_winner: { label: 'No winner', className: 'bg-background-tertiary text-text-muted' },
 };
@@ -103,7 +103,7 @@ export function AuctionDetailPage() {
             {auction.winning_agent_name && auction.winning_agent_id && (
               <div className="flex items-center gap-1">
                 <Trophy className="h-4 w-4 text-ink" />
-                <Link to={`/agents/${auction.winning_agent_id}`} className="font-medium text-text-primary hover:text-accent-purple">
+                <Link to={`/agents/${auction.winning_agent_id}`} className="font-medium text-text-primary hover:text-accent-felt">
                   {auction.winning_agent_name}
                 </Link>
                 {auction.price_paid !== null && auction.price_paid !== auction.winning_amount ? (
@@ -125,8 +125,8 @@ export function AuctionDetailPage() {
         </div>
 
         {isLive && (
-          <div className="card mb-6 flex items-center gap-3 border-accent-purple/40">
-            <Lock className="h-5 w-5 text-accent-purple" />
+          <div className="card mb-6 flex items-center gap-3 border-accent-felt/40">
+            <Lock className="h-5 w-5 text-accent-felt" />
             <p className="text-sm text-text-secondary">
               Sealed auction: each agent gets one bid and can't see the others. Amounts and reasoning are revealed when the auction closes.
             </p>
@@ -148,7 +148,7 @@ export function AuctionDetailPage() {
               {agents.map((a) => (
                 <div key={a.agent_id} className="p-3 rounded-lg bg-background-tertiary/50">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <Link to={`/agents/${a.agent_id}`} className="font-medium text-text-primary hover:text-accent-purple">
+                    <Link to={`/agents/${a.agent_id}`} className="font-medium text-text-primary hover:text-accent-felt">
                       {a.agent_name}
                     </Link>
                     <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', OUTCOME_STYLES[a.outcome].className)}>
@@ -178,10 +178,10 @@ export function AuctionDetailPage() {
           ) : (
             <ol className="space-y-3">
               {decisions.map((d) => (
-                <li key={d.id} className={cn('border-l pl-3', d.decision_type === 'bid' ? 'border-accent-purple' : 'border-border opacity-70')}>
+                <li key={d.id} className={cn('border-l pl-3', d.decision_type === 'bid' ? 'border-accent-felt' : 'border-border opacity-70')}>
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <span className="font-medium text-text-primary">{d.agent_name}</span>
-                    <span className={d.decision_type === 'bid' ? 'text-accent-purple font-medium' : 'text-text-muted'}>
+                    <span className={d.decision_type === 'bid' ? 'text-accent-felt font-medium' : 'text-text-muted'}>
                       {d.decision_type === 'bid' ? (d.bid_amount === null ? 'sealed bid' : `bid ${d.bid_amount}`) : 'passed'}
                     </span>
                     <span className="text-xs text-text-muted">{new Date(d.created_at).toLocaleTimeString()}</span>

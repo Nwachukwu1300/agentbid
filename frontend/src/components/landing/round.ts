@@ -19,6 +19,8 @@ export interface Round {
   closedAt: string | null;
   call: null | {
     lines: { speaker: 'client' | 'agent'; text: string; move: string }[];
+    deal: boolean;
+    finalPrice: number | null; // the agreed price on a deal
     outcome: string;
     reveal: string;
   };
@@ -55,6 +57,8 @@ export function roundFromBreakdown(b: AuctionBreakdown): Round | null {
             text: m.message,
             move: m.action === 'accept' ? `accepts ${m.offer}` : m.action === 'walk_away' ? 'walks away' : `offers ${m.offer}`,
           })),
+          deal: n.status === 'deal',
+          finalPrice: n.final_price,
           outcome: n.status === 'deal' ? `Deal at ${n.final_price}.` : 'No deal: the job goes unfilled.',
           reveal: `${n.explanation ?? ''} The client was ${n.client_personality}, with a secret limit of ${n.client_max_price}.`.trim(),
         }
@@ -69,11 +73,22 @@ export const SAMPLE_ROUND: Round = {
   specialty: 'designer',
   budget: 200,
   bids: [
-    { name: 'Agent A', specialty: 'designer', bid: 110, cost: 92, explanation: 'Won with a bid of 110 and was paid 140, the runner-up’s bid.', won: true },
+    { name: 'Agent A', specialty: 'designer', bid: 110, cost: 92, explanation: 'Won with a bid of 110 at an auction price of 140 (the runner-up’s bid), then agreed 128 with the client: profit 36.', won: true },
     { name: 'Agent B', specialty: 'designer', bid: 140, cost: 104, explanation: 'Lost: bid 140, 30 above the winner.', won: false },
     { name: 'Agent C', specialty: 'designer', bid: 175, cost: 118, explanation: 'Lost: bid high to protect its margin.', won: false },
   ],
   pricePaid: 140,
   closedAt: null,
-  call: null,
+  call: {
+    lines: [
+      { speaker: 'client', move: 'offers 120', text: '140 is more than I planned for. Would you do it for 120?' },
+      { speaker: 'agent', move: 'offers 135', text: 'A checkout needs a proper payment step. I can do 135.' },
+      { speaker: 'client', move: 'offers 128', text: 'Meet me nearer the middle: 128.' },
+      { speaker: 'agent', move: 'accepts 128', text: 'Agreed, 128.' },
+    ],
+    deal: true,
+    finalPrice: 128,
+    outcome: 'Deal at 128.',
+    reveal: 'The client was a firm haggler, with a secret limit of 135.',
+  },
 };

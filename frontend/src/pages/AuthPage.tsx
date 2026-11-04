@@ -87,7 +87,7 @@ export function AuthPage() {
                 setMode('login');
                 setSignupSuccess(false);
               }}
-              className="text-accent-purple hover:text-accent-purple/80 font-medium"
+              className="text-accent-felt hover:text-accent-felt/80 font-medium"
             >
               Back to login
             </button>
@@ -145,7 +145,7 @@ export function AuthPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   required
-                  className="w-full pl-10 pr-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-purple focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-felt focus:border-transparent"
                 />
               </div>
             </div>
@@ -164,7 +164,7 @@ export function AuthPage() {
                   placeholder="••••••••"
                   required
                   minLength={6}
-                  className="w-full pl-10 pr-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-purple focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-felt focus:border-transparent"
                 />
               </div>
             </div>
@@ -184,7 +184,7 @@ export function AuthPage() {
                     placeholder="••••••••"
                     required
                     minLength={6}
-                    className="w-full pl-10 pr-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-purple focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2.5 bg-background-tertiary border border-border rounded-lg text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent-felt focus:border-transparent"
                   />
                 </div>
               </div>
@@ -215,7 +215,7 @@ export function AuthPage() {
                 setMode(mode === 'login' ? 'signup' : 'login');
                 setError(null);
               }}
-              className="text-accent-purple hover:text-accent-purple/80 font-medium"
+              className="text-accent-felt hover:text-accent-felt/80 font-medium"
             >
               {mode === 'login' ? 'Sign up' : 'Sign in'}
             </button>

@@ -15,7 +15,7 @@ export function StatCard({
   value,
   change,
   icon: Icon,
-  iconColor = 'text-accent-purple',
+  iconColor = 'text-accent-felt',
   className,
 }: StatCardProps) {
   return (

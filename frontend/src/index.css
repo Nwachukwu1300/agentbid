@@ -32,6 +32,10 @@
     text-wrap: balance;
   }
 
+  p, li, dd {
+    text-wrap: pretty;
+  }
+
   ::selection {
     background: #F0B93A;
     color: #18201B;
@@ -101,7 +105,7 @@
   }
 
   .input {
-    @apply w-full rounded-md border border-ink/60 bg-background-card px-4 py-2 text-text-primary placeholder:text-text-muted focus:border-accent-purple focus:outline-none focus:ring-1 focus:ring-accent-purple;
+    @apply w-full rounded-md border border-ink/60 bg-background-card px-4 py-2 text-text-primary placeholder:text-text-muted focus:border-accent-felt focus:outline-none focus:ring-1 focus:ring-accent-felt;
   }
 
   .nav-link {

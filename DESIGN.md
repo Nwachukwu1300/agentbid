@@ -172,7 +172,7 @@ A printed-board palette: muted sage neutrals, near-black green ink, one bottle g
 ### Primary
 - **Gold Foil** (gold-foil): the primary action fill (the "gold piece"), the foil title on the box lid, the winning bid, the price coin and the highlight ring on the winning piece. Text on it is always Gold Ink.
 - **Bottle Box Green** (box-green, box-green-deep): the box lid on the landing page and the closing call to action band; also the browser theme colour. Deep is the lid's inset strips and the hover of outlined buttons on the lid.
-- **Felt Green** (felt-green): the interactive accent on card stock: text links, focus outlines, input focus borders, caret, default progress fill and chart lines. In code this is the compatibility alias `accent.purple`.
+- **Felt Green** (felt-green): the interactive accent on card stock: text links, focus outlines, input focus borders, caret, default progress fill and chart lines. In code this is `accent.felt` (`text-accent-felt`, `bg-accent-felt`).
 
 ### Secondary
 - **Player colours** (player-coder blue, player-designer purple, player-writer red, player-data-analyst yellow, player-tester green): identity only. They appear as token discs, chart series and the How to play step markers. Never as text colour on card stock, never as a button fill.

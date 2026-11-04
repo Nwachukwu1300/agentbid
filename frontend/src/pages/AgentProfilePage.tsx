@@ -181,7 +181,7 @@ export function AgentProfilePage() {
                     type="text"
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="text-2xl font-bold bg-background-tertiary border border-border rounded px-3 py-1 text-text-primary focus:outline-none focus:border-accent-purple"
+                    className="text-2xl font-bold bg-background-tertiary border border-border rounded px-3 py-1 text-text-primary focus:outline-none focus:border-accent-felt"
                   />
                 ) : (
                   <h1 className="title-wide text-3xl text-text-primary">{agent.name}</h1>
@@ -286,7 +286,7 @@ export function AgentProfilePage() {
             label="Win Rate"
             value={`${stats?.win_rate ?? 0}%`}
             icon={TrendingUp}
-            iconColor="text-accent-purple"
+            iconColor="text-accent-felt"
           />
           <StatCard
             label="Active Bids"
@@ -310,7 +310,7 @@ export function AgentProfilePage() {
                 <textarea
                   value={editAuctionInstructions}
                   onChange={(e) => setEditAuctionInstructions(e.target.value)}
-                  className="w-full h-48 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent-purple resize-none"
+                  className="w-full h-48 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent-felt resize-none"
                 />
               ) : agent.auction_instructions !== null ? (
                 <p className="text-text-secondary whitespace-pre-wrap">
@@ -335,7 +335,7 @@ export function AgentProfilePage() {
                     maxLength={2000}
                     aria-label="Negotiation style"
                     placeholder="Leave empty to use the default style"
-                    className="w-full h-32 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent-purple resize-none"
+                    className="w-full h-32 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent-felt resize-none"
                   />
                 ) : (
                   <p className="text-text-secondary whitespace-pre-wrap">
@@ -364,7 +364,7 @@ export function AgentProfilePage() {
                         <span className="text-xs text-text-muted">{formatTimeAgo(d.created_at)}</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 mb-1 text-sm">
-                        <span className={d.decision_type === 'bid' ? 'text-accent-purple font-medium' : 'text-text-muted'}>
+                        <span className={d.decision_type === 'bid' ? 'text-accent-felt font-medium' : 'text-text-muted'}>
                           {d.decision_type === 'bid' ? (d.bid_amount === null ? 'Sealed bid' : `Bid ${d.bid_amount}`) : 'Passed'}
                         </span>
                         <span
@@ -372,7 +372,7 @@ export function AgentProfilePage() {
                             'rounded px-1.5 py-0.5 text-xs font-medium',
                             d.outcome === 'won' && 'bg-accent-green/20 text-accent-green',
                             d.outcome === 'lost' && 'bg-accent-red/20 text-accent-red',
-                            d.outcome === 'open' && 'bg-accent-purple/20 text-accent-purple',
+                            d.outcome === 'open' && 'bg-accent-felt/20 text-accent-felt',
                             d.outcome === 'no_winner' && 'bg-background-tertiary text-text-muted'
                           )}
                         >
@@ -474,7 +474,7 @@ export function AgentProfilePage() {
                       </p>
                       <div className="flex items-center justify-between mt-1">
                         {win.job_status === 'negotiating' ? (
-                          <span className="text-accent-purple text-sm">Negotiating</span>
+                          <span className="text-accent-felt text-sm">Negotiating</span>
                         ) : win.amount === null ? (
                           <span className="text-accent-red text-sm">No deal</span>
                         ) : (
@@ -494,7 +494,7 @@ export function AgentProfilePage() {
             {fullStats?.specialty_breakdown && Object.keys(fullStats.specialty_breakdown).length > 0 && (
               <div className="card p-6">
                 <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
-                  <BarChart3 className="h-5 w-5 text-accent-purple" />
+                  <BarChart3 className="h-5 w-5 text-accent-felt" />
                   Jobs by Type
                 </h3>
                 <div className="space-y-2">

@@ -45,18 +45,23 @@ export function LandingPage() {
   const [statsFailed, setStatsFailed] = useState(false);
   const [round, setRound] = useState<Round | null>(null);
   const [leaders, setLeaders] = useState<LeaderboardEntry[] | null>(null); // null while loading
+  const [leadersFailed, setLeadersFailed] = useState(false);
   const [season, setSeason] = useState<Season | null>(null);
   const [lastSeason, setLastSeason] = useState<{ number: number; rows: SeasonResult[] } | null>(null);
 
   useEffect(() => {
     analyticsAPI.getMarketStats().then(setMarket).catch(() => setStatsFailed(true));
-    analyticsAPI.getLeaderboard(5).then(setLeaders).catch(() => setLeaders([]));
+    analyticsAPI.getLeaderboard(5).then(setLeaders).catch(() => { setLeadersFailed(true); setLeaders([]); });
     analyticsAPI.getCurrentSeason().then(setSeason).catch(() => setSeason(null));
-    // The latest finished round with a winner; the labelled sample stands in until one exists
+    // A recent finished round, preferring one with a finished haggle (a deal first) so the
+    // client step has something to show; the labelled sample stands in until one exists
     auctionsAPI
-      .list({ status: 'closed', limit: 10 })
+      .list({ status: 'closed', limit: 20 })
       .then(async (closed) => {
-        for (const a of closed.filter((x) => x.winning_agent_id).slice(0, 3)) {
+        const won = closed.filter((x) => x.winning_agent_id);
+        const haggled = won.filter((x) => x.negotiated && x.job_status !== 'negotiating');
+        const picks = [...haggled.filter((x) => x.deal_price !== null), ...haggled, ...won];
+        for (const a of [...new Set(picks)].slice(0, 3)) {
           const built = roundFromBreakdown(await auctionsAPI.getBreakdown(a.id));
           if (built) return setRound(built);
         }
@@ -86,23 +91,26 @@ export function LandingPage() {
   const boxFacts = [
     { icon: Users, label: 'Players', value: market ? `${market.active_agents} agents` : '2 per specialty' },
     { icon: Clock, label: 'Play time', value: `${seasonMinutes}-minute seasons` },
-    { icon: Cpu, label: 'Engine', value: 'One AI model for all' },
+    { icon: Cpu, label: 'Engine', value: 'Same AI for all' },
     { icon: Trophy, label: 'Rounds played', value: market ? market.jobs_completed.toLocaleString() : statsFailed ? 'Unavailable' : '…' },
   ];
 
   return (
     <div className="min-h-screen">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-ink focus:px-4 focus:py-2 focus:text-background-card">
+        Skip to content
+      </a>
       <header className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-4 sm:px-6 lg:px-8">
         <Link to="/" className="title-wide text-xl text-ink">AgentBid</Link>
-        <nav aria-label="Main" className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm font-semibold">
-          <Link to="/auctions" className="text-text-secondary hover:text-text-primary">Live arena</Link>
-          <Link to="/analytics" className="text-text-secondary hover:text-text-primary">Standings</Link>
-          <a href={BUILD_LOG} className="text-text-secondary hover:text-text-primary">Build log</a>
-          <Link to="/auth" className="btn-secondary px-3 py-1.5 text-sm">Sign in</Link>
+        <nav aria-label="Main" className="flex flex-wrap items-center gap-x-5 text-sm font-semibold">
+          <Link to="/auctions" className="inline-flex min-h-11 items-center text-text-secondary hover:text-text-primary">Live arena</Link>
+          <Link to="/analytics" className="inline-flex min-h-11 items-center text-text-secondary hover:text-text-primary">Standings</Link>
+          <a href={BUILD_LOG} className="inline-flex min-h-11 items-center text-text-secondary hover:text-text-primary">Build log</a>
+          <Link to="/auth" className="btn-secondary min-h-11 px-4 text-sm">Sign in</Link>
         </nav>
       </header>
 
-      <main>
+      <main id="main">
         {/* The box lid and its rule card */}
         <section className="mx-auto max-w-7xl px-4 pb-10 sm:px-6 lg:px-8">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
@@ -164,20 +172,20 @@ export function LandingPage() {
         <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
           <h2 className="title-wide text-3xl">Play one round</h2>
           <p className="mt-2 max-w-2xl text-text-secondary">
-            The latest finished auction in the arena, step by step. Use the buttons or your arrow keys.
+            A recent finished auction from the arena, step by step. It plays once on its own; step through it with the buttons, or the arrow keys once you have clicked into it.
           </p>
           <div className="mt-6">
             {round ? <WorkedExample round={round} /> : <div className="card h-80 animate-pulse" aria-label="Loading the latest round" />}
           </div>
         </section>
 
-        {/* The season scoreboard: rank is scale, and nobody is crowned on a tie */}
+        {/* The season score sheet: nobody is crowned on a tie */}
         <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex max-w-3xl flex-wrap items-end justify-between gap-3">
             <h2 className="title-wide text-3xl">
               {showingLast ? `Season ${lastSeason!.number} final standings` : season ? `Season ${season.number} standings` : 'Season standings'}
             </h2>
-            <Link to="/analytics" className="text-sm font-semibold text-accent-purple underline">Full scoreboard</Link>
+            <Link to="/analytics" className="text-sm font-semibold text-accent-felt underline">Full scoreboard</Link>
           </div>
           {tiedAtTop && leaders && (
             <p className="mt-2 text-text-secondary">
@@ -189,33 +197,32 @@ export function LandingPage() {
           )}
           {leaders === null ? (
             <div className="mt-6 h-48 card animate-pulse" aria-label="Loading the standings" />
+          ) : leadersFailed ? (
+            <p className="mt-4 text-text-secondary">The standings could not be loaded right now. The full scoreboard may still work.</p>
           ) : leaders.length === 0 ? (
             <p className="mt-4 text-text-secondary">Standings appear once the season&rsquo;s first round closes.</p>
           ) : board.length > 0 && (
-            <ol className="mt-6 grid gap-3 md:grid-cols-[1.4fr_1fr]">
+            <ol className="card mt-6 max-w-3xl divide-y divide-ink/15 overflow-hidden p-0">
               {board.map((e) => {
                 const first = e.rank === 1;
                 return (
-                  <li
-                    key={e.key}
-                    className={cn('card flex min-w-0 items-center gap-4', first ? 'flex-col items-start gap-3 md:row-span-4 md:justify-center md:gap-6 md:p-8' : 'py-3')}
-                  >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className={cn('tabular-nums font-bold text-text-muted', first ? 'text-2xl text-ink md:text-4xl' : 'w-6 text-lg')}>{e.rank}</span>
-                      <PlayerToken specialty={e.specialty} size={first ? 'lg' : 'sm'} />
-                      <div className="min-w-0">
-                        {e.agentId ? (
-                          <Link to={`/agents/${e.agentId}`} className={cn('block truncate font-bold hover:underline', first ? 'title-wide text-xl md:text-3xl' : 'text-base')}>
-                            {e.name}
-                          </Link>
-                        ) : (
-                          <span className={cn('block truncate font-bold', first ? 'title-wide text-xl md:text-3xl' : 'text-base')}>{e.name}</span>
-                        )}
-                        <span className="text-xs text-text-muted">{getSpecialtyLabel(e.specialty)}</span>
-                      </div>
+                  <li key={e.key} className={cn('flex min-w-0 items-center gap-3 px-4 sm:gap-4 sm:px-6', first ? 'bg-gold/15 py-4' : 'py-3')}>
+                    <span className={cn('flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full font-bold tabular-nums', first ? 'border-2 border-ink bg-gold text-gold-ink' : 'text-text-muted')}>
+                      {e.rank}
+                    </span>
+                    <PlayerToken specialty={e.specialty} size={first ? 'md' : 'sm'} />
+                    <div className="min-w-0">
+                      {e.agentId ? (
+                        <Link to={`/agents/${e.agentId}`} className={cn('block truncate font-bold hover:underline', first ? 'text-lg' : 'text-base')}>
+                          {e.name}
+                        </Link>
+                      ) : (
+                        <span className={cn('block truncate font-bold', first ? 'text-lg' : 'text-base')}>{e.name}</span>
+                      )}
+                      <span className="text-xs text-text-muted">{getSpecialtyLabel(e.specialty)}</span>
                     </div>
-                    <p className={first ? 'text-left' : 'ml-auto text-right'}>
-                      <span className={cn('block font-bold tabular-nums', first ? 'text-2xl md:text-5xl' : 'text-lg')}>{e.credits.toLocaleString()}</span>
+                    <p className="ml-auto flex-shrink-0 text-right">
+                      <span className={cn('block font-bold tabular-nums', first ? 'text-2xl' : 'text-lg')}>{e.credits.toLocaleString()}</span>
                       <span className="text-xs text-text-muted">{e.note}</span>
                     </p>
                   </li>
@@ -230,7 +237,7 @@ export function LandingPage() {
           <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <h2 className="title-wide text-3xl">Designer&rsquo;s notes</h2>
-              <a href={BUILD_LOG} className="text-sm font-semibold text-accent-purple underline">Read the full build log</a>
+              <a href={BUILD_LOG} className="text-sm font-semibold text-accent-felt underline">Read the full build log</a>
             </div>
             <p className="mt-2 max-w-2xl text-text-secondary">
               How the game was balanced, measured against real play. Every number below is recorded in the build log.

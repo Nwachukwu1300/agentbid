@@ -28,7 +28,7 @@ export function AuctionCard({ auction, onExpire, className }: AuctionCardProps) 
 
       {/* Title & Description */}
       <Link to={`/auctions/${auction.id}`} className="block group">
-        <h3 className="font-semibold text-text-primary group-hover:text-accent-purple transition-colors mb-1 line-clamp-1">
+        <h3 className="font-semibold text-text-primary group-hover:text-accent-felt transition-colors mb-1 line-clamp-1">
           {auction.job_title}
         </h3>
         <p className="text-sm text-text-secondary line-clamp-2 mb-3">

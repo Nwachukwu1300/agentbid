@@ -243,17 +243,17 @@ export function CreateAgentPage() {
                   key={spec.value}
                   onClick={() => handleSelectSpecialty(spec.value)}
                   disabled={isLoading}
-                  className="card p-6 text-left hover:border-accent-purple/50 transition-all group disabled:opacity-50"
+                  className="card p-6 text-left hover:border-accent-felt/50 transition-all group disabled:opacity-50"
                 >
                   <div className="flex items-center gap-4">
                     <PlayerToken specialty={spec.value} size="lg" />
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-text-primary group-hover:text-accent-purple transition-colors">
+                      <h3 className="text-lg font-semibold text-text-primary group-hover:text-accent-felt transition-colors">
                         {spec.label}
                       </h3>
                       <p className="text-text-secondary">{spec.description}</p>
                     </div>
-                    <ChevronRight className="h-6 w-6 text-text-muted group-hover:text-accent-purple transition-colors" />
+                    <ChevronRight className="h-6 w-6 text-text-muted group-hover:text-accent-felt transition-colors" />
                   </div>
                 </button>
               ))}
@@ -268,8 +268,8 @@ export function CreateAgentPage() {
               {/* Chat Header */}
               <div className="p-4 border-b border-border bg-background-tertiary">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-accent-purple/20 flex items-center justify-center">
-                    <Sparkles className="h-5 w-5 text-accent-purple" />
+                  <div className="w-10 h-10 rounded-full bg-accent-felt/20 flex items-center justify-center">
+                    <Sparkles className="h-5 w-5 text-accent-felt" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-text-primary">Agent Builder AI</h3>
@@ -295,13 +295,13 @@ export function CreateAgentPage() {
                         'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
                         msg.role === 'user'
                           ? 'bg-accent-cyan/20'
-                          : 'bg-accent-purple/20'
+                          : 'bg-accent-felt/20'
                       )}
                     >
                       {msg.role === 'user' ? (
                         <User className="h-4 w-4 text-accent-cyan" />
                       ) : (
-                        <Bot className="h-4 w-4 text-accent-purple" />
+                        <Bot className="h-4 w-4 text-accent-felt" />
                       )}
                     </div>
                     <div
@@ -318,8 +318,8 @@ export function CreateAgentPage() {
                 ))}
                 {isLoading && (
                   <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-accent-purple/20 flex items-center justify-center">
-                      <Bot className="h-4 w-4 text-accent-purple" />
+                    <div className="w-8 h-8 rounded-full bg-accent-felt/20 flex items-center justify-center">
+                      <Bot className="h-4 w-4 text-accent-felt" />
                     </div>
                     <div className="bg-background-tertiary rounded-2xl px-4 py-3">
                       <div className="flex gap-1" role="status" aria-label="The builder is writing">
@@ -343,7 +343,7 @@ export function CreateAgentPage() {
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
                     placeholder="Describe your agent's strategy..."
-                    className="flex-1 bg-background-tertiary border border-border rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-purple"
+                    className="flex-1 bg-background-tertiary border border-border rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-felt"
                     disabled={isLoading}
                   />
                   <button
@@ -374,7 +374,7 @@ export function CreateAgentPage() {
               <p className="text-text-muted text-sm mb-2">Or skip the conversation</p>
               <button
                 onClick={() => setStep('preview')}
-                className="text-accent-purple hover:underline text-sm"
+                className="text-accent-felt hover:underline text-sm"
               >
                 <Zap className="inline h-4 w-4 mr-1" />
                 Quick generate with a brief description
@@ -413,7 +413,7 @@ export function CreateAgentPage() {
                     type="text"
                     value={agentName}
                     onChange={(e) => setAgentName(e.target.value)}
-                    className="w-full bg-background-tertiary border border-border rounded-lg px-4 py-3 text-xl font-semibold text-text-primary focus:outline-none focus:border-accent-purple"
+                    className="w-full bg-background-tertiary border border-border rounded-lg px-4 py-3 text-xl font-semibold text-text-primary focus:outline-none focus:border-accent-felt"
                     placeholder="Enter agent name..."
                   />
                   <p className="mt-2 text-sm text-text-muted">
@@ -440,7 +440,7 @@ export function CreateAgentPage() {
                     <textarea
                       value={auctionInstructions}
                       onChange={(e) => setAuctionInstructions(e.target.value)}
-                      className="w-full h-48 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent-purple resize-none"
+                      className="w-full h-48 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent-felt resize-none"
                     />
                   ) : (
                     <p className="text-text-secondary whitespace-pre-wrap">
@@ -473,7 +473,7 @@ export function CreateAgentPage() {
                       onChange={(e) => setNegotiationStyle(e.target.value)}
                       maxLength={2000}
                       aria-label="Negotiation style"
-                      className="w-full h-32 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent-purple resize-none"
+                      className="w-full h-32 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary focus:outline-none focus:border-accent-felt resize-none"
                     />
                   ) : (
                     <p className="text-text-secondary whitespace-pre-wrap">
@@ -561,8 +561,8 @@ function QuickGenerateForm({
   return (
     <div className="card p-6">
       <div className="flex items-center gap-3 mb-4">
-        <div className="w-10 h-10 rounded-full bg-accent-purple/20 flex items-center justify-center">
-          <Zap className="h-5 w-5 text-accent-purple" />
+        <div className="w-10 h-10 rounded-full bg-accent-felt/20 flex items-center justify-center">
+          <Zap className="h-5 w-5 text-accent-felt" />
         </div>
         <div>
           <h3 className="font-semibold text-text-primary">Quick Generate</h3>
@@ -576,7 +576,7 @@ function QuickGenerateForm({
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Example: I want an aggressive agent that undercuts competitors by 20%, focuses on high-value jobs, and isn't afraid to take risks..."
-        className="w-full h-32 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-purple resize-none mb-4"
+        className="w-full h-32 bg-background-tertiary border border-border rounded-lg px-4 py-3 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-felt resize-none mb-4"
       />
 
       <button
@@ -623,7 +623,7 @@ function RegenerateForm({
         value={feedback}
         onChange={(e) => setFeedback(e.target.value)}
         placeholder="e.g., Make it more aggressive, focus on volume..."
-        className="flex-1 bg-background-tertiary border border-border rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-purple"
+        className="flex-1 bg-background-tertiary border border-border rounded-lg px-4 py-2 text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-felt"
         onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
       />
       <button

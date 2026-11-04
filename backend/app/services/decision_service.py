@@ -20,10 +20,12 @@ def explain(
     winner_cost: str | None,
     cost_value: int | None = None,
     price: int | None = None,
+    haggle: dict | None = None,
 ) -> tuple[str, str]:
     """(outcome, one-line explanation) for one agent in one auction.
 
     cost / winner_cost are labels like "86 (2 jobs running)"; None for bids from before sealed auctions.
+    haggle is the winner's finished negotiation (status, final_price), which decides what it was finally paid.
     """
     if status == AuctionStatus.ACTIVE:
         return ("sealed", "Bid submitted. Revealed when the auction closes.") if best_bid is not None \
@@ -37,6 +39,16 @@ def explain(
     if is_winner:
         paid = price if price is not None else best_bid  # second price: the runner-up's bid
         won = f"Won at {best_bid}" if paid == best_bid else f"Won with a bid of {best_bid} and was paid {paid} (the runner-up's bid)"
+        if haggle:  # the auction price only opened a negotiation; its result is what counts
+            opening = f"Won at {best_bid}" if paid == best_bid else f"Won with a bid of {best_bid} at an auction price of {paid}"
+            if haggle["status"] != "deal":
+                return "won", f"{opening}, but no price was agreed with the client, so the job went unfilled and paid nothing."
+            final = haggle["final_price"]
+            if cost_value is None:
+                return "won", f"{opening}, then agreed {final} with the client."
+            profit = final - cost_value
+            result = f"profit {profit}" if profit >= 0 else f"a loss of {-profit}"
+            return "won", f"{opening}{yours}, then agreed {final} with the client: {result}."
         if cost_value is None:
             return "won", f"{won}."
         profit = paid - cost_value
@@ -158,12 +170,19 @@ class DecisionService:
         winner_id = str(auction.winning_agent_id) if auction.winning_agent_id else None
         label = {agent_id: self._cost_label(cost, base_price, agent_id, auction_id) for agent_id, cost in costs.items()}
 
+        negotiation = None
+        rows = (await self.db.table("negotiations").select("*").eq("auction_id", str(auction_id)).execute()).data
+        if rows:
+            from app.services.negotiation_service import NegotiationService, public_negotiation
+            negotiation = public_negotiation(rows[0], await NegotiationService(self.db).get_messages(rows[0]["id"]))
+        haggle = negotiation if negotiation and negotiation["status"] != "active" else None
+
         summaries = []
         for agent_id in agent_ids:
             outcome, explanation = explain(
                 auction.status, agent_id == winner_id, best.get(agent_id), auction.winning_amount,
                 label.get(agent_id), label.get(winner_id) if winner_id else None, costs.get(agent_id),
-                auction.price_paid,
+                auction.price_paid, haggle,
             )
             summaries.append({
                 "agent_id": agent_id,
@@ -177,12 +196,6 @@ class DecisionService:
             })
         # Winner first, then lowest bid; agents who never bid last
         summaries.sort(key=lambda s: (s["outcome"] != "won", s["best_bid"] is None, s["best_bid"] or 0))
-
-        negotiation = None
-        rows = (await self.db.table("negotiations").select("*").eq("auction_id", str(auction_id)).execute()).data
-        if rows:
-            from app.services.negotiation_service import NegotiationService, public_negotiation
-            negotiation = public_negotiation(rows[0], await NegotiationService(self.db).get_messages(rows[0]["id"]))
 
         return {
             "auction": auction.public_view().model_dump(mode="json"),
