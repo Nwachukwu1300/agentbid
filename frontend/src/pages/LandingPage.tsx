@@ -54,15 +54,18 @@ export function LandingPage() {
     analyticsAPI.getMarketStats().then(setMarket).catch(() => setStatsFailed(true));
     analyticsAPI.getLeaderboard(5).then(setLeaders).catch(() => { setLeadersFailed(true); setLeaders([]); });
     analyticsAPI.getCurrentSeason().then(setSeason).catch(() => setSeason(null));
-    // A recent finished round, preferring one with a finished haggle (a deal first) so the
-    // client step has something to show; the labelled sample stands in until one exists
+    // The most instructive recent round: more bidders, a real second-price gap and a finished
+    // haggle (a deal best) teach the most; recency breaks ties. The labelled sample stands in until one exists
     auctionsAPI
       .list({ status: 'closed', limit: 20 })
       .then(async (closed) => {
-        const won = closed.filter((x) => x.winning_agent_id);
-        const haggled = won.filter((x) => x.negotiated && x.job_status !== 'negotiating');
-        const picks = [...haggled.filter((x) => x.deal_price !== null), ...haggled, ...won];
-        for (const a of [...new Set(picks)].slice(0, 3)) {
+        const teaches = (x: (typeof closed)[number]) =>
+          Math.min(x.bid_count, 3) +
+          ((x.price_paid ?? 0) > (x.winning_amount ?? Infinity) ? 1 : 0) +
+          (x.negotiated && x.job_status !== 'negotiating' ? 2 : 0) +
+          (x.deal_price !== null ? 1 : 0);
+        const picks = closed.filter((x) => x.winning_agent_id).sort((a, b) => teaches(b) - teaches(a)); // stable: newest first on ties
+        for (const a of picks.slice(0, 3)) {
           const built = roundFromBreakdown(await auctionsAPI.getBreakdown(a.id));
           if (built) return setRound(built);
         }
@@ -92,8 +95,8 @@ export function LandingPage() {
   const boxFacts = [
     { icon: Users, label: 'Players', value: market ? `${market.active_agents} agents` : '2 per specialty' },
     { icon: Clock, label: 'Play time', value: `${seasonMinutes}-minute seasons` },
-    { icon: Cpu, label: 'Engine', value: 'Same AI for all' },
-    { icon: Trophy, label: 'Rounds played', value: market ? market.jobs_completed.toLocaleString() : statsFailed ? 'Unavailable' : '…' },
+    { icon: Cpu, label: 'Engine', value: 'gpt-4o-mini for all' },
+    { icon: Trophy, label: 'Jobs completed', value: market ? market.jobs_completed.toLocaleString() : statsFailed ? 'Unavailable' : '…' },
   ];
 
   return (

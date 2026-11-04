@@ -10,7 +10,10 @@ const EASE = 'ease-[cubic-bezier(0.16,1,0.3,1)]';
 // Board geometry (rem): the job card sits above the row of player mats
 const JOB_H = 6;
 const GAP = 0.75;
-const AUTOPLAY_MS = 2600;
+// Autoplay reads at about 300 words a minute, never under 3s a step, and lingers on the key rule
+const MS_PER_WORD = 200;
+const MIN_STEP_MS = 3000;
+const SECOND_PRICE_BONUS_MS = 1500;
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -21,6 +24,7 @@ export function WorkedExample({ round }: { round: Round }) {
   const sectionRef = useRef<HTMLElement>(null);
   const trackRef = useRef<HTMLElement>(null);
   const autoplayed = useRef(false);
+  const narrationRef = useRef<HTMLParagraphElement>(null);
   const keepFocus = useRef(false); // the visitor was using the example when the step changed
 
   const last = STEPS.length - 1;
@@ -71,7 +75,9 @@ export function WorkedExample({ round }: { round: Round }) {
   useEffect(() => {
     if (!playing) return;
     if (step === last) return setPlaying(false);
-    const t = setTimeout(() => setStep((s) => s + 1), step === 0 ? AUTOPLAY_MS / 2 : AUTOPLAY_MS);
+    const words = narrationRef.current?.textContent?.trim().split(/\s+/).length ?? 30;
+    const ms = Math.max(MIN_STEP_MS, words * MS_PER_WORD) + (step === 3 ? SECOND_PRICE_BONUS_MS : 0);
+    const t = setTimeout(() => setStep((s) => s + 1), ms);
     return () => clearTimeout(t);
   }, [playing, step, last]);
 
@@ -97,7 +103,9 @@ export function WorkedExample({ round }: { round: Round }) {
   const narration = [
     <>A <strong>{getSpecialtyLabel(round.specialty)}</strong> job goes on the board with a budget of <strong>{round.budget} credits</strong>. Only {getSpecialtyLabel(round.specialty).toLowerCase()} agents may bid. Each mat shows that agent&rsquo;s private work cost; rivals never see it.</>,
     <>Each agent bids once, in secret, following its owner&rsquo;s written strategy. Nobody sees a rival&rsquo;s bid.</>,
-    <>The bids are revealed. The lowest bid wins: <strong>{winner.name}</strong> at <strong>{winner.bid}</strong>.{priceSetterName && <> The gold coin on {priceSetterName}&rsquo;s bid is the price the winner will be paid; the next step explains why.</>}</>,
+    <>The bids are revealed. {winnerIndex === 0
+      ? <>The lowest bid wins: <strong>{winner.name}</strong> at <strong>{winner.bid}</strong>.</>
+      : <><strong>{winner.name}</strong> wins at <strong>{winner.bid}</strong>: the lower {winnerIndex === 1 ? 'bid came from an agent that was' : 'bids came from agents that were'} full or out of credits, so {winnerIndex === 1 ? 'it' : 'they'} couldn&rsquo;t take the job.</>}{priceSetterName && <> The gold coin on {priceSetterName}&rsquo;s bid is the price the winner will be paid; the next step explains why.</>}</>,
     round.pricePaid > winner.bid
       ? <>The winner is paid the runner-up&rsquo;s bid, not its own: <strong>{round.pricePaid} credits</strong>, against a work cost of {winner.cost}. Bidding your true cost is safe; you can&rsquo;t raise your own pay by bidding higher.{call && <> This client wants to haggle first, so {round.pricePaid} is only the opening price.</>}</>
       : <>Nobody bid above the winner, so it is paid its own bid: <strong>{round.pricePaid} credits</strong>, against a work cost of {winner.cost}.{call && <> This client wants to haggle first, so that is only the opening price.</>}</>,
@@ -105,8 +113,8 @@ export function WorkedExample({ round }: { round: Round }) {
       ? <>The client has a secret limit and a personality; the agent follows its owner&rsquo;s negotiation style. Now the card is turned over: a <strong>{call.personality}</strong> client who would have paid up to <strong>{call.limit}</strong>. <strong>{call.outcome}</strong></>
       : <>No call this round: the job went straight to work. About 3 in 10 wins go to a negotiation with the client first.</>,
     taken
-      ? <><strong>{winner.name}</strong> takes the job at <strong>{finalPay} credits</strong> against a work cost of {winner.cost}: a profit of <strong>{profit}</strong>. Every result is explained from the data, for every agent in the round.</>
-      : <>No deal, so the job goes unfilled and <strong>{winner.name}</strong> earns nothing this round. Every result is explained from the data, for every agent in the round.</>,
+      ? <><strong>{winner.name}</strong> takes the job at <strong>{finalPay} credits</strong> against a work cost of {winner.cost}: a profit of <strong>{profit}</strong>. Below, every agent&rsquo;s result is explained.</>
+      : <>No deal, so the job goes unfilled and <strong>{winner.name}</strong> earns nothing this round. Below, every agent&rsquo;s result is explained.</>,
   ];
 
   const controls = (
@@ -244,7 +252,7 @@ export function WorkedExample({ round }: { round: Round }) {
                       >
                         {step === 0 ? 'Not bid yet' : step === 1 ? <Lock className="h-5 w-5" aria-hidden /> : b.bid}
                       </div>
-                      {revealed && <p className={cn('mt-2 text-xs font-semibold', isWinner ? 'text-text-primary' : 'text-text-muted')}>{isWinner ? 'Lowest bid: wins' : i < winnerIndex ? 'Couldn’t take the job' : 'Higher bid'}</p>}
+                      {revealed && <p className={cn('mt-2 text-xs font-semibold', isWinner ? 'text-text-primary' : 'text-text-muted')}>{isWinner ? (winnerIndex === 0 ? 'Lowest bid: wins' : 'Lowest that could take it: wins') : i < winnerIndex ? 'Couldn’t take the job' : 'Higher bid'}</p>}
                     </div>
                   );
                 })}
@@ -331,7 +339,7 @@ export function WorkedExample({ round }: { round: Round }) {
 
         {/* The rulebook column: what this step means */}
         <div className="flex flex-col">
-          <p className="min-h-[7.5rem] text-base leading-relaxed text-text-secondary" aria-live={playing ? 'off' : 'polite'}>{narration[step]}</p>
+          <p ref={narrationRef} className="min-h-[7.5rem] text-base leading-relaxed text-text-secondary" aria-live={playing ? 'off' : 'polite'}>{narration[step]}</p>
           <div className="mt-auto hidden pt-4 lg:block">{controls}</div>
           {round.id && scored && (
             <Link to={`/auctions/${round.id}`} className="mt-3 text-sm font-semibold text-accent-felt underline">
