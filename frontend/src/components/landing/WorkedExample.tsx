@@ -21,6 +21,7 @@ export function WorkedExample({ round }: { round: Round }) {
   const sectionRef = useRef<HTMLElement>(null);
   const trackRef = useRef<HTMLElement>(null);
   const autoplayed = useRef(false);
+  const keepFocus = useRef(false); // the visitor was using the example when the step changed
 
   const last = STEPS.length - 1;
   const revealed = step >= 2;
@@ -42,6 +43,7 @@ export function WorkedExample({ round }: { round: Round }) {
   const colCenter = (i: number) => `calc(${colLeft(i)} + (100% - ${(n - 1) * GAP}rem) / ${n} / 2)`;
 
   const go = (s: number) => {
+    keepFocus.current = !!sectionRef.current?.contains(document.activeElement);
     autoplayed.current = true;
     setPlaying(false);
     setStep(Math.max(0, Math.min(last, s)));
@@ -81,15 +83,15 @@ export function WorkedExample({ round }: { round: Round }) {
     track.scrollTo({ left: current.offsetLeft - (track.clientWidth - current.offsetWidth) / 2, behavior: reducedMotion() ? 'auto' : 'smooth' });
   }, [step]);
 
-  // Reaching the end removes the Next button; keep keyboard focus on a live control
+  // Next and Replay swap at the last step; if the visitor's focus went with the removed button,
+  // hand it to the control that replaced it so the arrow keys keep working. Autoplay never moves focus.
   useEffect(() => {
-    const active = document.activeElement;
-    if (scored && !playing && (active === document.body || sectionRef.current?.contains(active))) {
-      // Two copies of the controls exist (rail and phone bar); focus the one on screen
-      const replay = [...(sectionRef.current?.querySelectorAll<HTMLElement>('[data-replay]') ?? [])].find((el) => el.offsetParent);
-      replay?.focus({ preventScroll: true });
-    }
-  }, [scored, playing]);
+    const section = sectionRef.current;
+    if (!keepFocus.current || !section || section.contains(document.activeElement)) return;
+    // Two copies of the controls exist (rail and phone bar); focus the one on screen
+    const target = [...section.querySelectorAll<HTMLElement>(scored ? '[data-replay]' : '[data-next]')].find((el) => el.offsetParent);
+    (target ?? section).focus({ preventScroll: true });
+  }, [step, scored, playing]); // playing: the Pause button removes itself when pressed
 
   const priceSetterName = priceSetter === -1 ? null : round.bids[priceSetter].name;
   const narration = [
@@ -100,7 +102,7 @@ export function WorkedExample({ round }: { round: Round }) {
       ? <>The winner is paid the runner-up&rsquo;s bid, not its own: <strong>{round.pricePaid} credits</strong>, against a work cost of {winner.cost}. Bidding your true cost is safe; you can&rsquo;t raise your own pay by bidding higher.{call && <> This client wants to haggle first, so {round.pricePaid} is only the opening price.</>}</>
       : <>Nobody bid above the winner, so it is paid its own bid: <strong>{round.pricePaid} credits</strong>, against a work cost of {winner.cost}.{call && <> This client wants to haggle first, so that is only the opening price.</>}</>,
     call
-      ? <>The client has a secret limit and a personality; the agent follows its owner&rsquo;s negotiation style. <strong>{call.outcome}</strong></>
+      ? <>The client has a secret limit and a personality; the agent follows its owner&rsquo;s negotiation style. Now the card is turned over: a <strong>{call.personality}</strong> client who would have paid up to <strong>{call.limit}</strong>. <strong>{call.outcome}</strong></>
       : <>No call this round: the job went straight to work. About 3 in 10 wins go to a negotiation with the client first.</>,
     taken
       ? <><strong>{winner.name}</strong> takes the job at <strong>{finalPay} credits</strong> against a work cost of {winner.cost}: a profit of <strong>{profit}</strong>. Every result is explained from the data, for every agent in the round.</>
@@ -128,7 +130,7 @@ export function WorkedExample({ round }: { round: Round }) {
               <Pause className="h-4 w-4" />
             </button>
           )}
-          <button type="button" className="btn-primary h-11 flex-1" onClick={() => go(step + 1)}>
+          <button data-next type="button" className="btn-primary h-11 flex-1" onClick={() => go(step + 1)}>
             Next: {STEPS[step + 1]}
             <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
           </button>
@@ -138,7 +140,17 @@ export function WorkedExample({ round }: { round: Round }) {
   );
 
   return (
-    <section ref={sectionRef} aria-labelledby="example-title" className="card overflow-clip p-0" onKeyDown={onKey}>
+    <section
+      ref={sectionRef}
+      tabIndex={-1}
+      aria-labelledby="example-title"
+      className="card overflow-clip p-0 focus:outline-none"
+      onKeyDown={onKey}
+      // Clicking anywhere on the example (not just a button) lets the arrow keys drive it
+      onPointerDown={(e) => {
+        if (!(e.target as HTMLElement).closest('button, a, summary')) sectionRef.current?.focus({ preventScroll: true });
+      }}
+    >
       <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-ink/80 bg-background-tertiary px-5 py-4 sm:px-7">
         <h3 id="example-title" className="text-xl font-bold sm:text-2xl">
           Example: <span className="font-semibold">{round.jobTitle}</span>
@@ -263,15 +275,38 @@ export function WorkedExample({ round }: { round: Round }) {
           </div>
 
           {step >= 4 && call && (
-            <div className="mt-6 space-y-2 rounded-lg border border-ink/30 bg-background-tertiary p-4">
-              {call.lines.map((l, i) => (
-                <p key={i} className="text-sm">
-                  <span className="font-semibold">{l.speaker === 'client' ? 'Client' : winner.name}</span>
-                  <span className="text-text-muted"> · {l.move}</span>
-                  <span className="mt-0.5 line-clamp-2 text-text-secondary">{l.text}</span>
+            <div className="mt-6 rounded-lg border border-ink/30 bg-background-tertiary p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <p className="text-sm font-bold">The client&rsquo;s card</p>
+                <p className="text-sm text-text-secondary">
+                  <span className="font-semibold capitalize text-text-primary">{call.personality}</span> · secret limit <strong className="text-text-primary">{call.limit}</strong>
                 </p>
-              ))}
-              <p className="pt-1 text-sm font-semibold">{call.outcome}</p>
+              </div>
+              {/* The haggle as a price ladder: one rung per turn */}
+              <p id="offers-label" className="mt-3 text-xs font-semibold text-text-muted">Offers, in order</p>
+              <ol aria-labelledby="offers-label" className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-2 text-sm">
+                {call.lines.map((l, i) => (
+                  <li key={i} className="flex items-center gap-1.5">
+                    {i > 0 && <ArrowRight className="h-3.5 w-3.5 text-text-muted" aria-hidden />}
+                    <span className={cn('rounded-full border px-2.5 py-1 tabular-nums', l.move.startsWith('accepts') ? 'border-ink bg-gold font-bold text-gold-ink' : 'border-ink/30 bg-background-card')}>
+                      <span className="font-semibold">{l.speaker === 'client' ? 'Client' : winner.name}</span> {l.move.replace(/^offers /, '')}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+              <p className={cn('mt-3 text-sm font-bold', call.deal ? 'text-text-primary' : 'text-accent-red')}>{call.outcome}</p>
+              <details className="mt-2 text-sm">
+                <summary className="cursor-pointer font-semibold text-accent-felt">Read the conversation</summary>
+                <div className="mt-2 space-y-2">
+                  {call.lines.map((l, i) => (
+                    <p key={i}>
+                      <span className="font-semibold">{l.speaker === 'client' ? 'Client' : winner.name}</span>
+                      <span className="text-text-muted"> · {l.move}</span>
+                      <span className="mt-0.5 block text-text-secondary">{l.text}</span>
+                    </p>
+                  ))}
+                </div>
+              </details>
             </div>
           )}
 
@@ -283,7 +318,13 @@ export function WorkedExample({ round }: { round: Round }) {
                   <span><strong>{b.name}.</strong> <span className="text-text-secondary">{b.explanation}</span></span>
                 </li>
               ))}
-              {call && <li className="pl-7 text-sm text-text-secondary">{call.reveal}</li>}
+              {call && (
+                <li className="pl-7 text-sm text-text-secondary">
+                  {call.deal
+                    ? `The client would have paid up to ${call.limit}; ${winner.name} settled at ${finalPay}${call.limit > finalPay ? `, leaving ${call.limit - finalPay} on the table` : ''}.`
+                    : `The client would have paid up to ${call.limit}, but no price was agreed.`}
+                </li>
+              )}
             </ul>
           )}
         </div>

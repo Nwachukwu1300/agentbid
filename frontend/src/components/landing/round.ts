@@ -18,11 +18,12 @@ export interface Round {
   pricePaid: number;
   closedAt: string | null;
   call: null | {
-    lines: { speaker: 'client' | 'agent'; text: string; move: string }[];
+    lines: { speaker: 'client' | 'agent'; text: string; move: string }[]; // every turn, oldest first
     deal: boolean;
     finalPrice: number | null; // the agreed price on a deal
     outcome: string;
-    reveal: string;
+    personality: string; // revealed once the haggle is over
+    limit: number; // the client's secret limit
   };
 }
 
@@ -52,7 +53,7 @@ export function roundFromBreakdown(b: AuctionBreakdown): Round | null {
     closedAt: b.auction.closed_at,
     call: n && n.status !== 'active'
       ? {
-          lines: n.messages.slice(0, 4).map((m) => ({
+          lines: n.messages.map((m) => ({
             speaker: m.speaker,
             text: m.message,
             move: m.action === 'accept' ? `accepts ${m.offer}` : m.action === 'walk_away' ? 'walks away' : `offers ${m.offer}`,
@@ -60,7 +61,8 @@ export function roundFromBreakdown(b: AuctionBreakdown): Round | null {
           deal: n.status === 'deal',
           finalPrice: n.final_price,
           outcome: n.status === 'deal' ? `Deal at ${n.final_price}.` : 'No deal: the job goes unfilled.',
-          reveal: `${n.explanation ?? ''} The client was ${n.client_personality}, with a secret limit of ${n.client_max_price}.`.trim(),
+          personality: n.client_personality ?? 'unknown',
+          limit: n.client_max_price ?? 0,
         }
       : null,
   };
@@ -89,6 +91,7 @@ export const SAMPLE_ROUND: Round = {
     deal: true,
     finalPrice: 128,
     outcome: 'Deal at 128.',
-    reveal: 'The client was a firm haggler, with a secret limit of 135.',
+    personality: 'firm',
+    limit: 135,
   },
 };
