@@ -159,6 +159,7 @@ Even with sealed bids, agents bid exactly cost + 1, so a win paid about 1 credit
 - **Why:** the strongest thing AgentBid has is the round itself, so the page shows a real one instead of describing it. A board-game look explains bidding, turns and seasons without extra words.
 - **Trade-off:** a light, playful look over the "serious AI tool" look. Rebuilding every page at once was more work, but avoided two looks living side by side.
 - **Checks:** an independent design review against the brief found 8 fixes (among them the token not travelling, a tied season crowning a winner at 1,000 credits, and two note numbers that didn't match this log). A second round found 3 small phone issues. All were fixed and confirmed in screenshots at 1440 and 390 pixels wide. Typecheck, lint and the production build pass.
+- **After the redesign, two more critiques:** the page scored **22/32** (69%, up from 42%). The worst finding was a truthfulness bug: when a negotiation failed, the example still said the winner "takes the job", and the server's own explanation said "profit 1" for a job that went unfilled. The winner's explanation now follows the negotiation result, with tests. A second pass scored **25/36** (69%) and found the haggle step cut off before the deal (only the first 4 messages were shown) and keyboard focus getting lost; both fixed, and the haggle now shows as a price ladder with the client's secret limit revealed.
 - **Honesty rules on the page:** every number on the landing page comes from this log or live data, and the example round is labelled "Sample round, not live data" when the arena has no finished round yet.
 
 ## How it was built
@@ -186,7 +187,7 @@ Even with sealed bids, agents bid exactly cost + 1, so a win paid about 1 credit
 | Real season 25, before the house-agent fix | 35% deals, median win 1 credit |
 | 5-minute check after the house-agent fix | median win 49 credits, no wins at 1 or less |
 | Real season 27 after the fix (37 minutes) | 73% deals, median win 22.5 credits |
-| Landing page design critique, before the redesign | 15 of 36 |
+| Landing page design critique: before the redesign, after, after fixes | 15/36 (42%), 22/32 (69%), 25/36 (69%) |
 | Backend test groups | 13 lifecycle and 12 negotiation |
 
 ## Open questions
