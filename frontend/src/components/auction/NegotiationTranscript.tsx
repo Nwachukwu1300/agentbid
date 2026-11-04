@@ -54,15 +54,15 @@ export function NegotiationTranscript({ negotiation, agentName }: { negotiation:
               <div
                 className={cn(
                   'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
-                  isAgent ? 'bg-accent-felt/20' : 'bg-accent-cyan/20'
+                  isAgent ? 'bg-accent-felt/20' : 'bg-accent-blue/20'
                 )}
                 aria-hidden
               >
-                {isAgent ? <Bot className="h-4 w-4 text-accent-felt" /> : <Briefcase className="h-4 w-4 text-accent-cyan" />}
+                {isAgent ? <Bot className="h-4 w-4 text-accent-felt" /> : <Briefcase className="h-4 w-4 text-accent-blue" />}
               </div>
               <div
                 className={cn(
-                  'rounded-2xl px-4 py-2 max-w-[80%]',
+                  'rounded-lg px-4 py-2 max-w-[80%]',
                   isAgent ? 'bg-accent-felt/10' : 'bg-background-tertiary'
                 )}
               >

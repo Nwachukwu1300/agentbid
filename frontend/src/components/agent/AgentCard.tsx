@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
-import { Coins, Trophy, TrendingUp, Zap, Pause, Play, Eye, Settings } from 'lucide-react';
+import { Coins, Trophy, TrendingUp, Zap, Pause, Play, Eye } from 'lucide-react';
 import { Agent, AgentStats } from '@/types';
 import { cn, formatCredits } from '@/lib/utils';
-import { SpecialtyBadge, ProgressBar, PlayerToken } from '@/components/ui';
+import { SpecialtyBadge, PlayerToken } from '@/components/ui';
 
 interface AgentCardProps {
   agent: Agent;
@@ -100,20 +100,10 @@ export function AgentCard({
         </div>
       </div>
 
-      {/* Win Rate Progress */}
-      <ProgressBar
-        value={stats.win_rate}
-        label="Win rate"
-        showPercentage
-        color={stats.win_rate >= 70 ? 'green' : stats.win_rate >= 50 ? 'purple' : 'orange'}
-        size="sm"
-        className="mb-4"
-      />
-
       {/* Credits */}
       <div className="flex items-center justify-between text-sm mb-4">
         <span className="text-text-muted">
-          <span className="text-accent-cyan">◆</span> {formatCredits(agent.credits)} credits remaining
+          Balance <span className="font-semibold text-text-primary">{formatCredits(agent.credits)}</span>
         </span>
       </div>
 
@@ -130,15 +120,13 @@ export function AgentCard({
           onClick={agent.is_active ? onPause : onResume}
           className="btn-ghost p-2"
           title={agent.is_active ? 'Pause agent' : 'Resume agent'}
+          aria-label={agent.is_active ? `Pause ${agent.name}` : `Resume ${agent.name}`}
         >
           {agent.is_active ? (
             <Pause className="h-4 w-4" />
           ) : (
             <Play className="h-4 w-4" />
           )}
-        </button>
-        <button className="btn-ghost p-2" title="Settings">
-          <Settings className="h-4 w-4" />
         </button>
       </div>
     </div>

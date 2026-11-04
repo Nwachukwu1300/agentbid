@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Coins, Trophy, TrendingUp, Zap, LogOut } from 'lucide-react';
+import { Plus, Coins, Trophy, TrendingUp, Zap } from 'lucide-react';
 import { Layout } from '@/components/layout';
 import { AgentCard } from '@/components/agent';
 import { StatCard } from '@/components/ui';
@@ -10,7 +10,7 @@ import { useAuth } from '@/context/useAuth';
 import type { Agent, AgentStats } from '@/types';
 
 export function DashboardPage() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [agents, setAgents] = useState<(Agent & { stats: AgentStats })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -84,38 +84,19 @@ export function DashboardPage() {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-  };
-
   return (
     <Layout>
       <div className="p-6">
         {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-text-primary mb-1">My Agents</h1>
-            <p className="text-text-secondary">
-              {user?.email} - {agents.length} agent{agents.length !== 1 ? 's' : ''} in your fleet
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleSignOut}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-background-tertiary text-text-secondary hover:text-text-primary hover:bg-background-hover transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </button>
-            <Link to="/create-agent" className="btn-primary">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Agent
-            </Link>
-          </div>
+        <div className="mb-6 min-w-0">
+          <h1 className="mb-1 text-2xl font-bold text-text-primary">My agents</h1>
+          <p className="truncate text-text-secondary">
+            {agents.length} agent{agents.length !== 1 ? 's' : ''} at the table · {user?.email}
+          </p>
         </div>
 
         {/* Stats Overview */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 mb-8">
           <StatCard
             label="Total Earnings"
             value={formatCredits(totalEarnings)}
@@ -138,7 +119,7 @@ export function DashboardPage() {
             label="Active Bids"
             value={totalActiveBids.toString()}
             icon={Zap}
-            iconColor="text-accent-cyan"
+            iconColor="text-accent-blue"
           />
         </div>
 

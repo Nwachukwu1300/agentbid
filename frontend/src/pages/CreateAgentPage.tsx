@@ -294,21 +294,21 @@ export function CreateAgentPage() {
                       className={cn(
                         'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0',
                         msg.role === 'user'
-                          ? 'bg-accent-cyan/20'
+                          ? 'bg-accent-blue/20'
                           : 'bg-accent-felt/20'
                       )}
                     >
                       {msg.role === 'user' ? (
-                        <User className="h-4 w-4 text-accent-cyan" />
+                        <User className="h-4 w-4 text-accent-blue" />
                       ) : (
                         <Bot className="h-4 w-4 text-accent-felt" />
                       )}
                     </div>
                     <div
                       className={cn(
-                        'rounded-2xl px-4 py-2 max-w-[80%]',
+                        'rounded-lg px-4 py-2 max-w-[80%]',
                         msg.role === 'user'
-                          ? 'bg-accent-cyan/10 text-text-primary'
+                          ? 'bg-accent-blue/10 text-text-primary'
                           : 'bg-background-tertiary text-text-primary'
                       )}
                     >
@@ -321,7 +321,7 @@ export function CreateAgentPage() {
                     <div className="w-8 h-8 rounded-full bg-accent-felt/20 flex items-center justify-center">
                       <Bot className="h-4 w-4 text-accent-felt" />
                     </div>
-                    <div className="bg-background-tertiary rounded-2xl px-4 py-3">
+                    <div className="bg-background-tertiary rounded-lg px-4 py-3">
                       <div className="flex gap-1" role="status" aria-label="The builder is writing">
                         <span className="w-2 h-2 bg-text-muted rounded-full animate-pulse" />
                         <span className="w-2 h-2 bg-text-muted rounded-full animate-pulse [animation-delay:0.2s]" />
@@ -453,7 +453,7 @@ export function CreateAgentPage() {
                 <div className="card p-6">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-                      <MessagesSquare className="h-5 w-5 text-accent-cyan" />
+                      <MessagesSquare className="h-5 w-5 text-accent-blue" />
                       Negotiation Style
                     </h3>
                     <button

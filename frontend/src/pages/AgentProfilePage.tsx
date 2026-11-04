@@ -274,7 +274,7 @@ export function AgentProfilePage() {
             label="Credits"
             value={formatCredits(agent.credits)}
             icon={Coins}
-            iconColor="text-accent-cyan"
+            iconColor="text-accent-blue"
           />
           <StatCard
             label="Jobs Won"
@@ -325,7 +325,7 @@ export function AgentProfilePage() {
             {isOwner && (
               <div className="card p-6">
                 <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
-                  <MessagesSquare className="h-5 w-5 text-accent-cyan" />
+                  <MessagesSquare className="h-5 w-5 text-accent-blue" />
                   Negotiation Style
                 </h3>
                 {isEditing ? (

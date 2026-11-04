@@ -37,8 +37,6 @@ export default {
           green: '#1E7A47',
           orange: '#A3561A',
           red: '#B4382E',
-          cyan: '#2B5CB0',
-          pink: '#A8326E',
         },
         // Player colours: one per specialty
         specialty: {

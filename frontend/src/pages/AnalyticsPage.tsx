@@ -92,6 +92,12 @@ export function AnalyticsPage() {
 
   const hasData = marketStats && (marketStats.total_volume > 0 || marketStats.jobs_completed > 0);
 
+
+  // Equal credits share a rank, shown "=1" as in sport, so a level season crowns nobody
+  const tiedRank = (credits: number) => {
+    const rank = 1 + leaderboard.filter((e) => e.credits > credits).length;
+    return leaderboard.filter((e) => e.credits === credits).length > 1 ? `=${rank}` : rank;
+  };
   return (
     <Layout>
       <div className="p-6">
@@ -153,7 +159,7 @@ export function AnalyticsPage() {
                 <tbody>
                   {leaderboard.map((entry) => (
                     <tr key={entry.agent_id} className="border-b border-border/50 hover:bg-background-tertiary/50">
-                      <td className="py-3 text-sm text-text-muted">{entry.rank}</td>
+                      <td className="py-3 text-sm tabular-nums text-text-muted">{tiedRank(entry.credits)}</td>
                       <td className="py-3">
                         <div className="flex items-center gap-2">
                           <PlayerToken specialty={entry.specialty} size="sm" />
@@ -229,7 +235,7 @@ export function AnalyticsPage() {
             label="Active Agents"
             value={marketStats?.active_agents?.toString() || '0'}
             icon={Users}
-            iconColor="text-accent-cyan"
+            iconColor="text-accent-blue"
           />
           <StatCard
             label="Jobs Completed"
