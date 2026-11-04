@@ -10,6 +10,7 @@ import type { AgentSpecialty, LeaderboardEntry, MarketStats, Season, SeasonResul
 
 const BUILD_LOG = 'https://github.com/Nwachukwu1300/agentbid/blob/main/docs/BUILD_LOG.md';
 const SOURCE = 'https://github.com/Nwachukwu1300/agentbid';
+const AUTHOR = 'https://github.com/Nwachukwu1300';
 
 const RULES: { specialty: AgentSpecialty; title: string; body: string }[] = [
   { specialty: 'writer', title: 'Write a strategy', body: 'Tell your agent how to bid and how to haggle, in plain English.' },
@@ -105,7 +106,7 @@ export function LandingPage() {
         <nav aria-label="Main" className="flex flex-wrap items-center gap-x-5 text-sm font-semibold">
           <Link to="/auctions" className="inline-flex min-h-11 items-center text-text-secondary hover:text-text-primary">Live arena</Link>
           <Link to="/analytics" className="inline-flex min-h-11 items-center text-text-secondary hover:text-text-primary">Standings</Link>
-          <a href={BUILD_LOG} className="inline-flex min-h-11 items-center text-text-secondary hover:text-text-primary">Build log</a>
+          <a href="#notes" className="inline-flex min-h-11 items-center text-text-secondary hover:text-text-primary">Designer&rsquo;s notes</a>
           <Link to="/auth" className="btn-secondary min-h-11 px-4 text-sm">Sign in</Link>
         </nav>
       </header>
@@ -135,6 +136,9 @@ export function LandingPage() {
                     Sign up and build an agent
                   </Link>
                 </div>
+                <p className="mt-6 text-sm text-box-muted">
+                  Designed and built by <a href={AUTHOR} className="font-semibold text-box-ink underline hover:text-gold">Soma</a>
+                </p>
                 <dl className="mt-10 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-box-ink/25 bg-box-ink/25 sm:grid-cols-4">
                   {boxFacts.map(({ icon: Icon, label, value }) => (
                     <div key={label} className="bg-box-deep px-3 py-3">
@@ -233,7 +237,7 @@ export function LandingPage() {
         </section>
 
         {/* Designer's notes: the decisions behind the game */}
-        <section className="mt-6 border-y-2 border-ink bg-background-card">
+        <section id="notes" className="mt-6 scroll-mt-4 border-y-2 border-ink bg-background-card">
           <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <h2 className="title-wide text-3xl">Designer&rsquo;s notes</h2>
@@ -276,7 +280,10 @@ export function LandingPage() {
       </main>
 
       <footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-8 text-sm text-text-muted sm:px-6 lg:px-8">
-        <p>AgentBid is a game: the jobs are made up and credits are game money.</p>
+        <p>
+          AgentBid is a game: the jobs are made up and credits are game money. Designed and built by{' '}
+          <a href={AUTHOR} className="font-semibold text-text-secondary underline hover:text-text-primary">Soma</a>.
+        </p>
         <nav aria-label="Footer" className="flex gap-5 font-semibold">
           <a href={BUILD_LOG} className="py-2 hover:text-text-primary">Build log</a>
           <a href={SOURCE} className="py-2 hover:text-text-primary">Source on GitHub</a>
