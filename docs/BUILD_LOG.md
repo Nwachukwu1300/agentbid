@@ -19,7 +19,8 @@ How AgentBid got from a freelance-marketplace demo to a strategy arena for AI ag
 | 31 Oct–1 Nov | Fixing profit collapse: private costs, second-price payment | `5f021a7`–`4421700` |
 | 1 Nov | Negotiation deal-rate tuning with a simulator | `50a1ce2` |
 | 1 Nov | Real season reveals the demo agents disable second-price; house-agent fix | `36e2620` |
-| 3-4 Nov | Design: critique, then "The Rulebook" redesign of the whole app | this branch |
+| 3-5 Nov | Design: critique, then "The Rulebook" redesign of the whole app, polish and audit | `e4877d0`-`ee8cd9a` |
+| 5 Nov | Third agent per specialty; first full real season (33) | this branch |
 
 ## Key decisions
 
@@ -171,6 +172,25 @@ Even with sealed bids, agents bid exactly cost + 1, so a win paid about 1 credit
   - Afterwards all 8 pages passed axe, an automated accessibility checker, with zero violations, and none overflowed on phones.
 - **Honesty rules on the page:** every number on the landing page comes from this log or live data, and the example round is labelled "Sample round, not live data" when the arena has no finished round yet.
 
+### 12. A third seat per specialty, and the first full real season
+- **Why:** with 2 agents per specialty, a round never had a real runner-up race, and the landing page's example could only ever show two bids. A third agent per specialty makes second-price payment matter more and tests whether profits survive more competition.
+- **Decision:** five new house agents, one per specialty, each playing a strategy its two rivals don't:
+  - StackSage (coder) bids its true cost plus about 5%;
+  - GridGrace (designer) only bids when it is nearly idle;
+  - ProsePilot (writer) bids 30-40% above cost to protect its margin;
+  - MetricMax (data analyst) picks jobs by budget;
+  - EdgeCaseEve (tester) bids on almost everything for volume.
+  
+  They keep the default negotiation style, so deal rates stay comparable with earlier seasons.
+- **A bug found on the way:** the barter cleanup migration (006) had never been applied to the live database, so the agents table still required a `barter_instructions` value. Every new agent was rejected, including from the app's own "Build an agent" flow, and the tests missed it because their fake database doesn't enforce required columns. The migration also failed as written: `trades` and `trade_offers` reference each other, so they had to be dropped in one statement. Both tables had 0 rows.
+- **Result (season 33, a full hour, 15 agents):**
+  - 119 rounds; 87 had 3 bidders, 30 had 2.
+  - Winner profit at the auction price averaged **22.2** (median 18, down from 35.8 / 27 with two agents), with only 2 of 119 wins at 1 credit or less.
+  - Negotiations closed **69%** (22 of 32), inside the 60-80% target, with no deal below cost.
+  - **The true-cost bidder won the season:** StackSage finished +531, well ahead of second place (+368). This is what second-price auction theory predicts: when you're paid the runner-up's bid, bidding your real cost is the best strategy.
+- **Trade-off:** more competition cut profit per win by about a third, as expected. It also shut out some original agents whose strategies bid a share of the budget rather than their cost: CodeZen and QualityQuinn won 0 rounds, and DataDragon won 1.
+- **Caveat:** one season, so the ranking could be luck; a second season would show whether StackSage's win repeats.
+
 ## How it was built
 
 - **Tests that can fail:** the tests run against an in-memory fake of the database, with AI calls scripted. For each important guard, the guard was removed on purpose to confirm a test fails without it.
@@ -197,9 +217,11 @@ Even with sealed bids, agents bid exactly cost + 1, so a win paid about 1 credit
 | 5-minute check after the house-agent fix | median win 49 credits, no wins at 1 or less |
 | Real season 27 after the fix (37 minutes) | 73% deals, median win 22.5 credits |
 | Landing page design critique: before the redesign, after, after fixes | 15/36 (42%), 22/32 (69%), 25/36 (69%) |
+| Season 33, 3 agents per specialty (full hour) | 69% deals, mean win profit 22.2 (median 18), true-cost bidder won |
 | Backend test groups | 13 lifecycle and 12 negotiation |
 
 ## Open questions
 
-- **Negotiation deal rate in real play:** 73% in the first 37 minutes of season 27. A complete season would firm this up.
+- **Negotiation deal rate in real play:** 69% over a full season (33), inside the 60-80% target. A quarter of negotiations ended by running out of turns (8 of 32); stingy clients closed only 44%.
+- **Does honest bidding always win?** StackSage, the true-cost bidder, won season 33. A second season would show whether it repeats.
 - **Game balance:** season length and the number of agents per specialty.
