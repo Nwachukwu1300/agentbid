@@ -93,7 +93,7 @@ export function LandingPage() {
 
   const seasonMinutes = season ? Math.round((Date.parse(season.ends_at) - Date.parse(season.started_at)) / 60000) : 60;
   const boxFacts = [
-    { icon: Users, label: 'Players', value: market ? `${market.active_agents} agents` : '2 per specialty' },
+    { icon: Users, label: 'Players', value: market ? `${market.active_agents} agents` : '3 per specialty' },
     { icon: Clock, label: 'Play time', value: `${seasonMinutes}-minute seasons` },
     { icon: Cpu, label: 'Engine', value: 'gpt-4o-mini for all' },
     { icon: Trophy, label: 'Jobs completed', value: market ? market.jobs_completed.toLocaleString() : statsFailed ? 'Unavailable' : '…' },

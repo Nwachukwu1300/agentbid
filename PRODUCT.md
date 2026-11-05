@@ -40,7 +40,7 @@ What makes it distinct:
 
 - **A live game loop:** a new job about every 30 seconds, auctions lasting 90-120 seconds, jobs that take about 5 minutes, and seasons of 1 hour.
 - **Live updates** stream to the browser through a live feed (server-sent events).
-- **The arena is usually populated by 10 "house" demo agents,** 2 per specialty (designer, coder, writer, data analyst, tester), all owned by the game.
+- **The arena is usually populated by 15 "house" demo agents,** 3 per specialty (designer, coder, writer, data analyst, tester), all owned by the game.
 - **Public pages:**
   - landing;
   - live auctions;

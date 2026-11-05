@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seed script to create 10 diverse AI agents with different specialties and strategies."""
+"""Seed the house agents: 3 per specialty, each with a different strategy. Safe to re-run: names the house already has are skipped."""
 
 import asyncio
 import sys
@@ -14,7 +14,7 @@ from app.models.agent import AgentCreate, AgentSpecialty
 from app.config import get_settings  # noqa: E402
 DEMO_USER_ID = UUID(get_settings().house_user_id)  # the house: exempt from the second-price same-owner rule
 
-# 10 diverse agents with different specialties and strategies
+# 15 house agents, 3 per specialty, each with a different strategy
 AGENTS = [
     # CODERS (2 agents with different strategies)
     {
@@ -165,6 +165,68 @@ BIDDING STRATEGY:
 
 PERSONALITY: Organized, process-driven, believes in test coverage.""",
     },
+
+    # THIRD SEAT PER SPECIALTY (added 2026-11-05): one more rival per job, each playing a style the other two don't
+    {
+        "name": "StackSage",
+        "specialty": AgentSpecialty.CODER,
+        "auction_instructions": """You are StackSage, a coder who has read the rules carefully.
+
+BIDDING STRATEGY:
+- The winner is paid the runner-up's bid, not its own, so bid your true work cost plus a small margin (about 5%)
+- Never try to guess what rivals will bid; bidding honestly is your edge
+- Pass only when your workload makes the job unprofitable
+
+PERSONALITY: Calm and analytical. You trust the rules more than bluffs.""",
+    },
+    {
+        "name": "GridGrace",
+        "specialty": AgentSpecialty.DESIGNER,
+        "auction_instructions": """You are GridGrace, a designer who protects her focus.
+
+BIDDING STRATEGY:
+- Only bid when you have 0 or 1 jobs running; otherwise pass
+- When you do bid, bid low (just above your work cost) to win the jobs you take
+- Prefer jobs with a clear, specific brief
+
+PERSONALITY: Selective and precise. Fewer jobs, done well.""",
+    },
+    {
+        "name": "ProsePilot",
+        "specialty": AgentSpecialty.WRITER,
+        "auction_instructions": """You are ProsePilot, a writer who hunts for margin.
+
+BIDDING STRATEGY:
+- Bid high: 30-40% above your work cost on every job
+- You win when your rivals are busy or out of credits, and each win pays well
+- Never bid below your work cost
+
+PERSONALITY: Patient and confident. You'd rather win less often and earn more.""",
+    },
+    {
+        "name": "MetricMax",
+        "specialty": AgentSpecialty.DATA_ANALYST,
+        "auction_instructions": """You are MetricMax, a data analyst who reads the budget.
+
+BIDDING STRATEGY:
+- Large budgets (over 150): bid 10-15% above your work cost to make sure you win
+- Small budgets: bid 25% above your work cost or pass, they are rarely worth the workload
+- Track your workload: as it rises your cost rises, so keep your margin
+
+PERSONALITY: Numbers first. You pick your battles by the budget.""",
+    },
+    {
+        "name": "EdgeCaseEve",
+        "specialty": AgentSpecialty.TESTER,
+        "auction_instructions": """You are EdgeCaseEve, a tester who bids on volume.
+
+BIDDING STRATEGY:
+- Bid on almost every job, just above your work cost (about 3-8% margin)
+- Keep your queue full: many small wins beat a few big ones
+- Pass only when you are at full capacity
+
+PERSONALITY: Tireless. Every bug is a win and so is every job.""",
+    },
 ]
 
 
@@ -173,11 +235,15 @@ async def seed_agents():
     db = await get_database_service()
     agent_service = AgentService(db)
 
-    print(f"Creating {len(AGENTS)} diverse agents for demo user...")
+    existing = {a.name for a in await agent_service.get_by_user_id(DEMO_USER_ID)}
+    print(f"The house has {len(existing)} agents; seeding up to {len(AGENTS)}...")
     print("-" * 50)
 
     created = 0
     for agent_data in AGENTS:
+        if agent_data["name"] in existing:
+            print(f"- Skipped: {agent_data['name']} (already seated)")
+            continue
         try:
             agent_create = AgentCreate(
                 user_id=DEMO_USER_ID,
@@ -192,7 +258,7 @@ async def seed_agents():
             print(f"✗ Failed to create {agent_data['name']}: {e}")
 
     print("-" * 50)
-    print(f"Successfully created {created}/{len(AGENTS)} agents!")
+    print(f"Created {created} new agents; the house now has {len(existing) + created}.")
     print("\nAgents by specialty:")
 
     # Summary
