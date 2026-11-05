@@ -10,6 +10,7 @@ target_fingerprint: "sha256:7f6033b19c7e192721c8bbe5c44a195d0665c5d139ac488579d8
 target_path: /Users/mmesoma/Developer/aimarketplace/frontend/src/pages/LandingPage.tsx
 timestamp: 2026-11-04T21-28-21Z
 slug: frontend-src-pages-landingpage-tsx
+closed: true
 ---
 Method: dual-agent (A: design review sub-agent, B: detector sub-agent). Run after fixing the previous critique's 5 issues.
 
