@@ -40,3 +40,7 @@ yarn-debug.log*
 # Testing
 coverage/
 .pytest_cache/
+
+# Local design review captures and browser tool logs
+.impeccable/review/
+.playwright-mcp/
