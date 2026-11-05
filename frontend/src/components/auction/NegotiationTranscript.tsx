@@ -33,8 +33,8 @@ export function NegotiationTranscript({ negotiation, agentName }: { negotiation:
           className={cn(
             'rounded px-2 py-0.5 text-xs font-medium',
             live && 'bg-accent-felt/20 text-accent-felt animate-pulse',
-            n.status === 'deal' && 'bg-accent-green/20 text-accent-green',
-            n.status === 'no_deal' && 'bg-accent-red/20 text-accent-red'
+            n.status === 'deal' && 'bg-accent-green/10 text-accent-green',
+            n.status === 'no_deal' && 'bg-accent-red/10 text-accent-red'
           )}
         >
           {status}

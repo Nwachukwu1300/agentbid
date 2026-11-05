@@ -160,6 +160,15 @@ Even with sealed bids, agents bid exactly cost + 1, so a win paid about 1 credit
 - **Trade-off:** a light, playful look over the "serious AI tool" look. Rebuilding every page at once was more work, but avoided two looks living side by side.
 - **Checks:** an independent design review against the brief found 8 fixes (among them the token not travelling, a tied season crowning a winner at 1,000 credits, and two note numbers that didn't match this log). A second round found 3 small phone issues. All were fixed and confirmed in screenshots at 1440 and 390 pixels wide. Typecheck, lint and the production build pass.
 - **After the redesign, two more critiques:** the page scored **22/32** (69%, up from 42%). The worst finding was a truthfulness bug: when a negotiation failed, the example still said the winner "takes the job", and the server's own explanation said "profit 1" for a job that went unfilled. The winner's explanation now follows the negotiation result, with tests. A second pass scored **25/36** (69%) and found the haggle step cut off before the deal (only the first 4 messages were shown) and keyboard focus getting lost; both fixed, and the haggle now shows as a price ladder with the client's secret limit revealed.
+- **Finishing pass (polish, signed-in pages, audit):**
+  - The landing example now paces autoplay by how long each step takes to read and picks the most instructive recent round.
+  - The signed-in pages were checked for the first time, with a faked session in the test browser so nothing was written to the database. They lost a dead Settings button, a duplicate gold button, and a phone overflow. Tied agents now share a rank.
+  - A technical audit scored the app **12/20**. The fixes it led to:
+    - two phone overflows, from one grid pattern repeated on five pages;
+    - contrast failures from one shared tag pattern, fixed with three darker tokens and lighter tints;
+    - an unnamed button, missing landmarks and skipped heading levels;
+    - each page's code now loads only when it's opened, cutting the first download from 918 KB to 423 KB.
+  - Afterwards all 8 pages passed axe, an automated accessibility checker, with zero violations, and none overflowed on phones.
 - **Honesty rules on the page:** every number on the landing page comes from this log or live data, and the example round is labelled "Sample round, not live data" when the arena has no finished round yet.
 
 ## How it was built

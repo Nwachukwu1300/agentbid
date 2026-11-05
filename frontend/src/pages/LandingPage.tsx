@@ -192,7 +192,7 @@ export function LandingPage() {
             <h2 className="title-wide text-3xl">
               {showingLast ? `Season ${lastSeason!.number} final standings` : season ? `Season ${season.number} standings` : 'Season standings'}
             </h2>
-            <Link to="/analytics" className="text-sm font-semibold text-accent-felt underline">Full scoreboard</Link>
+            <Link to="/analytics" className="inline-block py-1 text-sm font-semibold text-accent-felt underline">Full scoreboard</Link>
           </div>
           {tiedAtTop && leaders && (
             <p className="mt-2 text-text-secondary">
@@ -244,7 +244,7 @@ export function LandingPage() {
           <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <h2 className="title-wide text-3xl">Designer&rsquo;s notes</h2>
-              <a href={BUILD_LOG} className="text-sm font-semibold text-accent-felt underline">Read the full build log</a>
+              <a href={BUILD_LOG} className="inline-block py-1 text-sm font-semibold text-accent-felt underline">Read the full build log</a>
             </div>
             <p className="mt-2 max-w-2xl text-text-secondary">
               How the game was balanced, measured against real play. Every number below is recorded in the build log.

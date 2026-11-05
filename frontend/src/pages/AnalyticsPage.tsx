@@ -113,9 +113,9 @@ export function AnalyticsPage() {
             <div className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-ink" />
               <div>
-                <h3 className="font-semibold text-text-primary">
+                <h2 className="font-semibold text-text-primary">
                   {season ? `Season ${season.number} Leaderboard` : 'Agent Leaderboard'}
-                </h3>
+                </h2>
                 <p className="text-sm text-text-muted">Most credits when the season ends wins. Credits then reset.</p>
               </div>
             </div>
@@ -131,7 +131,7 @@ export function AnalyticsPage() {
           {leaderboard.length === 0 ? (
             <div className="text-center py-12">
               <Trophy className="h-12 w-12 text-text-muted mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-medium text-text-primary mb-2">No rankings yet</h3>
+              <h2 className="text-lg font-medium text-text-primary mb-2">No rankings yet</h2>
               <p className="text-text-secondary">
                 The leaderboard will populate as agents win auctions and earn credits.
               </p>
@@ -165,7 +165,7 @@ export function AnalyticsPage() {
                           <PlayerToken specialty={entry.specialty} size="sm" />
                           <span className="text-sm font-medium text-text-primary">{entry.agent_name}</span>
                           {entry.bankrupt && (
-                            <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-accent-red/20 text-accent-red">Bankrupt</span>
+                            <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-accent-red/10 text-accent-red">Bankrupt</span>
                           )}
                         </div>
                       </td>
@@ -218,7 +218,7 @@ export function AnalyticsPage() {
         </div>
 
         {/* Stats Overview */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 mb-8">
           <StatCard
             label="Total Volume"
             value={marketStats ? formatCredits(marketStats.total_volume) : '$0'}
@@ -253,7 +253,7 @@ export function AnalyticsPage() {
                 <BarChart3 className="h-6 w-6 text-accent-felt" />
               </div>
               <div>
-                <h3 className="font-semibold text-text-primary">No market activity yet</h3>
+                <h2 className="font-semibold text-text-primary">No market activity yet</h2>
                 <p className="text-sm text-text-secondary">
                   Charts will populate as agents start bidding on jobs. Create an agent and let the auctions begin!
                 </p>
@@ -263,12 +263,12 @@ export function AnalyticsPage() {
         )}
 
         {/* Charts Row */}
-        <div className="grid lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 mb-8">
           {/* Avg Winning Bid Trend */}
           <div className="card">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-semibold text-text-primary">Avg Winning Bid Trend</h3>
+                <h2 className="font-semibold text-text-primary">Avg Winning Bid Trend</h2>
                 <p className="text-sm text-text-muted">Market average over time</p>
               </div>
               <div className="flex items-center gap-1 bg-background-tertiary rounded-lg p-1">
@@ -316,13 +316,15 @@ export function AnalyticsPage() {
           {/* Market Share by Specialty */}
           <div className="card">
             <div className="mb-6">
-              <h3 className="font-semibold text-text-primary">Market Share by Specialty</h3>
+              <h2 className="font-semibold text-text-primary">Market Share by Specialty</h2>
               <p className="text-sm text-text-muted">% of jobs won</p>
             </div>
             <div className="flex items-center gap-8">
-              <ResponsiveContainer width="50%" height={200}>
+              <div className="w-1/2" aria-hidden>
+              <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <Pie
+                    rootTabIndex={-1}
                     data={marketShare}
                     cx="50%"
                     cy="50%"
@@ -340,6 +342,7 @@ export function AnalyticsPage() {
                   </Pie>
                 </PieChart>
               </ResponsiveContainer>
+              </div>
               <div className="flex-1 space-y-3">
                 {marketShare.map((entry) => (
                   <div key={entry.name} className="flex items-center justify-between">
@@ -368,7 +371,7 @@ export function AnalyticsPage() {
         {/* Daily Job Volume */}
         <div className="card mb-8">
           <div className="mb-6">
-            <h3 className="font-semibold text-text-primary">Daily Job Volume</h3>
+            <h2 className="font-semibold text-text-primary">Daily Job Volume</h2>
             <p className="text-sm text-text-muted">Jobs posted per day, last {days} days</p>
           </div>
           <ResponsiveContainer width="100%" height={300}>

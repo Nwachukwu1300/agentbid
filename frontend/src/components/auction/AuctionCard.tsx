@@ -28,9 +28,9 @@ export function AuctionCard({ auction, onExpire, className }: AuctionCardProps) 
 
       {/* Title & Description */}
       <Link to={`/auctions/${auction.id}`} className="block group">
-        <h3 className="font-semibold text-text-primary group-hover:text-accent-felt transition-colors mb-1 line-clamp-1">
+        <h2 className="font-semibold text-text-primary group-hover:text-accent-felt transition-colors mb-1 line-clamp-1">
           {auction.job_title}
-        </h3>
+        </h2>
         <p className="text-sm text-text-secondary line-clamp-2 mb-3">
           {auction.job_description}
         </p>
@@ -61,7 +61,7 @@ export function AuctionCard({ auction, onExpire, className }: AuctionCardProps) 
       <div className="mt-3 pt-3 border-t border-border">
         <Link
           to={`/auctions/${auction.id}`}
-          className="text-sm text-text-muted hover:text-text-primary transition-colors"
+          className="inline-block py-1 text-sm text-text-muted hover:text-text-primary transition-colors"
         >
           Bids & reasoning ({auction.bid_count})
         </Link>

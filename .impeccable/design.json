@@ -112,7 +112,7 @@
       "ink-muted": {
         "role": "neutral",
         "displayName": "Muted Ink",
-        "canonical": "#5D6A62",
+        "canonical": "#535F57",
         "tonalRamp": [
           "#090C0A",
           "#222623",
@@ -277,7 +277,7 @@
       "signal-green": {
         "role": "tertiary",
         "displayName": "Signal Green",
-        "canonical": "#1E7A47",
+        "canonical": "#18693C",
         "tonalRamp": [
           "#020F06",
           "#0D2C19",
@@ -292,7 +292,7 @@
       "signal-red": {
         "role": "tertiary",
         "displayName": "Signal Red",
-        "canonical": "#B4382E",
+        "canonical": "#A3302A",
         "tonalRamp": [
           "#190403",
           "#411410",
@@ -536,7 +536,7 @@
       "refersTo": "input",
       "description": "Card-stock field outlined in ink; felt green on focus.",
       "html": "<input class=\"ds-input\" placeholder=\"Name your agent\" />",
-      "css": ".ds-input { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums; width: 100%; border-radius: 6px; border: 1px solid rgba(24, 32, 27, 0.6); background: #FDFDFB; padding: 8px 16px; color: #18201B; font-size: 1rem; } .ds-input::placeholder { color: #5D6A62; } .ds-input:focus { outline: none; border-color: #1F5C43; box-shadow: 0 0 0 1px #1F5C43; }"
+      "css": ".ds-input { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums; width: 100%; border-radius: 6px; border: 1px solid rgba(24, 32, 27, 0.6); background: #FDFDFB; padding: 8px 16px; color: #18201B; font-size: 1rem; } .ds-input::placeholder { color: #535F57; } .ds-input:focus { outline: none; border-color: #1F5C43; box-shadow: 0 0 0 1px #1F5C43; }"
     },
     {
       "name": "Rail Navigation",
@@ -576,7 +576,7 @@
       "refersTo": "",
       "description": "Rulebook round track from the worked example: done, current, upcoming.",
       "html": "<ol class=\"ds-track\"><li class=\"ds-step ds-done\"><span>1</span>The job</li><li class=\"ds-rule\"></li><li class=\"ds-step ds-current\"><span class=\"ds-token\" style=\"width:16px;height:16px;border-width:2px;background:#7D3C98\"></span>Sealed bids</li><li class=\"ds-rule ds-rule-off\"></li><li class=\"ds-step\"><span>3</span>The reveal</li></ol>",
-      "css": ".ds-track { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums; display: flex; align-items: center; list-style: none; margin: 0; padding: 0; } .ds-rule { width: 40px; height: 2px; background: #18201B; } .ds-rule-off { background: rgba(24, 32, 27, 0.2); } .ds-step { display: flex; align-items: center; gap: 8px; border-radius: 9999px; border: 1px solid rgba(24, 32, 27, 0.2); background: #FDFDFB; padding: 6px 12px; font-size: 0.75rem; font-weight: 600; color: #5D6A62; cursor: pointer; transition: border-color 150ms; } .ds-step:hover { border-color: rgba(24, 32, 27, 0.5); } .ds-step span { width: 16px; text-align: center; } .ds-done { border-color: rgba(24, 32, 27, 0.6); background: #F1F4F0; color: #3F4A43; } .ds-current { border-color: #18201B; color: #18201B; box-shadow: 0 1px 0 rgba(24, 32, 27, 0.06), 0 8px 16px -10px rgba(24, 32, 27, 0.35); } .ds-token { display: inline-block; border-radius: 9999px; border-style: solid; border-color: rgba(24, 32, 27, 0.4); }"
+      "css": ".ds-track { font-family: Archivo, system-ui, sans-serif; font-variant-numeric: tabular-nums; display: flex; align-items: center; list-style: none; margin: 0; padding: 0; } .ds-rule { width: 40px; height: 2px; background: #18201B; } .ds-rule-off { background: rgba(24, 32, 27, 0.2); } .ds-step { display: flex; align-items: center; gap: 8px; border-radius: 9999px; border: 1px solid rgba(24, 32, 27, 0.2); background: #FDFDFB; padding: 6px 12px; font-size: 0.75rem; font-weight: 600; color: #535F57; cursor: pointer; transition: border-color 150ms; } .ds-step:hover { border-color: rgba(24, 32, 27, 0.5); } .ds-step span { width: 16px; text-align: center; } .ds-done { border-color: rgba(24, 32, 27, 0.6); background: #F1F4F0; color: #3F4A43; } .ds-current { border-color: #18201B; color: #18201B; box-shadow: 0 1px 0 rgba(24, 32, 27, 0.06), 0 8px 16px -10px rgba(24, 32, 27, 0.35); } .ds-token { display: inline-block; border-radius: 9999px; border-style: solid; border-color: rgba(24, 32, 27, 0.4); }"
     }
   ],
   "narrative": {

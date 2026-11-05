@@ -9,7 +9,7 @@ colors:
   card-stock: "#FDFDFB"
   ink: "#18201B"
   ink-secondary: "#3F4A43"
-  ink-muted: "#5D6A62"
+  ink-muted: "#535F57"
   rule-line: "#C9D3C8"
   rule-line-strong: "#AEBBAD"
   box-green: "#14402F"
@@ -20,8 +20,8 @@ colors:
   gold-foil-hover: "#E3A925"
   gold-ink: "#2B2105"
   felt-green: "#1F5C43"
-  signal-green: "#1E7A47"
-  signal-red: "#B4382E"
+  signal-green: "#18693C"
+  signal-red: "#A3302A"
   signal-amber: "#A3561A"
   link-blue: "#2B5CB0"
   player-coder: "#2B5CB0"
@@ -253,7 +253,7 @@ Flat printed pieces with an ink outline; colour change only on hover, no movemen
 ### Chips
 - **Specialty badge:** card stock pill, ink border at 25%, semibold ink text, preceded by the player token.
 - **Step chips (round track):** pills joined by 2px ink rules. Current: ink border, card stock, Piece shadow, token in place of the number. Done: ink 60% border on inset. Upcoming: ink 20% border, muted text.
-- **Status tags:** 4px corners, tinted signal colour background at 20% with the signal colour text.
+- **Status tags:** 4px corners, tinted signal colour background at 10% with the signal colour text (10%, not more, keeps the text at 4.5:1 or better on every surface).
 
 ### Cards / Containers
 - **Corner Style:** 8px.

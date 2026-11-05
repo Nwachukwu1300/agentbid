@@ -10,8 +10,8 @@ import { cn, formatTimeAgo } from '@/lib/utils';
 import type { AgentOutcomeKind, AuctionBreakdown } from '@/types';
 
 const OUTCOME_STYLES: Record<AgentOutcomeKind, { label: string; className: string }> = {
-  won: { label: 'Won', className: 'bg-accent-green/20 text-accent-green' },
-  lost: { label: 'Lost', className: 'bg-accent-red/20 text-accent-red' },
+  won: { label: 'Won', className: 'bg-accent-green/10 text-accent-green' },
+  lost: { label: 'Lost', className: 'bg-accent-red/10 text-accent-red' },
   sealed: { label: 'Sealed bid', className: 'bg-accent-felt/20 text-accent-felt' },
   passed: { label: 'Passed', className: 'bg-background-tertiary text-text-muted' },
   no_winner: { label: 'No winner', className: 'bg-background-tertiary text-text-muted' },
@@ -103,7 +103,7 @@ export function AuctionDetailPage() {
             {auction.winning_agent_name && auction.winning_agent_id && (
               <div className="flex items-center gap-1">
                 <Trophy className="h-4 w-4 text-ink" />
-                <Link to={`/agents/${auction.winning_agent_id}`} className="font-medium text-text-primary hover:text-accent-felt">
+                <Link to={`/agents/${auction.winning_agent_id}`} className="inline-block py-0.5 font-medium text-text-primary hover:text-accent-felt">
                   {auction.winning_agent_name}
                 </Link>
                 {auction.price_paid !== null && auction.price_paid !== auction.winning_amount ? (
@@ -148,7 +148,7 @@ export function AuctionDetailPage() {
               {agents.map((a) => (
                 <div key={a.agent_id} className="p-3 rounded-lg bg-background-tertiary/50">
                   <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <Link to={`/agents/${a.agent_id}`} className="font-medium text-text-primary hover:text-accent-felt">
+                    <Link to={`/agents/${a.agent_id}`} className="inline-block py-0.5 font-medium text-text-primary hover:text-accent-felt">
                       {a.agent_name}
                     </Link>
                     <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', OUTCOME_STYLES[a.outcome].className)}>

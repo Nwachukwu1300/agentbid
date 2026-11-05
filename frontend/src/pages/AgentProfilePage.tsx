@@ -135,6 +135,7 @@ export function AgentProfilePage() {
     return (
       <Layout>
         <div className="p-6">
+          <h1 className="sr-only">Loading agent</h1>
           <div className="animate-pulse">
             <div className="h-8 w-48 bg-background-tertiary rounded mb-4" />
             <div className="grid grid-cols-4 gap-4 mb-8">
@@ -154,9 +155,10 @@ export function AgentProfilePage() {
       <Layout>
         <div className="p-6">
           <div className="card p-12 text-center">
-            <p className="text-text-secondary mb-4">{error || 'Agent not found'}</p>
-            <Link to={backTo} className="btn-primary">
-              {user ? 'Back to Dashboard' : 'Back to Auctions'}
+            <h1 className="mb-2 text-xl font-bold">{error ? 'This agent could not be loaded' : 'Agent not found'}</h1>
+            {error && <p className="mb-4 text-text-secondary">{error}</p>}
+            <Link to={backTo} className="btn-primary mt-2">
+              {user ? 'Back to my agents' : 'Back to the live arena'}
             </Link>
           </div>
         </div>
@@ -168,14 +170,14 @@ export function AgentProfilePage() {
     <Layout>
       <div className="p-6">
         {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex items-center gap-4">
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-4">
             <button onClick={() => navigate(backTo)} className="btn-ghost p-2" aria-label="Back">
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <div className="flex items-center gap-4">
-              <PlayerToken specialty={agent.specialty} size="lg" className="h-14 w-14 border-4" />
-              <div>
+            <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+              <PlayerToken specialty={agent.specialty} size="lg" className="h-10 w-10 border-[3px] sm:h-14 sm:w-14 sm:border-4" />
+              <div className="min-w-0">
                 {isEditing ? (
                   <input
                     type="text"
@@ -184,7 +186,7 @@ export function AgentProfilePage() {
                     className="text-2xl font-bold bg-background-tertiary border border-border rounded px-3 py-1 text-text-primary focus:outline-none focus:border-accent-felt"
                   />
                 ) : (
-                  <h1 className="title-wide text-3xl text-text-primary">{agent.name}</h1>
+                  <h1 className="title-wide break-words text-2xl text-text-primary sm:text-3xl">{agent.name}</h1>
                 )}
                 <div className="flex items-center gap-3 mt-1">
                   <SpecialtyBadge specialty={agent.specialty} />
@@ -269,7 +271,7 @@ export function AgentProfilePage() {
         </div>
 
         {/* Stats Overview */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 mb-8">
           <StatCard
             label="Credits"
             value={formatCredits(agent.credits)}
@@ -297,15 +299,15 @@ export function AgentProfilePage() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Left Column - Instructions */}
           <div className="lg:col-span-2 space-y-6">
             {/* Auction Instructions */}
             <div className="card p-6">
-              <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
+              <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
                 <Zap className="h-5 w-5 text-ink" />
                 Auction Strategy
-              </h3>
+              </h2>
               {isEditing ? (
                 <textarea
                   value={editAuctionInstructions}
@@ -324,10 +326,10 @@ export function AgentProfilePage() {
             {/* Negotiation style: owner only, like the strategy */}
             {isOwner && (
               <div className="card p-6">
-                <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
+                <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
                   <MessagesSquare className="h-5 w-5 text-accent-blue" />
                   Negotiation Style
-                </h3>
+                </h2>
                 {isEditing ? (
                   <textarea
                     value={editNegotiationStyle}
@@ -347,10 +349,10 @@ export function AgentProfilePage() {
 
             {/* Decision History: every bid and pass with the agent's reasoning */}
             <div className="card p-6">
-              <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
+              <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
                 <Clock className="h-5 w-5 text-text-muted" />
                 Decision History
-              </h3>
+              </h2>
               {history.length > 0 ? (
                 <div className="space-y-3">
                   {history.map((d) => (
@@ -370,8 +372,8 @@ export function AgentProfilePage() {
                         <span
                           className={cn(
                             'rounded px-1.5 py-0.5 text-xs font-medium',
-                            d.outcome === 'won' && 'bg-accent-green/20 text-accent-green',
-                            d.outcome === 'lost' && 'bg-accent-red/20 text-accent-red',
+                            d.outcome === 'won' && 'bg-accent-green/10 text-accent-green',
+                            d.outcome === 'lost' && 'bg-accent-red/10 text-accent-red',
                             d.outcome === 'open' && 'bg-accent-felt/20 text-accent-felt',
                             d.outcome === 'no_winner' && 'bg-background-tertiary text-text-muted'
                           )}
@@ -396,7 +398,7 @@ export function AgentProfilePage() {
           <div className="space-y-6">
             {/* Current Status */}
             <div className="card p-6">
-              <h3 className="text-lg font-semibold text-text-primary mb-4">Current Status</h3>
+              <h2 className="text-lg font-semibold text-text-primary mb-4">Current Status</h2>
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-2">
@@ -459,10 +461,10 @@ export function AgentProfilePage() {
             {/* Recent Wins */}
             {!!fullStats?.recent_wins.length && (
               <div className="card p-6">
-                <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
+                <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
                   <Trophy className="h-5 w-5 text-ink" />
                   Recent Wins
-                </h3>
+                </h2>
                 <div className="space-y-3">
                   {fullStats.recent_wins.slice(0, 5).map((win) => (
                     <div
@@ -493,10 +495,10 @@ export function AgentProfilePage() {
             {/* Performance Breakdown */}
             {fullStats?.specialty_breakdown && Object.keys(fullStats.specialty_breakdown).length > 0 && (
               <div className="card p-6">
-                <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
+                <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2 mb-4">
                   <BarChart3 className="h-5 w-5 text-accent-felt" />
                   Jobs by Type
-                </h3>
+                </h2>
                 <div className="space-y-2">
                   {Object.entries(fullStats.specialty_breakdown).map(([spec, count]) => (
                     <div key={spec} className="flex items-center justify-between">
@@ -514,7 +516,7 @@ export function AgentProfilePage() {
         {showDeleteConfirm && (
           <div className="fixed inset-0 bg-ink/50 flex items-center justify-center z-50">
             <div className="card p-6 max-w-md mx-4">
-              <h3 className="text-lg font-semibold text-text-primary mb-2">Delete Agent?</h3>
+              <h2 className="text-lg font-semibold text-text-primary mb-2">Delete Agent?</h2>
               <p className="text-text-secondary mb-6">
                 Are you sure you want to delete <strong>{agent.name}</strong>? This action cannot be undone.
               </p>

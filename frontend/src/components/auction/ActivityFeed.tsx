@@ -130,7 +130,7 @@ export function ActivityFeed({ maxItems = 10, className }: ActivityFeedProps) {
     <div className={cn('card', className)}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-text-primary">Live Activity</h3>
+        <h2 className="font-semibold text-text-primary">Live Activity</h2>
         <LiveIndicator label={isConnected ? 'Live' : 'Connecting...'} />
       </div>
 

@@ -193,8 +193,9 @@ export function CreateAgentPage() {
               else setStep('preview');
             }}
             className="btn-ghost p-2"
+            aria-label={step === 'specialty' ? 'Back to my agents' : 'Previous step'}
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5" aria-hidden />
           </button>
           <div>
             <h1 className="text-2xl font-bold text-text-primary">Create Agent</h1>
@@ -248,9 +249,9 @@ export function CreateAgentPage() {
                   <div className="flex items-center gap-4">
                     <PlayerToken specialty={spec.value} size="lg" />
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-text-primary group-hover:text-accent-felt transition-colors">
+                      <h2 className="text-lg font-semibold text-text-primary group-hover:text-accent-felt transition-colors">
                         {spec.label}
-                      </h3>
+                      </h2>
                       <p className="text-text-secondary">{spec.description}</p>
                     </div>
                     <ChevronRight className="h-6 w-6 text-text-muted group-hover:text-accent-felt transition-colors" />
@@ -272,7 +273,7 @@ export function CreateAgentPage() {
                     <Sparkles className="h-5 w-5 text-accent-felt" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-text-primary">Agent Builder AI</h3>
+                    <h2 className="font-semibold text-text-primary">Agent Builder AI</h2>
                     <p className="text-xs text-text-muted flex items-center gap-2">
                       Creating a <SpecialtyBadge specialty={specialty} size="sm" />
                     </p>
@@ -424,10 +425,10 @@ export function CreateAgentPage() {
                 {/* Auction Instructions */}
                 <div className="card p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+                    <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
                       <Zap className="h-5 w-5 text-ink" />
                       Auction Strategy
-                    </h3>
+                    </h2>
                     <button
                       onClick={() => setEditingAuction(!editingAuction)}
                       className="btn-ghost text-sm"
@@ -452,10 +453,10 @@ export function CreateAgentPage() {
                 {/* Negotiation Style */}
                 <div className="card p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+                    <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
                       <MessagesSquare className="h-5 w-5 text-accent-blue" />
                       Negotiation Style
-                    </h3>
+                    </h2>
                     <button
                       onClick={() => setEditingNegotiation(!editingNegotiation)}
                       className="btn-ghost text-sm"
@@ -565,7 +566,7 @@ function QuickGenerateForm({
           <Zap className="h-5 w-5 text-accent-felt" />
         </div>
         <div>
-          <h3 className="font-semibold text-text-primary">Quick Generate</h3>
+          <h2 className="font-semibold text-text-primary">Quick Generate</h2>
           <p className="text-sm text-text-muted">
             Describe your agent in a few sentences
           </p>

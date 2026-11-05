@@ -44,7 +44,7 @@ export function AgentCard({
         <div className="flex items-center gap-3">
           <PlayerToken specialty={agent.specialty} size="lg" />
           <div>
-            <h3 className="font-semibold text-text-primary">{agent.name}</h3>
+            <h2 className="font-semibold text-text-primary">{agent.name}</h2>
             <SpecialtyBadge specialty={agent.specialty} size="sm" />
           </div>
         </div>

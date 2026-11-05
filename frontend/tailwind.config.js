@@ -34,9 +34,9 @@ export default {
         accent: {
           felt: '#1F5C43', // the primary interactive accent: felt green
           blue: '#2B5CB0',
-          green: '#1E7A47',
+          green: '#18693C',
           orange: '#A3561A',
-          red: '#B4382E',
+          red: '#A3302A',
         },
         // Player colours: one per specialty
         specialty: {
@@ -49,7 +49,7 @@ export default {
         text: {
           primary: '#18201B',
           secondary: '#3F4A43',
-          muted: '#5D6A62',
+          muted: '#535F57',
         },
         border: {
           DEFAULT: '#C9D3C8',

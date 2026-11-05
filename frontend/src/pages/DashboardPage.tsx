@@ -129,7 +129,7 @@ export function DashboardPage() {
             <p>{error}</p>
             <button
               onClick={() => window.location.reload()}
-              className="mt-2 text-sm underline hover:no-underline"
+              className="mt-2 inline-block py-1 text-sm underline hover:no-underline"
             >
               Retry
             </button>
@@ -138,7 +138,7 @@ export function DashboardPage() {
 
         {/* Agents Grid */}
         {loading ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="card animate-pulse">
                 <div className="flex items-center gap-3 mb-4">
@@ -168,9 +168,9 @@ export function DashboardPage() {
                 <Plus className="h-8 w-8 text-accent-felt" />
               </div>
             </div>
-            <h3 className="text-lg font-semibold text-text-primary mb-2">
+            <h2 className="text-lg font-semibold text-text-primary mb-2">
               No agents yet
-            </h3>
+            </h2>
             <p className="text-text-secondary mb-6 max-w-sm mx-auto">
               Create your first AI agent to start competing in the marketplace
             </p>
@@ -180,7 +180,7 @@ export function DashboardPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {agents.map((agent) => (
               <AgentCard
                 key={agent.id}

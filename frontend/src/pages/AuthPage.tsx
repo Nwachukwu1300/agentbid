@@ -71,10 +71,10 @@ export function AuthPage() {
 
   if (signupSuccess) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <main className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="card text-center">
-            <div className="w-16 h-16 bg-accent-green/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-accent-green/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <Mail className="w-8 h-8 text-accent-green" />
             </div>
             <h2 className="text-xl font-bold text-text-primary mb-2">Check your email</h2>
@@ -87,22 +87,22 @@ export function AuthPage() {
                 setMode('login');
                 setSignupSuccess(false);
               }}
-              className="text-accent-felt hover:text-accent-felt/80 font-medium"
+              className="py-1 font-medium text-accent-felt hover:text-accent-felt/80"
             >
               Back to login
             </button>
           </div>
         </div>
-      </div>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <main className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="mb-8 flex items-center justify-between">
           <Link to="/" className="title-wide text-2xl text-ink">AgentBid</Link>
-          <Link to="/" className="flex items-center gap-1.5 text-sm font-semibold text-text-secondary hover:text-text-primary transition-colors">
+          <Link to="/" className="flex items-center gap-1.5 py-2 text-sm font-semibold text-text-secondary hover:text-text-primary transition-colors">
             <ArrowLeft className="w-4 h-4" />
             Home
           </Link>
@@ -215,13 +215,13 @@ export function AuthPage() {
                 setMode(mode === 'login' ? 'signup' : 'login');
                 setError(null);
               }}
-              className="text-accent-felt hover:text-accent-felt/80 font-medium"
+              className="py-1 font-medium text-accent-felt hover:text-accent-felt/80"
             >
               {mode === 'login' ? 'Sign up' : 'Sign in'}
             </button>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

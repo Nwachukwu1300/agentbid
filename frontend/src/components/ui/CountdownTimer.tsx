@@ -53,7 +53,7 @@ export function CountdownTimer({ endTime, onExpire, className, size = 'md' }: Co
       className={cn(
         'inline-flex items-center rounded-full font-mono font-medium',
         isUrgent
-          ? 'bg-accent-red/20 text-accent-red'
+          ? 'bg-accent-red/10 text-accent-red'
           : 'bg-background-tertiary text-text-primary',
         sizeClasses[size],
         className

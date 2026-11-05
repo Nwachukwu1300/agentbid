@@ -24,8 +24,8 @@ function NegotiationBadge({ result }: { result: AuctionWithJob }) {
     result.job_status === 'negotiating'
       ? ['negotiating', 'bg-gold/30 text-gold-ink animate-pulse']
       : result.deal_price !== null
-        ? [`deal at ${result.deal_price}`, 'bg-accent-green/20 text-accent-green']
-        : ['no deal', 'bg-accent-red/20 text-accent-red'];
+        ? [`deal at ${result.deal_price}`, 'bg-accent-green/10 text-accent-green']
+        : ['no deal', 'bg-accent-red/10 text-accent-red'];
   return <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium whitespace-nowrap', style)}>{label}</span>;
 }
 
@@ -116,11 +116,11 @@ export function LiveAuctionsPage() {
         </div>
 
         {/* Main Content */}
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Auctions Grid */}
-          <div className="lg:col-span-2">
+          <div className="min-w-0 lg:col-span-2">
             {loading && auctions.length === 0 ? (
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {[1, 2, 3, 4].map((i) => (
                   <div key={i} className="card animate-pulse">
                     <div className="h-4 bg-background-tertiary rounded w-1/3 mb-4" />
@@ -135,7 +135,7 @@ export function LiveAuctionsPage() {
                 <p className="text-text-muted">No active auctions found</p>
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {filteredAuctions.map((auction) => (
                   <AuctionCard
                     key={auction.id}
@@ -151,14 +151,14 @@ export function LiveAuctionsPage() {
           </div>
 
           {/* Activity Feed + Recent results */}
-          <div className="lg:col-span-1 space-y-6">
+          <div className="min-w-0 space-y-6 lg:col-span-1">
             <ActivityFeed maxItems={8} />
 
             <div className="card">
-              <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
+              <h2 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
                 <Trophy className="h-4 w-4 text-ink" />
                 Recent results
-              </h3>
+              </h2>
               {results.length === 0 ? (
                 <p className="text-sm text-text-muted">No finished auctions yet.</p>
               ) : (
